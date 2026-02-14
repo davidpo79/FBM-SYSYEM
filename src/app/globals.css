@@ -1,25 +1,78 @@
 @import "tailwindcss";
+@import "@fontsource/rubik/400.css";
+@import "@fontsource/rubik/500.css";
+@import "@fontsource/rubik/600.css";
+@import "@fontsource/rubik/700.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Sidebar */
+  --sidebar-bg: #0F1117;
+  --sidebar-hover: #1A1D2A;
+  --sidebar-active: #1E2235;
+  --sidebar-border: #2A2D3A;
+
+  /* Gold accent */
+  --gold: #D4A843;
+  --gold-soft: rgba(212, 168, 67, 0.12);
+  --gold-glow: rgba(212, 168, 67, 0.25);
+
+  /* Content area */
+  --content-bg: #F8F9FC;
+  --card-bg: #FFFFFF;
+  --card-border: #E8EAF0;
+
+  /* Text */
+  --text-primary: #1A1D2A;
+  --text-secondary: #6B7084;
+  --text-muted: #9DA3B4;
+
+  /* Status */
+  --success: #22C55E;
+  --info: #3B82F6;
+  --warning: #F59E0B;
+
+  --background: #F8F9FC;
+  --foreground: #1A1D2A;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-glow: var(--gold-glow);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-content-bg: var(--content-bg);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+  background: var(--content-bg);
+  color: var(--text-primary);
+  font-family: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Scrollbar styling for sidebar */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: var(--sidebar-border);
+  border-radius: 2px;
+}
+
+/* Gold glow effect */
+.gold-glow {
+  box-shadow: 0 0 20px var(--gold-glow), 0 0 40px rgba(212, 168, 67, 0.1);
 }

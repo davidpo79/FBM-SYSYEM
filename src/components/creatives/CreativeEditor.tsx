@@ -6,6 +6,7 @@ import type {
   ColorType,
   FontSizeType,
   TextPositionType,
+  FormatType,
   CreativeSuggestion,
 } from "@/types";
 import FBMLogo from "@/components/FBMLogo";
@@ -29,6 +30,7 @@ interface CreativeEditorProps {
     displayRole?: string;
     fontSize?: FontSizeType;
     textPosition?: TextPositionType;
+    format?: FormatType;
   }) => Promise<void>;
 }
 
@@ -66,6 +68,7 @@ export default function CreativeEditor({
   const [cta, setCta] = useState(suggestion.cta || "שלחו הודעה");
   const [background, setBackground] = useState<BackgroundType>(suggestion.background);
   const [color, setColor] = useState<ColorType>(suggestion.color);
+  const [format, setFormat] = useState<FormatType>("story");
   const [fontSize, setFontSize] = useState<FontSizeType>("medium");
   const [textPosition, setTextPosition] = useState<TextPositionType>("top");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -87,7 +90,7 @@ export default function CreativeEditor({
       setHasChanges(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mainText, cta, background, color, fontSize, textPosition, showProfileUpload, profileImage, displayName, displayRole]);
+  }, [mainText, cta, background, color, format, fontSize, textPosition, showProfileUpload, profileImage, displayName, displayRole]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -115,6 +118,7 @@ export default function CreativeEditor({
         background,
         color,
         userInfo,
+        format,
         fontSize,
         textPosition,
         ...(showProfileUpload && {
@@ -149,7 +153,7 @@ export default function CreativeEditor({
         {/* Left column - Image preview (60%) */}
         <div className="lg:w-[60%] flex-shrink-0">
           <div className="sticky top-4">
-            <div className="aspect-square w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 relative">
+            <div className={`${format === "story" ? "aspect-[9/16]" : "aspect-square"} w-full max-h-[70vh] rounded-2xl overflow-hidden border border-[var(--card-border)] bg-[var(--content-bg)] relative transition-all`}>
               {isGenerating && (
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 rounded-2xl">
                   <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
@@ -179,6 +183,37 @@ export default function CreativeEditor({
 
         {/* Right column - Editor panel (40%) */}
         <div className="lg:w-[40%] space-y-5 max-h-[80vh] lg:overflow-y-auto lg:pl-2">
+          {/* Format */}
+          <section>
+            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+              פורמט תמונה
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setFormat("feed")}
+                className={`flex-1 px-3 py-2 rounded-[10px] border text-sm cursor-pointer transition-all ${
+                  format === "feed"
+                    ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
+                    : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                }`}
+              >
+                פיד 1:1
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormat("story")}
+                className={`flex-1 px-3 py-2 rounded-[10px] border text-sm cursor-pointer transition-all ${
+                  format === "story"
+                    ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
+                    : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                }`}
+              >
+                סטורי 9:16
+              </button>
+            </div>
+          </section>
+
           {/* A. Main Text */}
           <section>
             <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 mb-1.5">
@@ -224,8 +259,8 @@ export default function CreativeEditor({
                   onClick={() => setBackground(bg.value)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-all ${
                     background === bg.value
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-semibold"
-                      : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                      ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
+                      : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
                   }`}
                 >
                   <span>{bg.icon}</span>
@@ -275,8 +310,8 @@ export default function CreativeEditor({
                   onClick={() => setFontSize(fs.value)}
                   className={`flex-1 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-all ${
                     fontSize === fs.value
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-semibold"
-                      : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                      ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
+                      : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
                   }`}
                 >
                   {fs.label}
@@ -298,8 +333,8 @@ export default function CreativeEditor({
                   onClick={() => setTextPosition(tp.value)}
                   className={`flex-1 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-all ${
                     textPosition === tp.value
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-semibold"
-                      : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                      ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
+                      : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
                   }`}
                 >
                   {tp.label}

@@ -2,6 +2,7 @@ export type BackgroundType = "lighthouse" | "mountain" | "path" | "office";
 export type ColorType = "gold" | "teal";
 export type FontSizeType = "small" | "medium" | "large";
 export type TextPositionType = "top" | "center" | "bottom";
+export type FormatType = "feed" | "story";
 
 export interface CreativeSuggestion {
   main_text: string;
@@ -21,11 +22,12 @@ export interface CreativeConfig {
     role: string;
     niche: string;
   };
+  format?: FormatType;
+  fontSize?: FontSizeType;
+  textPosition?: TextPositionType;
   profileImage?: string;
   displayName?: string;
   displayRole?: string;
-  fontSize?: FontSizeType;
-  textPosition?: TextPositionType;
 }
 
 export interface CreativeResponse {

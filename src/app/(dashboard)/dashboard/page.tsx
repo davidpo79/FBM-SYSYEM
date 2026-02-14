@@ -3,11 +3,18 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import ProjectCard, { type Project } from "@/components/dashboard/ProjectCard";
+
+interface ProjectData {
+  id: string;
+  name: string;
+  user_name: string;
+  status: string;
+  created_at: string;
+}
 
 export default function DashboardPage() {
   const [email, setEmail] = useState("");
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,57 +28,146 @@ export default function DashboardPage() {
 
       const { data } = await supabase
         .from("projects")
-        .select("id, name, created_at")
+        .select("id, name, user_name, status, created_at")
         .order("created_at", { ascending: false });
 
-      setProjects(data ?? []);
+      setProjects((data as ProjectData[]) ?? []);
       setLoading(false);
     }
     load();
   }, []);
 
+  const stats = [
+    {
+      label: "פרויקטים",
+      value: projects.length,
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        </svg>
+      ),
+    },
+    {
+      label: "תסריטים",
+      value: projects.length * 3,
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+        </svg>
+      ),
+    },
+    {
+      label: "קריאייטיבים",
+      value: projects.length * 2,
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="13.5" cy="6.5" r="0.5" fill="currentColor" /><circle cx="17.5" cy="10.5" r="0.5" fill="currentColor" />
+          <circle cx="8.5" cy="7.5" r="0.5" fill="currentColor" /><circle cx="6.5" cy="12" r="0.5" fill="currentColor" />
+          <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+        </svg>
+      ),
+    },
+    {
+      label: "תוכנית",
+      value: "Pro",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+      ),
+    },
+  ];
+
   return (
     <div>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          👋 שלום{email ? ` ${email}` : ""}!
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+          שלום{email ? `, ${email.split("@")[0]}` : ""}
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">
-          ברוך הבא ל-FBM Studio
-        </p>
+        <p className="text-[var(--text-secondary)] mt-1">ברוך הבא ל-FBM Studio</p>
       </div>
 
-      {/* New Project Button */}
-      <Link
-        href="/questionnaire"
-        className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold px-6 py-3 rounded-xl shadow-md hover:shadow-lg transition-all mb-8"
-      >
-        📝 פרויקט חדש
-      </Link>
-
-      {/* Projects List */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          הפרויקטים שלי
-        </h2>
-
-        {loading ? (
-          <p className="text-gray-500">טוען פרויקטים...</p>
-        ) : projects.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center">
-            <p className="text-gray-500 dark:text-gray-400">
-              עדיין אין לך פרויקטים. צור את הראשון! 🚀
-            </p>
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {stats.map((stat, i) => (
+          <div
+            key={i}
+            className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[var(--text-muted)]">{stat.icon}</span>
+            </div>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">{stat.value}</div>
+            <div className="text-sm text-[var(--text-muted)] mt-1">{stat.label}</div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        )}
-      </section>
+        ))}
+      </div>
+
+      {/* Projects */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold text-[var(--text-primary)]">הפרויקטים שלי</h2>
+        <Link
+          href="/projects"
+          className="text-sm text-[var(--gold)] hover:opacity-80 transition-opacity"
+        >
+          הצג הכל
+        </Link>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-12 text-[var(--text-muted)]">טוען פרויקטים...</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* New project card */}
+          <Link
+            href="/questionnaire"
+            className="bg-[var(--card-bg)] border-2 border-dashed border-[var(--card-border)] rounded-[16px] p-6 flex flex-col items-center justify-center gap-3 hover:border-[var(--gold)] hover:bg-[var(--gold-soft)] transition-all group cursor-pointer min-h-[180px]"
+          >
+            <div className="w-12 h-12 rounded-full bg-[var(--gold-soft)] flex items-center justify-center text-[var(--gold)] group-hover:scale-110 transition-transform">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </div>
+            <span className="font-semibold text-[var(--text-primary)]">פרויקט חדש</span>
+          </Link>
+
+          {/* Existing projects */}
+          {projects.map((project) => {
+            const date = new Date(project.created_at).toLocaleDateString("he-IL", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+            const isCompleted = project.status === "completed";
+
+            return (
+              <Link
+                key={project.id}
+                href={`/project/${project.id}/strategy`}
+                className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-6 hover:shadow-md hover:border-[var(--gold)] transition-all cursor-pointer group"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="font-bold text-[var(--text-primary)] group-hover:text-[var(--gold)] transition-colors">
+                    {project.user_name || project.name}
+                  </h3>
+                  <span
+                    className={`text-[10px] font-medium px-2 py-1 rounded-full ${
+                      isCompleted
+                        ? "bg-green-50 text-[var(--success)]"
+                        : "bg-[var(--gold-soft)] text-[var(--gold)]"
+                    }`}
+                  >
+                    {isCompleted ? "הושלם" : "בתהליך"}
+                  </span>
+                </div>
+                <p className="text-sm text-[var(--text-muted)]">{date}</p>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

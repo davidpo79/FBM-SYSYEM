@@ -15,7 +15,7 @@ const backgroundDescriptions: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { mainText, cta, background, color, userInfo, profileImage, displayName, displayRole, fontSize, textPosition } =
+    const { mainText, cta, background, color, userInfo, profileImage, displayName, displayRole, fontSize, textPosition, format } =
       (await req.json()) as CreativeConfig;
 
     if (!mainText || !cta || !background || !color) {
@@ -40,9 +40,11 @@ export async function POST(req: NextRequest) {
     const finalRole = displayRole || userInfo.role;
     const fs = fontSize || "medium";
     const tp = textPosition || "top";
+    const fmt = format || "story";
+    const dimensions = fmt === "story" ? "1080×1920px (9:16 story format)" : "1080×1080px (1:1 square format)";
 
     const prompt = `
-Create a professional social media creative image (1080×1080px, Instagram square format).
+Create a professional social media creative image (${dimensions}).
 
 BACKGROUND: ${bgDescription}. Professional cinematic lighting, high quality, photorealistic.
 
@@ -69,8 +71,10 @@ CRITICAL RULES:
 - The image must contain ONLY the main headline text, person info, and CTA button
 - Do NOT add any additional text, descriptions, subtitles, or niche definitions
 - Do NOT add text explaining who the target audience is
+- Do NOT add any audience descriptions or niche explanations
 - Keep it clean and professional like a high-end social media ad
 - Hebrew text direction: Right-to-Left
+- ONLY headline + profile + CTA. NO additional text. Clean professional ad.
 `;
 
     // Gemini generates the image

@@ -127,8 +127,8 @@ export default function QuestionnairePage() {
       // Clear saved progress
       localStorage.removeItem(STORAGE_KEY);
 
-      // Redirect to results page
-      router.push(`/results/${data.id}`);
+      // Redirect to strategy page
+      router.push(`/project/${data.id}/strategy`);
     } catch (err) {
       console.error("Submit error:", err);
       setError("אירעה שגיאה בשמירה. נסה שוב.");
