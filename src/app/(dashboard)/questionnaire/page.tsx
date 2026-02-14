@@ -80,6 +80,18 @@ export default function QuestionnairePage() {
         return;
       }
 
+      // Extract user name from email (before @)
+      const userName =
+        user.user_metadata?.full_name ||
+        user.email?.split("@")[0] ||
+        "משתמש";
+
+      // Build answers map for AI prompts (id → answer text)
+      const answersMap: Record<string, string> = {};
+      questions.forEach((q) => {
+        answersMap[q.id] = answers[q.id] ?? "";
+      });
+
       // Build answers array for storage
       const answersArray = questions.map((q) => ({
         question_id: q.id,
@@ -95,6 +107,8 @@ export default function QuestionnairePage() {
           user_id: user.id,
           name: answers["1"]?.slice(0, 60) || "פרויקט חדש",
           answers: answersArray,
+          user_name: userName,
+          answers_map: answersMap,
           status: "pending",
         })
         .select("id")
