@@ -22,7 +22,13 @@ export default function AlbumPage() {
     generatedImages,
   } = useProject();
 
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  // Load heart selections from creative page
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => {
+    try {
+      const saved = localStorage.getItem(`album_selections_${projectId}`);
+      return saved ? new Set(JSON.parse(saved) as number[]) : new Set();
+    } catch { return new Set(); }
+  });
   const [downloading, setDownloading] = useState(false);
   const markedComplete = useRef(false);
 

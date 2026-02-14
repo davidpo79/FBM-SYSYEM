@@ -52,6 +52,31 @@ export default function CreativePage() {
     scriptIdx: number;
   } | null>(null);
 
+  // Album heart selections
+  const albumKey = `album_selections_${projectId}`;
+  const [albumSelections, setAlbumSelections] = useState<Set<number>>(() => {
+    try {
+      const saved = localStorage.getItem(albumKey);
+      return saved ? new Set(JSON.parse(saved) as number[]) : new Set();
+    } catch { return new Set(); }
+  });
+  const [pulsingIdx, setPulsingIdx] = useState<number | null>(null);
+
+  const toggleAlbumSelection = useCallback((scriptIdx: number) => {
+    setAlbumSelections((prev) => {
+      const next = new Set(prev);
+      if (next.has(scriptIdx)) {
+        next.delete(scriptIdx);
+      } else {
+        next.add(scriptIdx);
+        setPulsingIdx(scriptIdx);
+        setTimeout(() => setPulsingIdx(null), 600);
+      }
+      localStorage.setItem(albumKey, JSON.stringify([...next]));
+      return next;
+    });
+  }, [albumKey]);
+
   // Redirect if no scripts
   useEffect(() => {
     if (!scripts) {
@@ -178,22 +203,44 @@ export default function CreativePage() {
               {hasImage && imageForScript && (
                 <div className="p-5 border-b border-[var(--card-border)]">
                   {(imageForScript.url || imageForScript.base64) ? (
-                    <>
+                    <div className="relative w-full max-w-md mx-auto">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={imageForScript.url || imageForScript.base64}
                         alt={`קריאטיב לתסריט ${idx + 1}`}
-                        className="w-full max-w-md mx-auto rounded-[10px] shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                        className={`w-full rounded-[10px] shadow-lg cursor-pointer hover:opacity-90 transition-all ${
+                          albumSelections.has(idx)
+                            ? "ring-3 ring-[var(--gold)] ring-offset-2"
+                            : ""
+                        }`}
                         onClick={() => setModalImage(imageForScript)}
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
-                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
                         }}
                       />
-                      <div className="hidden w-full max-w-md mx-auto rounded-[10px] bg-[var(--content-bg)] border border-[var(--card-border)] p-8 text-center">
+                      {/* Heart button */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleAlbumSelection(idx); }}
+                        className={`absolute top-2 right-2 w-9 h-9 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-sm cursor-pointer transition-all hover:scale-110 ${
+                          pulsingIdx === idx ? "animate-pulse" : ""
+                        }`}
+                        title={albumSelections.has(idx) ? "הסר מהאלבום" : "הוסף לאלבום"}
+                      >
+                        {albumSelections.has(idx) ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                          </svg>
+                        )}
+                      </button>
+                      <div className="hidden w-full rounded-[10px] bg-[var(--content-bg)] border border-[var(--card-border)] p-8 text-center">
                         <p className="text-[var(--text-muted)] text-sm">התמונה לא זמינה - צור מחדש</p>
                       </div>
-                    </>
+                    </div>
                   ) : (
                     <div className="w-full max-w-md mx-auto rounded-[10px] bg-[var(--content-bg)] border border-[var(--card-border)] p-8 text-center">
                       <p className="text-[var(--text-muted)] text-sm">התמונה לא זמינה - צור מחדש</p>
@@ -296,6 +343,11 @@ export default function CreativePage() {
           <p className="text-[var(--text-secondary)] mt-2">
             כל התסריטים והקריאטיבים נוצרו בהצלחה
           </p>
+          {albumSelections.size > 0 && (
+            <p className="text-sm text-[var(--gold)] font-medium mt-1">
+              {albumSelections.size} תמונות נבחרו לאלבום
+            </p>
+          )}
           <button
             onClick={() => router.push(`/project/${projectId}/album`)}
             className="mt-4 px-8 py-3 text-lg font-bold bg-[var(--gold)] text-white rounded-[12px] hover:opacity-90 transition-opacity cursor-pointer"
