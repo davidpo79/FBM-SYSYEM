@@ -60,18 +60,14 @@ export default function PipelineStepper({
             </div>
           );
 
-          if (isCompleted) {
-            return (
-              <Link key={step.key} href={step.href} className="flex-1 group">
-                {content}
-              </Link>
-            );
-          }
-
           return (
-            <div key={step.key} className={`flex-1 ${isPending ? "opacity-50" : ""}`}>
+            <Link
+              key={step.key}
+              href={step.href}
+              className={`flex-1 group cursor-pointer ${isPending ? "opacity-50" : ""}`}
+            >
               {content}
-            </div>
+            </Link>
           );
         })}
       </div>

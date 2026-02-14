@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useProject } from "../layout";
 import { supabase } from "@/lib/supabase";
@@ -37,8 +37,6 @@ export default function AlbumPage() {
   // Selection state for download actions
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [downloading, setDownloading] = useState(false);
-  const markedComplete = useRef(false);
-
   // Re-read album images when page gains focus (in case user added from creative page)
   useEffect(() => {
     const handleFocus = () => {
@@ -51,25 +49,22 @@ export default function AlbumPage() {
     return () => window.removeEventListener("focus", handleFocus);
   }, [projectId]);
 
-  // Mark project as completed when there are images
+  // Mark project as completed automatically when entering album page
   useEffect(() => {
-    if (markedComplete.current || !project) return;
-    if (generatedImages.length === 0) return;
-    markedComplete.current = true;
-    supabase
-      .from("projects")
-      .update({ status: "completed", completed_at: new Date().toISOString() })
-      .eq("id", projectId)
-      .then(() => {});
-  }, [project, projectId, generatedImages.length]);
-
-  const handleMarkComplete = async () => {
-    await supabase
-      .from("projects")
-      .update({ status: "completed", completed_at: new Date().toISOString() })
-      .eq("id", projectId);
-    markedComplete.current = true;
-  };
+    async function markComplete() {
+      if (projectId) {
+        await supabase
+          .from("projects")
+          .update({
+            status: "completed",
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", projectId)
+          .neq("status", "completed");
+      }
+    }
+    markComplete();
+  }, [projectId]);
 
   const toggleSelect = (idx: number) => {
     setSelectedIds((prev) => {
@@ -267,21 +262,6 @@ export default function AlbumPage() {
               >
                 חזור לקריאייטיב
               </button>
-              {!markedComplete.current && (
-                <>
-                  <div className="text-[var(--text-muted)] text-xs my-4">— או —</div>
-                  <button
-                    type="button"
-                    onClick={handleMarkComplete}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--success)] text-white font-semibold rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    סמן פרויקט כהושלם בכל זאת
-                  </button>
-                </>
-              )}
             </div>
           ) : (
             <>
