@@ -56,17 +56,40 @@ export default function AlbumPage() {
     if (project?.status === "completed") setIsCompleted(true);
   }, [project?.status]);
 
+  const [markError, setMarkError] = useState("");
+
   const handleMarkComplete = async () => {
     if (!projectId) return;
-    const { error } = await supabase
+    setMarkError("");
+
+    // Ensure fresh auth token before update
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setMarkError("לא מחובר — יש להתחבר מחדש");
+      return;
+    }
+
+    // .select() forces Supabase to return affected rows
+    // Without it, RLS silent blocks return error:null — indistinguishable from success
+    const { data, error } = await supabase
       .from("projects")
       .update({ status: "completed" })
-      .eq("id", projectId);
-    if (!error) {
-      setIsCompleted(true);
-    } else {
-      console.error("Failed to mark project as completed:", error);
+      .eq("id", projectId)
+      .select();
+
+    if (error) {
+      console.error("Supabase update error:", error);
+      setMarkError("שגיאה בשמירה: " + error.message);
+      return;
     }
+
+    if (!data || data.length === 0) {
+      console.error("Update returned 0 rows. projectId:", projectId, "session uid:", session.user.id);
+      setMarkError("לא ניתן לעדכן — נסה לרענן את הדף");
+      return;
+    }
+
+    setIsCompleted(true);
   };
 
   const toggleSelect = (idx: number) => {
@@ -414,6 +437,9 @@ export default function AlbumPage() {
                   </svg>
                   סיים פרויקט
                 </button>
+              )}
+              {markError && (
+                <p className="mt-2 text-xs text-red-500 text-center">{markError}</p>
               )}
             </div>
 
