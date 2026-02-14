@@ -1,29 +1,34 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
+let _ai: GoogleGenAI | null = null;
+
+function getClient(): GoogleGenAI {
+  if (!_ai) {
+    _ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! });
+  }
+  return _ai;
+}
 
 export async function generateImage(
   prompt: string,
 ): Promise<{ base64: string; mimeType: string }> {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash-preview-image-generation",
-  });
+  const ai = getClient();
 
-  const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
-      // @ts-expect-error - responseModalities supported but not yet in types
-      responseModalities: ["IMAGE"],
+  const response = await ai.models.generateContent({
+    model: "gemini-2.0-flash-preview-image-generation",
+    contents: prompt,
+    config: {
+      responseModalities: ["TEXT", "IMAGE"],
     },
   });
 
-  // Extract image from response
-  const parts = result.response.candidates?.[0]?.content?.parts ?? [];
+  // Extract image from response parts
+  const parts = response.candidates?.[0]?.content?.parts ?? [];
   for (const part of parts) {
     if (part.inlineData) {
       return {
-        base64: part.inlineData.data!,
-        mimeType: part.inlineData.mimeType!,
+        base64: part.inlineData.data ?? "",
+        mimeType: part.inlineData.mimeType ?? "image/png",
       };
     }
   }
