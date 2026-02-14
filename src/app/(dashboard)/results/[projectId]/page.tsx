@@ -95,6 +95,13 @@ export default function ResultsPage() {
     { url: string; base64?: string; scriptIdx: number }[]
   >([]);
 
+  // image modal
+  const [modalImage, setModalImage] = useState<{
+    url: string;
+    base64?: string;
+    scriptIdx: number;
+  } | null>(null);
+
   /* ── load project ── */
   useEffect(() => {
     async function load() {
@@ -311,19 +318,20 @@ export default function ResultsPage() {
         const json: CreativeResponse = await res.json();
         if (!res.ok || !json.success) throw new Error("Generation failed");
 
-        setGeneratedImages((prev) => [
-          ...prev,
-          {
-            url: json.imageUrl,
-            base64: json.imageBase64,
-            scriptIdx: activeScriptIdx ?? 0,
-          },
-        ]);
+        const newImage = {
+          url: json.imageUrl,
+          base64: json.imageBase64,
+          scriptIdx: activeScriptIdx ?? 0,
+        };
+        setGeneratedImages((prev) => [...prev, newImage]);
         setSuggestion(null);
         setActiveScriptIdx(null);
+        // Open modal to show the image
+        setModalImage(newImage);
       } catch (e) {
         console.error("Generate creative error:", e);
         setCreativeError("שגיאה ביצירת התמונה. נסה שוב.");
+        // Keep editor open (don't reset activeScriptIdx) so user can retry
       }
     },
     [activeScriptIdx],
@@ -686,21 +694,42 @@ export default function ResultsPage() {
                 {/* generated image */}
                 {hasImage && imageForScript && (
                   <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-                    <p className="text-sm font-semibold text-green-600 mb-2">
+                    <p className="text-sm font-semibold text-green-600 mb-3">
                       קריאטיב נוצר בהצלחה!
                     </p>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={imageForScript.url || imageForScript.base64}
                       alt={`קריאטיב לתסריט ${idx + 1}`}
-                      className="w-full max-w-md mx-auto rounded-xl shadow-lg"
+                      className="w-full max-w-md mx-auto rounded-xl shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setModalImage(imageForScript)}
                     />
+                    <div className="flex items-center justify-center gap-3 mt-3">
+                      <button
+                        onClick={() => setModalImage(imageForScript)}
+                        className="px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                      >
+                        הגדל תמונה
+                      </button>
+                      <a
+                        href={imageForScript.url || imageForScript.base64}
+                        download={`creative-${idx + 1}.png`}
+                        className="px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors cursor-pointer"
+                      >
+                        הורד תמונה
+                      </a>
+                    </div>
                   </div>
                 )}
 
                 {/* creative editor */}
                 {activeScriptIdx === idx && suggestion && project && (
                   <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+                    {creativeError && (
+                      <div className="mb-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
+                        {creativeError}
+                      </div>
+                    )}
                     <CreativeEditor
                       suggestion={suggestion}
                       userInfo={{
@@ -713,35 +742,43 @@ export default function ResultsPage() {
                   </div>
                 )}
 
-                {/* action button */}
-                {/* creative error for this script */}
-                {creativeError && activeScriptIdx === null && !hasImage && (
-                  <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-                    <p className="text-sm text-red-600 dark:text-red-400 mb-2">{creativeError}</p>
-                  </div>
-                )}
-
+                {/* creative button */}
                 {!hasImage && activeScriptIdx !== idx && (
                   <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+                    {creativeError && activeScriptIdx === null && (
+                      <p className="text-sm text-red-600 dark:text-red-400 mb-2">{creativeError}</p>
+                    )}
                     <button
                       onClick={() => handleSuggestCreative(idx)}
-                      disabled={activeScriptIdx !== null && activeScriptIdx !== idx}
-                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors cursor-pointer"
                     >
-                      {activeScriptIdx === null
-                        ? "צור קריאטיב (תמונה) לתסריט"
-                        : "ממתין..."}
+                      צור קריאטיב (תמונה) לתסריט
                     </button>
                   </div>
                 )}
 
                 {/* loading suggestion */}
-                {activeScriptIdx === idx && !suggestion && (
+                {activeScriptIdx === idx && !suggestion && !creativeError && (
                   <div className="p-4 border-t border-gray-200 dark:border-gray-800 text-center">
                     <CountdownTimer seconds={10} />
                     <p className="text-sm text-gray-500 mt-2">
                       FBM Studio מנתח את התסריט ומציע קריאטיב...
                     </p>
+                  </div>
+                )}
+
+                {/* loading error (before editor appears) */}
+                {activeScriptIdx === idx && !suggestion && creativeError && (
+                  <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+                    <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400 mb-3">
+                      {creativeError}
+                    </div>
+                    <button
+                      onClick={() => handleSuggestCreative(idx)}
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors cursor-pointer"
+                    >
+                      נסה שוב
+                    </button>
                   </div>
                 )}
               </div>
@@ -800,6 +837,49 @@ export default function ResultsPage() {
             </p>
           </div>
         )}
+
+      {/* ── image lightbox modal ── */}
+      {modalImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setModalImage(null)}
+        >
+          <div
+            className="relative max-w-2xl w-full bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setModalImage(null)}
+              className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors cursor-pointer text-lg"
+            >
+              &times;
+            </button>
+
+            {/* Image */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={modalImage.url || modalImage.base64}
+              alt={`קריאטיב לתסריט ${modalImage.scriptIdx + 1}`}
+              className="w-full"
+            />
+
+            {/* Actions */}
+            <div className="p-4 flex items-center justify-between" dir="rtl">
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                קריאטיב לתסריט {modalImage.scriptIdx + 1}
+              </p>
+              <a
+                href={modalImage.url || modalImage.base64}
+                download={`creative-${modalImage.scriptIdx + 1}.png`}
+                className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors cursor-pointer"
+              >
+                הורד תמונה באיכות גבוהה
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
