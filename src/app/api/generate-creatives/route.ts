@@ -1,107 +1,70 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callClaude } from "@/lib/claude";
 import { generateImage } from "@/lib/gemini";
 import { supabase } from "@/lib/supabase";
-import type { CreativeRequest, CreativeResponse } from "@/types";
+import type { CreativeConfig, CreativeResponse } from "@/types";
 
-function buildClaudePrompt(req: CreativeRequest): string {
-  return `אתה מומחה ביצירת prompts ל-Gemini Imagen Pro - AI שמייצר תמונות עם טקסט בעברית.
-
-נתח את התסריט הזה:
-"${req.scriptText}"
-
-פרטי המשתמש:
-- שם: ${req.userInfo.name}
-- תפקיד: ${req.userInfo.role}
-- נישה: ${req.userInfo.niche}
-
-צור prompt מפורט באנגלית שייצר creative מקצועי (1080×1080) לפרסום ברשתות חברתיות.
-
-הPrompt חייב לכלול:
-
-1. **רקע דרמטי** - מטאפורי שמתאים לנישה:
-   - יועץ משכנתאות: מגדלור מואר בסערה + גשר מואר
-   - מאמן כושר: פסגת הר במזרח שמש
-   - יועץ עסקי: דרך מוארת בהרים
-   - תאורה קולנועית, פוטוריאליסטי
-
-2. **טקסט עברי RTL:**
-   - חלץ 2-3 שורות מהתסריט (המסר המרכזי)
-   - Heebo Bold, 72pt, זהב (#FFD700)
-   - מרכז למעלה
-   - רקע כהה מאחורי הטקסט (gradient)
-   - חייב להיות קריא וברור!
-
-3. **תמונת פרופיל:**
-   - מעגל 150×150px
-   - פינה שמאלית תחתונה
-   - מסגרת זהב 4px
-
-4. **פרטי משתמש:**
-   - שם: ${req.userInfo.name} (לבן, Heebo Bold, 32pt)
-   - תפקיד: ${req.userInfo.role} (לבן, Heebo Regular, 24pt)
-
-5. **CTA:**
-   - כפתור זהב 500×80px
-   - מרכז תחתון
-   - טקסט שחור: חלץ מסוף התסריט
-
-החזר JSON בלבד:
-{
-  "prompt": "prompt מלא באנגלית לGemini Imagen - התחל עם: A dramatic cinematic photograph of...",
-  "extracted": {
-    "main_text": "הטקסט הראשי בעברית מהתסריט",
-    "cta": "טקסט ה-CTA בעברית",
-    "background_type": "lighthouse | mountain | path | ocean | city | etc"
-  }
-}`;
-}
+const backgroundDescriptions: Record<string, string> = {
+  lighthouse:
+    "dramatic cinematic photograph of a glowing lighthouse beacon cutting through storm clouds at dusk, with modern illuminated suspension bridge in background",
+  mountain:
+    "majestic mountain peak at golden hour sunrise, person standing triumphantly at summit, inspirational atmosphere",
+  path: "illuminated winding path through mountains at dusk, journey and progress metaphor, cinematic lighting",
+  office:
+    "modern minimalist office interior with large windows, professional atmosphere, clean and bright",
+};
 
 export async function POST(req: NextRequest) {
   try {
-    const { scriptText, userInfo, userPhoto } =
-      (await req.json()) as CreativeRequest;
+    const { mainText, cta, background, color, userInfo } =
+      (await req.json()) as CreativeConfig;
 
-    if (!scriptText || typeof scriptText !== "string") {
+    if (!mainText || !cta || !background || !color) {
       return NextResponse.json(
-        { error: "Missing or invalid scriptText" },
+        { error: "Missing required fields: mainText, cta, background, color" },
         { status: 400 },
       );
     }
 
-    if (!userInfo?.name || !userInfo?.role || !userInfo?.niche) {
+    if (!userInfo?.name || !userInfo?.role) {
       return NextResponse.json(
-        { error: "Missing userInfo (name, role, niche required)" },
+        { error: "Missing userInfo (name, role required)" },
         { status: 400 },
       );
     }
 
-    // Step 1: Claude analyzes script and creates Gemini prompt
-    const claudePrompt = buildClaudePrompt({
-      scriptText,
-      userInfo,
-      userPhoto,
-    });
-    const claudeResult = await callClaude("", claudePrompt, 3000);
+    const colorHex = color === "gold" ? "#FFD700" : "#00A3E0";
+    const bgDescription =
+      backgroundDescriptions[background] || backgroundDescriptions.lighthouse;
 
-    // Parse Claude's JSON response
-    const jsonMatch = claudeResult.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Failed to parse Claude prompt response");
-    }
-    const promptData = JSON.parse(jsonMatch[0]) as {
-      prompt: string;
-      extracted: { main_text: string; cta: string; background_type: string };
-    };
+    const prompt = `
+${bgDescription}. Professional cinematic lighting, high quality, photorealistic.
 
-    // Step 2: Gemini generates the image
-    const { base64: imageBase64, mimeType } = await generateImage(
-      promptData.prompt,
-    );
+Text overlay composition in Hebrew (RTL direction):
 
-    // Step 3: Save to Supabase Storage
+Top section:
+- Large bold Hebrew text in ${color} (${colorHex}): "${mainText}"
+- Font: Heebo Bold, 72pt
+- Alignment: center, RTL direction
+- Background: dark gradient (rgba(0,0,0,0.7)) behind text for readability
+
+Bottom left corner:
+- Circular profile photo placeholder (150×150px) with ${color} border (4px, ${colorHex})
+- Below photo:
+  * Name: "${userInfo.name}" (white, Heebo Bold, 32pt)
+  * Title: "${userInfo.role}" (white, Heebo Regular, 24pt)
+
+Bottom center:
+- ${color === "gold" ? "Golden" : "Teal"} rounded button (500×80px, ${colorHex}, border-radius 40px)
+- ${color === "gold" ? "Black" : "White"} text on button: "${cta}" (Heebo Bold, 36pt, centered)
+
+Style: Professional social media creative, cinematic atmosphere, Instagram square format (1080×1080), high quality.
+`;
+
+    // Gemini generates the image
+    const { base64: imageBase64, mimeType } = await generateImage(prompt);
+
+    // Save to Supabase Storage
     const fileName = `creative-${Date.now()}.png`;
-    let imageUrl = "";
 
     const { error: uploadError } = await supabase.storage
       .from("creatives")
@@ -111,13 +74,17 @@ export async function POST(req: NextRequest) {
       });
 
     if (uploadError) {
-      // If Supabase upload fails, return base64 directly
       console.error("Supabase upload error:", uploadError);
+      // Fallback: return base64 directly
       const response: CreativeResponse = {
         success: true,
         imageUrl: "",
         imageBase64: `data:${mimeType};base64,${imageBase64}`,
-        metadata: promptData.extracted,
+        metadata: {
+          main_text: mainText,
+          cta,
+          background_type: background,
+        },
       };
       return NextResponse.json(response);
     }
@@ -126,12 +93,14 @@ export async function POST(req: NextRequest) {
       data: { publicUrl },
     } = supabase.storage.from("creatives").getPublicUrl(fileName);
 
-    imageUrl = publicUrl;
-
     const response: CreativeResponse = {
       success: true,
-      imageUrl,
-      metadata: promptData.extracted,
+      imageUrl: publicUrl,
+      metadata: {
+        main_text: mainText,
+        cta,
+        background_type: background,
+      },
     };
 
     return NextResponse.json(response);
