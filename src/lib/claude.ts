@@ -1,25 +1,24 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! });
 
 export async function callClaude(
   systemPrompt: string,
   userMessage: string,
-  maxTokens = 8000,
+  _maxTokens = 8000,
 ): Promise<string> {
-  const response = await client.messages.create({
-    model: "claude-3-5-sonnet-20241022",
-    max_tokens: maxTokens,
-    temperature: 0.7,
-    messages: [{ role: "user", content: userMessage }],
-    ...(systemPrompt ? { system: systemPrompt } : {}),
+  const response = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: userMessage,
+    config: {
+      temperature: 0.7,
+      ...(systemPrompt ? { systemInstruction: systemPrompt } : {}),
+    },
   });
 
-  const block = response.content[0];
-  if (block.type !== "text") {
-    throw new Error("Unexpected response type from Claude");
+  const text = response.text;
+  if (!text) {
+    throw new Error("Empty response from Gemini");
   }
-  return block.text;
+  return text;
 }

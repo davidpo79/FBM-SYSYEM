@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
+import { callClaude } from "@/lib/claude";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,13 +12,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const response = await anthropic.messages.create({
-      model: "claude-opus-4-20250514",
-      max_tokens: 1000,
-      messages: [
-        {
-          role: "user",
-          content: `
+    const prompt = `
 נתח את התסריט הזה:
 "${scriptText}"
 
@@ -55,17 +45,11 @@ export async function POST(req: NextRequest) {
   "color": "gold|teal",
   "reasoning": "הסבר קצר למה זה מתאים (1-2 משפטים)"
 }
-`,
-        },
-      ],
-    });
+`;
 
-    const textBlock = response.content[0];
-    if (textBlock.type !== "text") {
-      throw new Error("Unexpected response type");
-    }
+    const result = await callClaude("", prompt, 1000);
 
-    const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+    const jsonMatch = result.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error("Failed to parse suggestion JSON");
     }
