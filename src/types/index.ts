@@ -19,6 +19,9 @@ export interface CreativeConfig {
     role: string;
     niche: string;
   };
+  profileImage?: string;
+  displayName?: string;
+  displayRole?: string;
 }
 
 export interface CreativeResponse {

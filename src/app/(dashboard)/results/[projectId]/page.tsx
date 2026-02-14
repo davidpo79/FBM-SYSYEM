@@ -307,6 +307,9 @@ export default function ResultsPage() {
       background: string;
       color: string;
       userInfo: { name: string; role: string; niche: string };
+      profileImage?: string;
+      displayName?: string;
+      displayRole?: string;
     }) => {
       setCreativeError("");
       try {

@@ -15,7 +15,7 @@ const backgroundDescriptions: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { mainText, cta, background, color, userInfo } =
+    const { mainText, cta, background, color, userInfo, profileImage, displayName, displayRole } =
       (await req.json()) as CreativeConfig;
 
     if (!mainText || !cta || !background || !color) {
@@ -35,29 +35,39 @@ export async function POST(req: NextRequest) {
     const colorHex = color === "gold" ? "#FFD700" : "#00A3E0";
     const bgDescription =
       backgroundDescriptions[background] || backgroundDescriptions.lighthouse;
+    const hasProfileImage = !!profileImage;
+    const finalName = displayName || userInfo.name;
+    const finalRole = displayRole || userInfo.role;
 
     const prompt = `
-${bgDescription}. Professional cinematic lighting, high quality, photorealistic.
+Create a professional social media creative image (1080×1080px, Instagram square format).
 
-Text overlay composition in Hebrew (RTL direction):
+BACKGROUND: ${bgDescription}. Professional cinematic lighting, high quality, photorealistic.
 
-Top section:
-- Large bold Hebrew text in ${color} (${colorHex}): "${mainText}"
-- Font: Heebo Bold, 72pt
-- Alignment: center, RTL direction
-- Background: dark gradient (rgba(0,0,0,0.7)) behind text for readability
+LAYOUT (Hebrew RTL direction):
 
-Bottom left corner:
-- Circular profile photo placeholder (150×150px) with ${color} border (4px, ${colorHex})
-- Below photo:
-  * Name: "${userInfo.name}" (white, Heebo Bold, 32pt)
-  * Title: "${userInfo.role}" (white, Heebo Regular, 24pt)
+TOP AREA (top 40% of image):
+- Large bold Hebrew headline text: "${mainText}"
+- Color: ${color} (${colorHex})
+- Font style: Bold, modern Hebrew font
+- Dark semi-transparent overlay behind text for readability
+- ONLY this text, nothing else. No subtitle, no description, no niche definition.
 
-Bottom center:
-- ${color === "gold" ? "Golden" : "Teal"} rounded button (500×80px, ${colorHex}, border-radius 40px)
-- ${color === "gold" ? "Black" : "White"} text on button: "${cta}" (Heebo Bold, 36pt, centered)
+BOTTOM LEFT CORNER:
+- ${hasProfileImage ? "Circular professional headshot photo of the person" : "Circular placeholder silhouette icon"} with ${color} border (4px, ${colorHex})
+- Name: "${finalName}" in white bold text
+- Title: "${finalRole}" in white smaller text
 
-Style: Professional social media creative, cinematic atmosphere, Instagram square format (1080×1080), high quality.
+BOTTOM RIGHT CORNER:
+- ${color === "gold" ? "Golden" : "Teal"} rounded CTA button (${colorHex})
+- Button text: "${cta}" in ${color === "gold" ? "black" : "white"} bold
+
+CRITICAL RULES:
+- The image must contain ONLY the main headline text, person info, and CTA button
+- Do NOT add any additional text, descriptions, subtitles, or niche definitions
+- Do NOT add text explaining who the target audience is
+- Keep it clean and professional like a high-end social media ad
+- Hebrew text direction: Right-to-Left
 `;
 
     // Gemini generates the image

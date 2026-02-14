@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { BackgroundType, ColorType, CreativeSuggestion } from "@/types";
 import FBMLogo from "@/components/FBMLogo";
 
@@ -17,6 +17,9 @@ interface CreativeEditorProps {
     background: BackgroundType;
     color: ColorType;
     userInfo: { name: string; role: string; niche: string };
+    profileImage?: string;
+    displayName?: string;
+    displayRole?: string;
   }) => Promise<void>;
 }
 
@@ -38,17 +41,53 @@ export default function CreativeEditor({
   onGenerate,
 }: CreativeEditorProps) {
   const [mainText, setMainText] = useState(suggestion.main_text);
-  const [cta, setCta] = useState(suggestion.cta);
+  const [cta, setCta] = useState(suggestion.cta || "שלחו הודעה");
   const [background, setBackground] = useState<BackgroundType>(
     suggestion.background,
   );
   const [color, setColor] = useState<ColorType>(suggestion.color);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // Profile image upload state
+  const [showProfileUpload, setShowProfileUpload] = useState(false);
+  const [profileImage, setProfileImage] = useState<string>("");
+  const [displayName, setDisplayName] = useState(userInfo.name);
+  const [displayRole, setDisplayRole] = useState(userInfo.role);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setProfileImage("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      await onGenerate({ mainText, cta, background, color, userInfo });
+      await onGenerate({
+        mainText,
+        cta,
+        background,
+        color,
+        userInfo,
+        ...(showProfileUpload && {
+          profileImage: profileImage || undefined,
+          displayName,
+          displayRole,
+        }),
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -99,7 +138,7 @@ export default function CreativeEditor({
           value={cta}
           onChange={(e) => setCta(e.target.value)}
           maxLength={30}
-          placeholder="שלח לי הודעה..."
+          placeholder="שלחו הודעה"
           className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
         />
         <p className="text-sm text-gray-500 mt-1">{cta.length}/30 תווים</p>
@@ -169,6 +208,107 @@ export default function CreativeEditor({
             </label>
           ))}
         </div>
+      </div>
+
+      {/* Profile Image Upload */}
+      <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <label className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            📸 להוסיף תמונה אישית?
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowProfileUpload(!showProfileUpload)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+              showProfileUpload ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                showProfileUpload ? "-translate-x-6" : "-translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
+        {showProfileUpload && (
+          <div className="mt-4 space-y-4">
+            {/* Image Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                תמונת פרופיל
+              </label>
+              <div className="flex items-center gap-4">
+                {profileImage ? (
+                  <div className="relative">
+                    <img
+                      src={profileImage}
+                      alt="תמונת פרופיל"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                )}
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="profile-upload"
+                  />
+                  <label
+                    htmlFor="profile-upload"
+                    className="inline-block px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400 rounded-lg cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
+                  >
+                    {profileImage ? "החלף תמונה" : "העלה תמונה"}
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Display Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                שם מלא
+              </label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder={userInfo.name}
+                className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              />
+            </div>
+
+            {/* Display Role */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                תפקיד / תיאור
+              </label>
+              <input
+                type="text"
+                value={displayRole}
+                onChange={(e) => setDisplayRole(e.target.value)}
+                placeholder={userInfo.role}
+                className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Generate Button */}
