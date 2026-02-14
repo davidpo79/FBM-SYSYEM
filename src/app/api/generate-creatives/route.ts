@@ -15,7 +15,7 @@ const backgroundDescriptions: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { mainText, cta, background, color, userInfo, profileImage, displayName, displayRole } =
+    const { mainText, cta, background, color, userInfo, profileImage, displayName, displayRole, fontSize, textPosition } =
       (await req.json()) as CreativeConfig;
 
     if (!mainText || !cta || !background || !color) {
@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
     const hasProfileImage = !!profileImage;
     const finalName = displayName || userInfo.name;
     const finalRole = displayRole || userInfo.role;
+    const fs = fontSize || "medium";
+    const tp = textPosition || "top";
 
     const prompt = `
 Create a professional social media creative image (1080×1080px, Instagram square format).
@@ -46,12 +48,13 @@ BACKGROUND: ${bgDescription}. Professional cinematic lighting, high quality, pho
 
 LAYOUT (Hebrew RTL direction):
 
-TOP AREA (top 40% of image):
+${tp === "top" ? "TOP AREA (top 40% of image)" : tp === "center" ? "CENTER AREA (vertically centered)" : "LOWER AREA (bottom third of image)"}:
 - Large bold Hebrew headline text: "${mainText}"
 - Color: ${color} (${colorHex})
 - Font style: Bold, modern Hebrew font
 - Dark semi-transparent overlay behind text for readability
 - ONLY this text, nothing else. No subtitle, no description, no niche definition.
+${fs !== "medium" ? `- Text size: ${fs === "large" ? "Extra large, dominant" : "Slightly smaller than default"}` : ""}
 
 BOTTOM LEFT CORNER:
 - ${hasProfileImage ? "Circular professional headshot photo of the person" : "Circular placeholder silhouette icon"} with ${color} border (4px, ${colorHex})

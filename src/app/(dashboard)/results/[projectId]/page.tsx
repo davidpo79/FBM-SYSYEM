@@ -310,6 +310,8 @@ export default function ResultsPage() {
       profileImage?: string;
       displayName?: string;
       displayRole?: string;
+      fontSize?: string;
+      textPosition?: string;
     }) => {
       setCreativeError("");
       try {
@@ -326,15 +328,16 @@ export default function ResultsPage() {
           base64: json.imageBase64,
           scriptIdx: activeScriptIdx ?? 0,
         };
-        setGeneratedImages((prev) => [...prev, newImage]);
-        setSuggestion(null);
-        setActiveScriptIdx(null);
-        // Open modal to show the image
+        // Replace existing image for same script or add new
+        setGeneratedImages((prev) => {
+          const filtered = prev.filter((img) => img.scriptIdx !== (activeScriptIdx ?? 0));
+          return [...filtered, newImage];
+        });
+        // Open modal to show the image (keep editor open for re-generation)
         setModalImage(newImage);
       } catch (e) {
         console.error("Generate creative error:", e);
         setCreativeError("שגיאה ביצירת התמונה. נסה שוב.");
-        // Keep editor open (don't reset activeScriptIdx) so user can retry
       }
     },
     [activeScriptIdx],
@@ -740,22 +743,27 @@ export default function ResultsPage() {
                         role: selectedNiche?.name ?? "",
                         niche: selectedNiche?.name ?? "",
                       }}
+                      generatedImage={imageForScript ? { url: imageForScript.url, base64: imageForScript.base64 } : null}
                       onGenerate={handleGenerateCreative}
                     />
                   </div>
                 )}
 
                 {/* creative button */}
-                {!hasImage && activeScriptIdx !== idx && (
+                {activeScriptIdx !== idx && (
                   <div className="p-4 border-t border-gray-200 dark:border-gray-800">
                     {creativeError && activeScriptIdx === null && (
                       <p className="text-sm text-red-600 dark:text-red-400 mb-2">{creativeError}</p>
                     )}
                     <button
                       onClick={() => handleSuggestCreative(idx)}
-                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors cursor-pointer"
+                      className={`px-5 py-2.5 font-semibold rounded-xl transition-colors cursor-pointer ${
+                        hasImage
+                          ? "bg-orange-500 hover:bg-orange-600 text-white"
+                          : "bg-blue-600 hover:bg-blue-700 text-white"
+                      }`}
                     >
-                      צור קריאטיב (תמונה) לתסריט
+                      {hasImage ? "🔄 ערוך ויצור מחדש" : "צור קריאטיב (תמונה) לתסריט"}
                     </button>
                   </div>
                 )}
