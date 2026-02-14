@@ -24,10 +24,11 @@ export async function POST(req: NextRequest) {
     const strategy = await callClaude("", prompt);
 
     return NextResponse.json({ strategy });
-  } catch (error) {
-    console.error("generate-strategy error:", error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("generate-strategy error:", message);
     return NextResponse.json(
-      { error: "Failed to generate strategy" },
+      { error: `Failed to generate strategy: ${message}` },
       { status: 500 },
     );
   }
