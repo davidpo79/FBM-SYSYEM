@@ -147,7 +147,7 @@ export default function StrategyPage() {
               האם המסמך מאפיין אותך?
             </h3>
             <p className="text-sm text-[var(--text-secondary)] mb-4">
-              תרצה לדייק או לשנות משהו? כתוב את ההערות שלך וניתקן את המסמך.
+              תרצה לדייק או לשנות משהו? כתוב את ההערות שלך ונתקן את המסמך.
             </p>
             <textarea
               value={strategyFeedback}
