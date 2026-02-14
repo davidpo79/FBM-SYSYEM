@@ -44,6 +44,7 @@ export default function PainsPage() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
+  const generationAttempted = useRef(false);
 
   // Redirect if no niche selected
   useEffect(() => {
@@ -52,37 +53,47 @@ export default function PainsPage() {
     }
   }, [selectedNiche, router, projectId]);
 
+  const generatePains = async () => {
+    setIsGenerating(true);
+    setError("");
+    try {
+      const res = await fetch("/api/generate-pains", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          strategyDocument: strategy,
+          selectedNiche: selectedNiche!.name,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setPainAnalysis(json.painAnalysis);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "שגיאה בניתוח כאבים");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   // Generate pain analysis
   useEffect(() => {
-    if (!selectedNiche || !strategy || painAnalysis || isGenerating) return;
-    setIsGenerating(true);
-
-    (async () => {
-      try {
-        const res = await fetch("/api/generate-pains", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            strategyDocument: strategy,
-            selectedNiche: selectedNiche.name,
-          }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error);
-        setPainAnalysis(json.painAnalysis);
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "שגיאה בניתוח כאבים");
-      } finally {
-        setIsGenerating(false);
-      }
-    })();
-  }, [selectedNiche, strategy, painAnalysis, isGenerating, setPainAnalysis]);
+    if (!selectedNiche || !strategy || painAnalysis || generationAttempted.current) return;
+    generationAttempted.current = true;
+    generatePains();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNiche, strategy, painAnalysis]);
 
   if (error) {
     return (
       <div className="text-center py-20">
         <h2 className="text-xl font-bold text-red-600 mb-2">שגיאה</h2>
-        <p className="text-[var(--text-secondary)]">{error}</p>
+        <p className="text-[var(--text-secondary)] mb-4">{error}</p>
+        <button
+          onClick={() => { generationAttempted.current = false; generatePains(); }}
+          className="px-5 py-2.5 bg-[var(--gold)] hover:opacity-90 text-white font-semibold rounded-[10px] transition-opacity cursor-pointer"
+        >
+          נסה שוב
+        </button>
       </div>
     );
   }

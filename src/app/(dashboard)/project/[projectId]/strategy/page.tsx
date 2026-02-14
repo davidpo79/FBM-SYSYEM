@@ -46,32 +46,38 @@ export default function StrategyPage() {
   const [strategyFeedback, setStrategyFeedback] = useState("");
   const [isRefining, setIsRefining] = useState(false);
   const [error, setError] = useState("");
+  const generationAttempted = useRef(false);
+
+  const generateStrategy = async () => {
+    if (!project) return;
+    setIsGenerating(true);
+    setError("");
+    try {
+      const res = await fetch("/api/generate-strategy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userName: project.user_name,
+          answers: project.answers_map,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setStrategy(json.strategy);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "שגיאה ביצירת האסטרטגיה");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Generate strategy on mount if not yet generated
   useEffect(() => {
-    if (strategy || !project || isGenerating) return;
-    setIsGenerating(true);
-
-    (async () => {
-      try {
-        const res = await fetch("/api/generate-strategy", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userName: project.user_name,
-            answers: project.answers_map,
-          }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error);
-        setStrategy(json.strategy);
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "שגיאה ביצירת האסטרטגיה");
-      } finally {
-        setIsGenerating(false);
-      }
-    })();
-  }, [project, strategy, isGenerating, setStrategy]);
+    if (strategy || !project || generationAttempted.current) return;
+    generationAttempted.current = true;
+    generateStrategy();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, strategy]);
 
   const handleRefineStrategy = async () => {
     if (!strategyFeedback.trim()) return;
@@ -105,7 +111,13 @@ export default function StrategyPage() {
     return (
       <div className="text-center py-20">
         <h2 className="text-xl font-bold text-red-600 mb-2">שגיאה</h2>
-        <p className="text-[var(--text-secondary)]">{error}</p>
+        <p className="text-[var(--text-secondary)] mb-4">{error}</p>
+        <button
+          onClick={() => { generationAttempted.current = false; generateStrategy(); }}
+          className="px-5 py-2.5 bg-[var(--gold)] hover:opacity-90 text-white font-semibold rounded-[10px] transition-opacity cursor-pointer"
+        >
+          נסה שוב
+        </button>
       </div>
     );
   }

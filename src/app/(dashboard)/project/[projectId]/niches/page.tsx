@@ -44,6 +44,7 @@ export default function NichesPage() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
+  const generationAttempted = useRef(false);
 
   // Redirect if strategy not approved
   useEffect(() => {
@@ -54,7 +55,8 @@ export default function NichesPage() {
 
   // Generate niches
   useEffect(() => {
-    if (!strategy || !strategyApproved || niches.length > 0 || isGenerating) return;
+    if (!strategy || !strategyApproved || niches.length > 0 || generationAttempted.current) return;
+    generationAttempted.current = true;
     setIsGenerating(true);
 
     (async () => {
@@ -73,7 +75,30 @@ export default function NichesPage() {
         setIsGenerating(false);
       }
     })();
-  }, [strategy, strategyApproved, niches.length, isGenerating, setNiches]);
+  }, [strategy, strategyApproved, niches.length, setNiches]);
+
+  const handleRetry = () => {
+    setError("");
+    generationAttempted.current = false;
+    setIsGenerating(true);
+
+    (async () => {
+      try {
+        const res = await fetch("/api/generate-niches", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ strategyDocument: strategy }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error);
+        setNiches(json.niches ?? []);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "שגיאה בזיהוי נישות");
+      } finally {
+        setIsGenerating(false);
+      }
+    })();
+  };
 
   const handleSelectNiche = (niche: typeof niches[0]) => {
     setSelectedNiche(niche);
@@ -84,7 +109,13 @@ export default function NichesPage() {
     return (
       <div className="text-center py-20">
         <h2 className="text-xl font-bold text-red-600 mb-2">שגיאה</h2>
-        <p className="text-[var(--text-secondary)]">{error}</p>
+        <p className="text-[var(--text-secondary)] mb-4">{error}</p>
+        <button
+          onClick={handleRetry}
+          className="px-5 py-2.5 bg-[var(--gold)] hover:opacity-90 text-white font-semibold rounded-[10px] transition-opacity cursor-pointer"
+        >
+          נסה שוב
+        </button>
       </div>
     );
   }
@@ -93,7 +124,7 @@ export default function NichesPage() {
     return (
       <div className="text-center py-20">
         <CountdownTimer seconds={15} />
-        <p className="mt-4 text-[var(--text-muted)]">מזהה נישות מושלמות...</p>
+        <p className="mt-4 text-[var(--text-muted)]">מזהה נישות מתאימות עבור התדר שלך...</p>
       </div>
     );
   }

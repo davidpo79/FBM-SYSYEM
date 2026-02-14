@@ -46,6 +46,7 @@ export default function ScriptsPage() {
   const [error, setError] = useState("");
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editedScripts, setEditedScripts] = useState<Record<number, string>>({});
+  const generationAttempted = useRef(false);
 
   // Redirect if no pain analysis
   useEffect(() => {
@@ -54,28 +55,32 @@ export default function ScriptsPage() {
     }
   }, [painAnalysis, router, projectId]);
 
+  const generateScripts = async () => {
+    setIsGenerating(true);
+    setError("");
+    try {
+      const res = await fetch("/api/generate-scripts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ strategyDocument: strategy, painAnalysis }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setScripts(json.scripts);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "שגיאה ביצירת תסריטים");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   // Generate scripts
   useEffect(() => {
-    if (!painAnalysis || !strategy || scripts || isGenerating) return;
-    setIsGenerating(true);
-
-    (async () => {
-      try {
-        const res = await fetch("/api/generate-scripts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ strategyDocument: strategy, painAnalysis }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error);
-        setScripts(json.scripts);
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "שגיאה ביצירת תסריטים");
-      } finally {
-        setIsGenerating(false);
-      }
-    })();
-  }, [painAnalysis, strategy, scripts, isGenerating, setScripts]);
+    if (!painAnalysis || !strategy || scripts || generationAttempted.current) return;
+    generationAttempted.current = true;
+    generateScripts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [painAnalysis, strategy, scripts]);
 
   const splitScripts = (raw: string): string[] => {
     const parts = raw.split(/(?=## תסריט \d)/);
@@ -86,7 +91,13 @@ export default function ScriptsPage() {
     return (
       <div className="text-center py-20">
         <h2 className="text-xl font-bold text-red-600 mb-2">שגיאה</h2>
-        <p className="text-[var(--text-secondary)]">{error}</p>
+        <p className="text-[var(--text-secondary)] mb-4">{error}</p>
+        <button
+          onClick={() => { generationAttempted.current = false; generateScripts(); }}
+          className="px-5 py-2.5 bg-[var(--gold)] hover:opacity-90 text-white font-semibold rounded-[10px] transition-opacity cursor-pointer"
+        >
+          נסה שוב
+        </button>
       </div>
     );
   }
