@@ -3,30 +3,30 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: NextRequest) {
   try {
-    const { projectId } = await req.json();
+    const { projectId, pipelineData } = await req.json();
 
     if (!projectId || typeof projectId !== "string") {
       return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
     }
 
+    if (!pipelineData || typeof pipelineData !== "object") {
+      return NextResponse.json({ error: "Missing pipelineData" }, { status: 400 });
+    }
+
     const { data, error } = await supabaseAdmin
       .from("projects")
-      .update({ status: "completed" })
+      .update({ pipeline_data: pipelineData })
       .eq("id", projectId)
-      .select("id, status");
+      .select("id");
 
     if (error) {
-      console.error("complete-project error:", error);
+      console.error("save-pipeline error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    if (!data || data.length === 0) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, saved: (data?.length ?? 0) > 0 });
   } catch (e) {
-    console.error("complete-project exception:", e);
+    console.error("save-pipeline exception:", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }

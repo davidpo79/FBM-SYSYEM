@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 interface ProjectData {
@@ -47,6 +48,7 @@ function getPipelineInfo(projectId: string): PipelineInfo {
 }
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
   const [pipelineInfoMap, setPipelineInfoMap] = useState<Record<string, PipelineInfo>>({});
@@ -54,6 +56,10 @@ export default function ProjectsPage() {
   // Rename state
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+
+  // Action menu state
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -76,14 +82,30 @@ export default function ProjectsPage() {
     load();
   }, []);
 
+  // Close menu on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    if (openMenuId) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openMenuId]);
+
   const handleRename = useCallback(async (projectId: string, newName: string) => {
     if (!newName.trim()) return;
-    const { error } = await supabase
-      .from("projects")
-      .update({ user_name: newName.trim() })
-      .eq("id", projectId);
+    const res = await fetch("/api/update-project", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, updates: { user_name: newName.trim() } }),
+    });
 
-    if (!error) {
+    if (res.ok) {
       setProjects((prev) =>
         prev.map((p) => (p.id === projectId ? { ...p, user_name: newName.trim() } : p))
       );
@@ -93,17 +115,48 @@ export default function ProjectsPage() {
 
   const handleToggleStatus = useCallback(async (projectId: string, currentStatus: string) => {
     const newStatus = currentStatus === "completed" ? "in_progress" : "completed";
-    const { error } = await supabase
-      .from("projects")
-      .update({ status: newStatus })
-      .eq("id", projectId);
+    const res = await fetch("/api/update-project", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, updates: { status: newStatus } }),
+    });
 
-    if (!error) {
+    if (res.ok) {
       setProjects((prev) =>
         prev.map((p) => (p.id === projectId ? { ...p, status: newStatus } : p))
       );
     }
   }, []);
+
+  const handleDelete = useCallback(async (projectId: string) => {
+    if (!confirm("למחוק את הפרויקט?")) return;
+
+    const res = await fetch("/api/delete-project", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId }),
+    });
+
+    if (res.ok) {
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+      localStorage.removeItem(`fbm-pipeline-${projectId}`);
+      localStorage.removeItem(`album_${projectId}`);
+    }
+  }, []);
+
+  const handleDuplicate = useCallback(async (projectId: string) => {
+    const res = await fetch("/api/duplicate-project", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId }),
+    });
+
+    if (res.ok) {
+      const newProject = await res.json();
+      setProjects((prev) => [newProject, ...prev]);
+      router.push(`/project/${newProject.id}/strategy`);
+    }
+  }, [router]);
 
   const stepLabels: Record<string, string> = {
     strategy: "אסטרטגיה",
@@ -148,12 +201,70 @@ export default function ProjectsPage() {
             const isCompleted = project.status === "completed";
             const info = pipelineInfoMap[project.id];
             const isRenaming = renamingId === project.id;
+            const isMenuOpen = openMenuId === project.id;
 
             return (
               <div
                 key={project.id}
                 className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5 hover:shadow-md hover:border-[var(--gold)] transition-all group relative"
               >
+                {/* Action menu (3 dots) */}
+                <div className="absolute top-3 left-3" ref={isMenuOpen ? menuRef : undefined}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setOpenMenuId(isMenuOpen ? null : project.id);
+                    }}
+                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-lg leading-none px-1 py-0.5 rounded transition-colors cursor-pointer"
+                    title="פעולות"
+                  >
+                    &#8942;
+                  </button>
+                  {isMenuOpen && (
+                    <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border border-[var(--card-border)] py-1 min-w-[120px] z-50">
+                      <button
+                        type="button"
+                        className="w-full text-right px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--content-bg)] transition-colors cursor-pointer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                          setRenamingId(project.id);
+                          setRenameValue(project.user_name || project.name);
+                        }}
+                      >
+                        שנה שם
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full text-right px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--content-bg)] transition-colors cursor-pointer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                          handleDuplicate(project.id);
+                        }}
+                      >
+                        שכפל
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full text-right px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                          handleDelete(project.id);
+                        }}
+                      >
+                        מחק
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Header: name + status */}
                 <div className="flex items-start justify-between mb-2">
                   {isRenaming ? (
@@ -245,10 +356,10 @@ export default function ProjectsPage() {
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-[var(--text-muted)]">{date}</p>
                   <Link
-                    href={`/project/${project.id}/strategy`}
+                    href={isCompleted ? `/project/${project.id}/album` : `/project/${project.id}/strategy`}
                     className="text-xs font-medium text-[var(--gold)] hover:underline"
                   >
-                    פתח פרויקט &larr;
+                    {isCompleted ? <>צפה בסיכום &larr;</> : <>פתח פרויקט &larr;</>}
                   </Link>
                 </div>
               </div>

@@ -6,27 +6,25 @@ export async function POST(req: NextRequest) {
     const { projectId } = await req.json();
 
     if (!projectId || typeof projectId !== "string") {
-      return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing or invalid projectId" },
+        { status: 400 },
+      );
     }
 
-    const { data, error } = await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from("projects")
-      .update({ status: "completed" })
-      .eq("id", projectId)
-      .select("id, status");
+      .delete()
+      .eq("id", projectId);
 
     if (error) {
-      console.error("complete-project error:", error);
+      console.error("delete-project error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    if (!data || data.length === 0) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("complete-project exception:", e);
+    console.error("delete-project exception:", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }

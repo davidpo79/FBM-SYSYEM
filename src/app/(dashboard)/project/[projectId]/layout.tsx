@@ -137,31 +137,38 @@ export default function ProjectLayout({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, project, projectId]);
 
-  // Save pipeline state to localStorage (debounced)
+  // Save pipeline state to localStorage + Supabase (debounced)
   useEffect(() => {
     if (!hydrated) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
+      const data = {
+        strategy,
+        strategyApproved,
+        niches,
+        selectedNiche,
+        painAnalysis,
+        scripts,
+        // Save URLs; keep base64 only when URL is missing (upload failed fallback)
+        generatedImages: generatedImages.map(({ url, base64, scriptIdx }) => ({
+          url,
+          scriptIdx,
+          ...((!url && base64) ? { base64 } : {}),
+        })),
+      };
+      // Save to localStorage (primary)
       try {
-        const data = {
-          strategy,
-          strategyApproved,
-          niches,
-          selectedNiche,
-          painAnalysis,
-          scripts,
-          // Save URLs; keep base64 only when URL is missing (upload failed fallback)
-          generatedImages: generatedImages.map(({ url, base64, scriptIdx }) => ({
-            url,
-            scriptIdx,
-            ...((!url && base64) ? { base64 } : {}),
-          })),
-        };
         localStorage.setItem(`fbm-pipeline-${projectId}`, JSON.stringify(data));
       } catch (e) {
-        console.error("Failed to save pipeline state:", e);
+        console.error("Failed to save pipeline to localStorage:", e);
       }
-    }, 300);
+      // Save to Supabase (background, don't block)
+      fetch("/api/save-pipeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, pipelineData: data }),
+      }).catch(() => { /* ignore — localStorage is the primary store */ });
+    }, 500);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [hydrated, projectId, strategy, strategyApproved, niches, selectedNiche, painAnalysis, scripts, generatedImages]);
 
