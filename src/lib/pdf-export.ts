@@ -7,9 +7,9 @@ let fontCache: string | null = null;
 async function loadHebrewFont(): Promise<string> {
   if (fontCache) return fontCache;
 
-  // Fetch Rubik Regular TTF from Google Fonts (Hebrew-supporting font)
+  // Fetch Rubik Regular static TTF from Google Fonts (Hebrew-supporting font)
   const res = await fetch(
-    "https://raw.githubusercontent.com/google/fonts/main/ofl/rubik/Rubik%5Bwght%5D.ttf",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/rubik/static/Rubik-Regular.ttf",
   );
   const buf = await res.arrayBuffer();
   const bytes = new Uint8Array(buf);
@@ -124,13 +124,26 @@ function renderContent(c: PdfCursor, markdown: string) {
       continue;
     }
 
-    // Table row
+    // Table row - render each cell as a separate indented line
     if (line.includes("|")) {
       const cells = line
         .split("|")
         .map((s) => stripMarkdown(s.trim()))
         .filter(Boolean);
-      renderLine(c, cells.join("  |  "), 9, false);
+
+      // Render each cell on its own line with bullet style
+      for (const cell of cells) {
+        if (cell.length > 0) {
+          renderLine(c, `  ${cell}`, 9, false);
+        }
+      }
+      c.y += 1;
+
+      // Draw a light separator line
+      c.doc.setDrawColor(220);
+      c.doc.setLineWidth(0.2);
+      c.doc.line(c.margin + 10, c.y, c.pageWidth - c.margin - 10, c.y);
+      c.y += 2;
       continue;
     }
 
@@ -168,9 +181,8 @@ export async function exportToPdf(
   doc.addFont("Rubik-Bold.ttf", "Rubik", "bold");
   doc.setFont("Rubik");
 
-  // Set language for RTL support
+  // Set language for Hebrew
   doc.setLanguage("he");
-  doc.setR2L(true);
 
   const cursor: PdfCursor = {
     y: 20,
