@@ -10,7 +10,7 @@ export async function callClaude(
   maxTokens = 8000,
 ): Promise<string> {
   const response = await client.messages.create({
-    model: "claude-opus-4-20250514",
+    model: "claude-sonnet-4-5-20250929",
     max_tokens: maxTokens,
     temperature: 0.7,
     messages: [{ role: "user", content: userMessage }],
