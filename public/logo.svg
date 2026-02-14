@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Signal/frequency waves - top left -->
+  <path d="M24 6C14.059 6 6 14.059 6 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.4"/>
+  <path d="M24 12C17.373 12 12 17.373 12 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.65"/>
+  <path d="M24 18C20.686 18 18 20.686 18 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.9"/>
+  <!-- Signal/frequency waves - top right -->
+  <path d="M24 6C33.941 6 42 14.059 42 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.4"/>
+  <path d="M24 12C30.627 12 36 17.373 36 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.65"/>
+  <path d="M24 18C27.314 18 30 20.686 30 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.9"/>
+  <!-- Power button arc (bottom semi-circle) -->
+  <path d="M15 28a13 13 0 1 0 18 0" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Power button line -->
+  <line x1="24" y1="20" x2="24" y2="30" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+</svg>

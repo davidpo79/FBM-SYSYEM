@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
@@ -44,8 +45,9 @@ export default function DashboardLayout({
       {/* Navbar */}
       <nav className="bg-blue-600 text-white shadow-md">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/dashboard" className="text-lg font-bold">
-            🎯 FBM Studio
+          <Link href="/dashboard" className="text-lg font-bold flex items-center gap-2">
+            <Image src="/logo.svg" alt="FBM" width={28} height={28} />
+            FBM Studio
           </Link>
 
           <div className="flex items-center gap-4">

@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "FBM Studio",
   description: "Frequency-Based Marketing Strategy Builder",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
