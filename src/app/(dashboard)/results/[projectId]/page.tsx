@@ -307,14 +307,17 @@ export default function ResultsPage() {
 
   /* ──────────────── PDF / ZIP downloads ──────────────── */
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState("");
 
   const handleDownloadPdf = async (title: string, content: string, filename: string) => {
     setDownloading(filename);
+    setDownloadError("");
     try {
       const blob = await exportToPdf(title, content);
       downloadBlob(blob, filename);
     } catch (e) {
       console.error("PDF export error:", e);
+      setDownloadError("שגיאה ביצירת ה-PDF. נסה שוב.");
     } finally {
       setDownloading(null);
     }
@@ -359,6 +362,7 @@ export default function ResultsPage() {
       );
     } catch (e) {
       console.error("ZIP export error:", e);
+      setDownloadError("שגיאה ביצירת ה-ZIP. נסה שוב.");
     } finally {
       setDownloading(null);
     }
@@ -729,6 +733,13 @@ export default function ResultsPage() {
             </button>
           </div>
         </section>
+      )}
+
+      {/* ── download error ── */}
+      {downloadError && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400 text-center">
+          {downloadError}
+        </div>
       )}
 
       {/* ── done: all images generated ── */}

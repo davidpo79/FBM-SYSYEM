@@ -1,246 +1,181 @@
 import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas-pro";
 
-/* ─────────────── Hebrew Font Loader ─────────────── */
+/* ─────────────── Markdown → HTML ─────────────── */
 
-let fontCache: string | null = null;
+function markdownToHtml(md: string): string {
+  return md
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return "<br/>";
 
-async function loadHebrewFont(): Promise<string> {
-  if (fontCache) return fontCache;
+      // Headings
+      if (trimmed.startsWith("### "))
+        return `<h3>${stripInline(trimmed.slice(4))}</h3>`;
+      if (trimmed.startsWith("## "))
+        return `<h2>${stripInline(trimmed.slice(3))}</h2>`;
+      if (trimmed.startsWith("# "))
+        return `<h1>${stripInline(trimmed.slice(2))}</h1>`;
 
-  // Fetch Rubik Regular static TTF from Google Fonts (Hebrew-supporting font)
-  const res = await fetch(
-    "https://raw.githubusercontent.com/google/fonts/main/ofl/rubik/static/Rubik-Regular.ttf",
-  );
-  const buf = await res.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  fontCache = btoa(binary);
-  return fontCache;
-}
+      // Horizontal rule
+      if (/^---+$/.test(trimmed)) return "<hr/>";
 
-/* ─────────────── Markdown → PDF Renderer ─────────────── */
+      // List items
+      if (/^[-*]\s/.test(trimmed))
+        return `<li>${stripInline(trimmed.replace(/^[-*]\s/, ""))}</li>`;
+      if (/^\d+\.\s/.test(trimmed))
+        return `<li>${stripInline(trimmed.replace(/^\d+\.\s/, ""))}</li>`;
 
-interface PdfCursor {
-  y: number;
-  doc: jsPDF;
-  pageWidth: number;
-  margin: number;
-  contentWidth: number;
-}
+      // Table separator → skip
+      if (/^\|?[-|:]+\|?$/.test(trimmed)) return "";
 
-function addPage(c: PdfCursor) {
-  c.doc.addPage();
-  c.y = 20;
-}
-
-function ensureSpace(c: PdfCursor, needed: number) {
-  if (c.y + needed > 275) {
-    addPage(c);
-  }
-}
-
-function fixRtlBrackets(text: string): string {
-  // jsPDF renders brackets/parentheses incorrectly in RTL - swap them
-  return text
-    .replace(/\(/g, "\u0000")
-    .replace(/\)/g, "(")
-    .replace(/\u0000/g, ")")
-    .replace(/\[/g, "\u0000")
-    .replace(/\]/g, "[")
-    .replace(/\u0000/g, "]")
-    .replace(/\{/g, "\u0000")
-    .replace(/\}/g, "{")
-    .replace(/\u0000/g, "}");
-}
-
-function stripMarkdown(text: string): string {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, "$1")
-    .replace(/\*(.*?)\*/g, "$1")
-    .replace(/`(.*?)`/g, "$1")
-    .replace(/\[(.*?)\]\(.*?\)/g, "$1")
-    .trim();
-}
-
-function renderLine(c: PdfCursor, text: string, fontSize: number, bold: boolean) {
-  ensureSpace(c, fontSize * 0.5 + 2);
-
-  c.doc.setFontSize(fontSize);
-  c.doc.setFont("Rubik", bold ? "bold" : "normal");
-
-  // Fix RTL brackets and split long lines
-  const fixedText = fixRtlBrackets(text);
-  const lines = c.doc.splitTextToSize(fixedText, c.contentWidth);
-
-  for (const line of lines) {
-    ensureSpace(c, fontSize * 0.5);
-    c.doc.text(line, c.pageWidth - c.margin, c.y, { align: "right" });
-    c.y += fontSize * 0.45;
-  }
-}
-
-function renderContent(c: PdfCursor, markdown: string) {
-  const lines = markdown.split("\n");
-
-  for (const raw of lines) {
-    const line = raw.trimEnd();
-
-    // Skip empty lines (add small spacing)
-    if (!line.trim()) {
-      c.y += 3;
-      continue;
-    }
-
-    // H1: # Title
-    if (line.startsWith("# ")) {
-      c.y += 4;
-      renderLine(c, stripMarkdown(line.slice(2)), 18, true);
-      c.y += 3;
-      continue;
-    }
-
-    // H2: ## Subtitle
-    if (line.startsWith("## ")) {
-      c.y += 3;
-      renderLine(c, stripMarkdown(line.slice(3)), 14, true);
-      c.y += 2;
-      continue;
-    }
-
-    // H3: ### Sub-subtitle
-    if (line.startsWith("### ")) {
-      c.y += 2;
-      renderLine(c, stripMarkdown(line.slice(4)), 12, true);
-      c.y += 1;
-      continue;
-    }
-
-    // List items: - or * or numbered
-    if (/^[-*]\s/.test(line) || /^\d+\.\s/.test(line)) {
-      const bullet = line.match(/^[-*]\s/) ? "•" : line.match(/^(\d+\.)/)?.[1] ?? "•";
-      const text = stripMarkdown(line.replace(/^[-*]\s|^\d+\.\s/, ""));
-      renderLine(c, `${bullet} ${text}`, 10, false);
-      continue;
-    }
-
-    // Bold line (entire line is bold)
-    if (line.startsWith("**") && line.endsWith("**")) {
-      renderLine(c, stripMarkdown(line), 10, true);
-      continue;
-    }
-
-    // Table separator (skip)
-    if (/^\|?[-|:]+\|?$/.test(line.trim())) {
-      continue;
-    }
-
-    // Table row - render each cell as a separate indented line
-    if (line.includes("|")) {
-      const cells = line
-        .split("|")
-        .map((s) => stripMarkdown(s.trim()))
-        .filter(Boolean);
-
-      // Render each cell on its own line with bullet style
-      for (const cell of cells) {
-        if (cell.length > 0) {
-          renderLine(c, `  ${cell}`, 9, false);
-        }
+      // Table row
+      if (trimmed.includes("|")) {
+        const cells = trimmed
+          .split("|")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        return `<div class="table-row">${cells.map((c) => `<span class="cell">${stripInline(c)}</span>`).join(" | ")}</div>`;
       }
-      c.y += 1;
 
-      // Draw a light separator line
-      c.doc.setDrawColor(220);
-      c.doc.setLineWidth(0.2);
-      c.doc.line(c.margin + 10, c.y, c.pageWidth - c.margin - 10, c.y);
-      c.y += 2;
-      continue;
-    }
-
-    // Horizontal rule
-    if (/^---+$/.test(line.trim())) {
-      c.y += 2;
-      c.doc.setDrawColor(200);
-      c.doc.line(c.margin, c.y, c.pageWidth - c.margin, c.y);
-      c.y += 4;
-      continue;
-    }
-
-    // Regular paragraph text
-    renderLine(c, stripMarkdown(line), 10, false);
-  }
+      // Regular paragraph
+      return `<p>${stripInline(trimmed)}</p>`;
+    })
+    .join("\n");
 }
 
-/* ─────────────── Public API ─────────────── */
+function stripInline(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/`(.*?)`/g, "<code>$1</code>")
+    .replace(/\[(.*?)\]\(.*?\)/g, "$1");
+}
+
+/* ─────────────── HTML → PDF via Canvas ─────────────── */
 
 export async function exportToPdf(
   title: string,
   content: string,
 ): Promise<Blob> {
-  const fontBase64 = await loadHebrewFont();
+  const htmlContent = markdownToHtml(content);
+  const dateStr = new Date().toLocaleDateString("he-IL");
 
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 15;
+  // Create a hidden container for rendering
+  const container = document.createElement("div");
+  container.style.cssText = `
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+    width: 650px;
+    padding: 40px;
+    background: white;
+    font-family: 'Rubik', 'Arial', 'Helvetica', sans-serif;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #1a1a1a;
+    direction: rtl;
+  `;
 
-  // Register Hebrew font
-  doc.addFileToVFS("Rubik-Regular.ttf", fontBase64);
-  doc.addFont("Rubik-Regular.ttf", "Rubik", "normal");
-  // Register as bold too (same font, different style name)
-  doc.addFileToVFS("Rubik-Bold.ttf", fontBase64);
-  doc.addFont("Rubik-Bold.ttf", "Rubik", "bold");
-  doc.setFont("Rubik");
+  container.innerHTML = `
+    <style>
+      h1 { font-size: 22px; font-weight: 700; margin: 16px 0 8px; color: #111; }
+      h2 { font-size: 17px; font-weight: 700; margin: 14px 0 6px; color: #222; }
+      h3 { font-size: 14px; font-weight: 700; margin: 10px 0 4px; color: #333; }
+      p { margin: 4px 0; }
+      li { margin: 2px 0; padding-right: 12px; }
+      hr { border: none; border-top: 1px solid #ddd; margin: 12px 0; }
+      strong { font-weight: 700; }
+      em { font-style: italic; }
+      code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+      .table-row { padding: 4px 0; border-bottom: 1px solid #eee; font-size: 12px; }
+      .cell { display: inline; }
+      .pdf-title { font-size: 24px; font-weight: 700; color: #1e3a5f; margin-bottom: 4px; }
+      .pdf-meta { font-size: 11px; color: #888; margin-bottom: 12px; }
+      .pdf-divider { border: none; border-top: 2px solid #3b82f6; margin: 8px 0 16px; }
+    </style>
+    <div class="pdf-title">${title}</div>
+    <div class="pdf-meta">FBM Studio | ${dateStr}</div>
+    <hr class="pdf-divider"/>
+    ${htmlContent}
+  `;
 
-  // Set language for Hebrew
-  doc.setLanguage("he");
+  document.body.appendChild(container);
 
-  const cursor: PdfCursor = {
-    y: 20,
-    doc,
-    pageWidth,
-    margin,
-    contentWidth: pageWidth - margin * 2,
-  };
+  try {
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+    });
 
-  // Title
-  renderLine(cursor, title, 20, true);
-  cursor.y += 4;
+    document.body.removeChild(container);
 
-  // Date
-  doc.setFontSize(9);
-  doc.setTextColor(120);
-  doc.text(
-    `FBM Studio | ${new Date().toLocaleDateString("he-IL")}`,
-    pageWidth - margin,
-    cursor.y,
-    { align: "right" },
-  );
-  doc.setTextColor(0);
-  cursor.y += 8;
+    const imgData = canvas.toDataURL("image/jpeg", 0.95);
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
 
-  // Separator
-  doc.setDrawColor(59, 130, 246); // blue
-  doc.setLineWidth(0.5);
-  doc.line(margin, cursor.y, pageWidth - margin, cursor.y);
-  cursor.y += 6;
+    // A4 dimensions in mm
+    const pdfWidth = 210;
+    const pdfMargin = 10;
+    const contentWidth = pdfWidth - pdfMargin * 2;
+    const scaleFactor = contentWidth / imgWidth;
+    const scaledHeight = imgHeight * scaleFactor;
+    const pageHeight = 297 - pdfMargin * 2;
 
-  // Content
-  renderContent(cursor, content);
+    const doc = new jsPDF("portrait", "mm", "a4");
 
-  // Footer on each page
-  const totalPages = doc.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.text(`${i} / ${totalPages}`, pageWidth / 2, 290, { align: "center" });
-    doc.text("FBM Studio", margin, 290);
+    // If content fits on one page
+    if (scaledHeight <= pageHeight) {
+      doc.addImage(imgData, "JPEG", pdfMargin, pdfMargin, contentWidth, scaledHeight);
+    } else {
+      // Multi-page: slice the canvas into page-sized chunks
+      const pageCanvasHeight = pageHeight / scaleFactor;
+      let srcY = 0;
+      let pageNum = 0;
+
+      while (srcY < imgHeight) {
+        if (pageNum > 0) doc.addPage();
+
+        const sliceHeight = Math.min(pageCanvasHeight, imgHeight - srcY);
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = imgWidth;
+        sliceCanvas.height = sliceHeight;
+        const ctx = sliceCanvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(
+            canvas,
+            0, srcY, imgWidth, sliceHeight,
+            0, 0, imgWidth, sliceHeight,
+          );
+          const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.95);
+          const sliceScaledH = sliceHeight * scaleFactor;
+          doc.addImage(sliceData, "JPEG", pdfMargin, pdfMargin, contentWidth, sliceScaledH);
+        }
+
+        srcY += sliceHeight;
+        pageNum++;
+      }
+    }
+
+    // Footer on each page
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`${i} / ${totalPages}`, pdfWidth / 2, 290, { align: "center" });
+    }
+
+    return doc.output("blob");
+  } catch (err) {
+    // Cleanup on error
+    if (container.parentNode) {
+      document.body.removeChild(container);
+    }
+    throw err;
   }
-
-  return doc.output("blob");
 }
 
 export function downloadBlob(blob: Blob, filename: string) {
@@ -250,6 +185,8 @@ export function downloadBlob(blob: Blob, filename: string) {
   a.download = filename;
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
 }
