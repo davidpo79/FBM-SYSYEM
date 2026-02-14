@@ -93,10 +93,12 @@ export default function CreativePage() {
   const handleGenerateCreative = useCallback(
     async (config: {
       mainText: string;
+      subtitle?: string;
       cta: string;
       background: string;
       color: string;
       userInfo: { name: string; role: string; niche: string };
+      showProfile?: boolean;
       profileImage?: string;
       displayName?: string;
       displayRole?: string;

@@ -21,10 +21,12 @@ interface CreativeEditorProps {
   generatedImage?: { url: string; base64?: string } | null;
   onGenerate: (config: {
     mainText: string;
+    subtitle?: string;
     cta: string;
     background: BackgroundType;
     color: ColorType;
     userInfo: { name: string; role: string; niche: string };
+    showProfile?: boolean;
     profileImage?: string;
     displayName?: string;
     displayRole?: string;
@@ -65,6 +67,7 @@ export default function CreativeEditor({
   onGenerate,
 }: CreativeEditorProps) {
   const [mainText, setMainText] = useState(suggestion.main_text);
+  const [subtitle, setSubtitle] = useState(`שיווק מבוסס תדר - לידים מדויקים ל${userInfo.niche}`);
   const [cta, setCta] = useState(suggestion.cta || "שלחו הודעה");
   const [background, setBackground] = useState<BackgroundType>(suggestion.background);
   const [color, setColor] = useState<ColorType>(suggestion.color);
@@ -90,7 +93,7 @@ export default function CreativeEditor({
       setHasChanges(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mainText, cta, background, color, format, fontSize, textPosition, showProfileUpload, profileImage, displayName, displayRole]);
+  }, [mainText, subtitle, cta, background, color, format, fontSize, textPosition, showProfileUpload, profileImage, displayName, displayRole]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -114,6 +117,7 @@ export default function CreativeEditor({
     try {
       await onGenerate({
         mainText,
+        subtitle,
         cta,
         background,
         color,
@@ -121,6 +125,7 @@ export default function CreativeEditor({
         format,
         fontSize,
         textPosition,
+        showProfile: showProfileUpload,
         ...(showProfileUpload && {
           profileImage: profileImage || undefined,
           displayName,
@@ -228,6 +233,22 @@ export default function CreativeEditor({
               className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
             />
             <p className="text-xs text-gray-500 mt-0.5">{mainText.length}/120</p>
+          </section>
+
+          {/* A2. Subtitle */}
+          <section>
+            <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 mb-1.5">
+              🏷️ תת-כותרת
+            </label>
+            <input
+              type="text"
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              maxLength={80}
+              placeholder="שיווק מבוסס תדר - לידים מדויקים ל..."
+              className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-0.5">{subtitle.length}/80</p>
           </section>
 
           {/* B. CTA */}

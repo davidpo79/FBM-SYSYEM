@@ -14,6 +14,7 @@ export interface CreativeSuggestion {
 
 export interface CreativeConfig {
   mainText: string;
+  subtitle?: string;
   cta: string;
   background: BackgroundType;
   color: ColorType;
@@ -25,6 +26,7 @@ export interface CreativeConfig {
   format?: FormatType;
   fontSize?: FontSizeType;
   textPosition?: TextPositionType;
+  showProfile?: boolean;
   profileImage?: string;
   displayName?: string;
   displayRole?: string;

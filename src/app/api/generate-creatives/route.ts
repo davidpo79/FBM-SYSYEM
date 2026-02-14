@@ -15,7 +15,7 @@ const backgroundDescriptions: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { mainText, cta, background, color, userInfo, profileImage, displayName, displayRole, fontSize, textPosition, format } =
+    const { mainText, subtitle, cta, background, color, userInfo, showProfile, profileImage, displayName, displayRole, fontSize, textPosition, format } =
       (await req.json()) as CreativeConfig;
 
     if (!mainText || !cta || !background || !color) {
@@ -38,10 +38,24 @@ export async function POST(req: NextRequest) {
     const hasProfileImage = !!profileImage;
     const finalName = displayName || userInfo.name;
     const finalRole = displayRole || userInfo.role;
+    const includeProfile = showProfile !== false;
     const fs = fontSize || "medium";
     const tp = textPosition || "top";
     const fmt = format || "story";
     const dimensions = fmt === "story" ? "1080×1920px (9:16 story format)" : "1080×1080px (1:1 square format)";
+
+    const profileSection = includeProfile
+      ? `
+BOTTOM LEFT CORNER:
+- ${hasProfileImage ? "Circular professional headshot photo of the person" : "Circular placeholder silhouette icon"} with ${color} border (4px, ${colorHex})
+- Name: "${finalName}" in white bold text
+- Title: "${finalRole}" in white smaller text
+`
+      : "";
+
+    const subtitleSection = subtitle
+      ? `- Below the headline, smaller subtitle text: "${subtitle}" in white/light color, slightly smaller font`
+      : "";
 
     const prompt = `
 Create a professional social media creative image (${dimensions}).
@@ -55,26 +69,20 @@ ${tp === "top" ? "TOP AREA (top 40% of image)" : tp === "center" ? "CENTER AREA 
 - Color: ${color} (${colorHex})
 - Font style: Bold, modern Hebrew font
 - Dark semi-transparent overlay behind text for readability
-- ONLY this text, nothing else. No subtitle, no description, no niche definition.
+${subtitleSection}
 ${fs !== "medium" ? `- Text size: ${fs === "large" ? "Extra large, dominant" : "Slightly smaller than default"}` : ""}
-
-BOTTOM LEFT CORNER:
-- ${hasProfileImage ? "Circular professional headshot photo of the person" : "Circular placeholder silhouette icon"} with ${color} border (4px, ${colorHex})
-- Name: "${finalName}" in white bold text
-- Title: "${finalRole}" in white smaller text
-
+${profileSection}
 BOTTOM RIGHT CORNER:
 - ${color === "gold" ? "Golden" : "Teal"} rounded CTA button (${colorHex})
 - Button text: "${cta}" in ${color === "gold" ? "black" : "white"} bold
 
 CRITICAL RULES:
-- The image must contain ONLY the main headline text, person info, and CTA button
-- Do NOT add any additional text, descriptions, subtitles, or niche definitions
+- The image must contain ONLY the main headline text${subtitle ? ", subtitle" : ""}${includeProfile ? ", person info" : ""}, and CTA button
+- Do NOT add any additional text, descriptions, or niche definitions beyond what is specified
 - Do NOT add text explaining who the target audience is
-- Do NOT add any audience descriptions or niche explanations
 - Keep it clean and professional like a high-end social media ad
 - Hebrew text direction: Right-to-Left
-- ONLY headline + profile + CTA. NO additional text. Clean professional ad.
+${!includeProfile ? "- Do NOT include any person photo, name, or profile section\n" : ""}- Clean professional ad layout.
 `;
 
     // Gemini generates the image
