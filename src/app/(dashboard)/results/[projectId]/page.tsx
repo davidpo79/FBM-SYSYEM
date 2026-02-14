@@ -79,6 +79,9 @@ export default function ResultsPage() {
 
   // AI outputs
   const [strategy, setStrategy] = useState("");
+  const [strategyApproved, setStrategyApproved] = useState(false);
+  const [strategyFeedback, setStrategyFeedback] = useState("");
+  const [isRefining, setIsRefining] = useState(false);
   const [niches, setNiches] = useState<Niche[]>([]);
   const [selectedNiche, setSelectedNiche] = useState<Niche | null>(null);
   const [painAnalysis, setPainAnalysis] = useState("");
@@ -124,7 +127,7 @@ export default function ResultsPage() {
 
   /* ── step 1: strategy ── */
   useEffect(() => {
-    if (step !== "strategy" || !project) return;
+    if (step !== "strategy" || !project || strategy) return;
     let cancelled = false;
 
     (async () => {
@@ -141,7 +144,7 @@ export default function ResultsPage() {
         if (!res.ok) throw new Error(json.error);
         if (!cancelled) {
           setStrategy(json.strategy);
-          setStep("niches");
+          // Stay on "strategy" step — wait for user approval
         }
       } catch (e: unknown) {
         if (!cancelled) {
@@ -152,11 +155,41 @@ export default function ResultsPage() {
     })();
 
     return () => { cancelled = true; };
-  }, [step, project]);
+  }, [step, project, strategy]);
+
+  /* ── refine strategy ── */
+  const handleRefineStrategy = async () => {
+    if (!strategyFeedback.trim()) return;
+    setIsRefining(true);
+    try {
+      const res = await fetch("/api/refine-strategy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentStrategy: strategy,
+          feedback: strategyFeedback,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setStrategy(json.strategy);
+      setStrategyFeedback("");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Strategy refinement failed");
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
+  /* ── approve strategy and move to niches ── */
+  const handleApproveStrategy = () => {
+    setStrategyApproved(true);
+    setStep("niches");
+  };
 
   /* ── step 2: niches ── */
   useEffect(() => {
-    if (step !== "niches" || !strategy) return;
+    if (step !== "niches" || !strategy || !strategyApproved) return;
     let cancelled = false;
 
     (async () => {
@@ -482,7 +515,7 @@ export default function ResultsPage() {
       )}
 
       {/* ── step 1: strategy generating ── */}
-      {step === "strategy" && (
+      {step === "strategy" && !strategy && (
         <div className="text-center py-20">
           <CountdownTimer seconds={30} />
           <h2 className="text-xl font-bold mt-4 text-gray-900 dark:text-gray-100">
@@ -494,25 +527,72 @@ export default function ResultsPage() {
         </div>
       )}
 
-      {/* ── strategy done → show niches ── */}
+      {/* ── strategy done → approval flow ── */}
       {strategy && (
         <section className="mb-8">
-          <details className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
+          {/* Strategy document */}
+          <details open={!strategyApproved} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
             <summary className="cursor-pointer p-4 font-semibold text-gray-900 dark:text-gray-100">
-              1. מסמך אסטרטגיה (לחץ לפתיחה)
+              1. מסמך אסטרטגיה {strategyApproved ? "(אושר)" : "(לחץ לפתיחה)"}
             </summary>
             <div className="p-4 pt-0 prose dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap">
               {strategy}
             </div>
-            <div className="p-4 pt-0">
-              <button
-                onClick={() => handleDownloadPdf("מסמך אסטרטגיה FBM", strategy, "strategy.pdf")}
-                disabled={downloading === "strategy.pdf"}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                {downloading === "strategy.pdf" ? "מייצא..." : "הורד כ-PDF"}
-              </button>
-            </div>
+
+            {/* Approval flow - only if not yet approved */}
+            {!strategyApproved && (
+              <div className="p-4 pt-0 space-y-4">
+                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                  <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
+                    האם המסמך מאפיין אותך?
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    תרצה לדייק או לשנות משהו? כתוב את ההערות שלך וניתקן את המסמך.
+                  </p>
+                  <textarea
+                    value={strategyFeedback}
+                    onChange={(e) => setStrategyFeedback(e.target.value)}
+                    placeholder="לדוגמה: אני עובד בתחום כבר 10 שנים ולא 5, הניסיון שלי הוא בעיקר עם עסקים קטנים..."
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+                  />
+                  <div className="flex gap-3 mt-3">
+                    <button
+                      onClick={handleRefineStrategy}
+                      disabled={isRefining || !strategyFeedback.trim()}
+                      className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {isRefining ? "מעדכן את המסמך..." : "עדכן מסמך"}
+                    </button>
+                    <button
+                      onClick={handleApproveStrategy}
+                      disabled={isRefining}
+                      className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      המסמך מדויק, אפשר להמשיך
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* PDF download - only after approval */}
+            {strategyApproved && (
+              <div className="p-4 pt-0">
+                <div className="flex items-center gap-3">
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                    המסמך אושר - עכשיו ניתן להוריד
+                  </p>
+                  <button
+                    onClick={() => handleDownloadPdf("מסמך אסטרטגיה FBM", strategy, "strategy.pdf")}
+                    disabled={downloading === "strategy.pdf"}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {downloading === "strategy.pdf" ? "מייצא..." : "הורד כ-PDF"}
+                  </button>
+                </div>
+              </div>
+            )}
           </details>
         </section>
       )}
