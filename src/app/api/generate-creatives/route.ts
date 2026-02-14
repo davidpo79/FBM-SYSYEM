@@ -1,7 +1,88 @@
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 import { generateImage } from "@/lib/gemini";
 import { supabase } from "@/lib/supabase";
 import type { CreativeConfig, CreativeResponse } from "@/types";
+
+/**
+ * Composite a circular profile photo onto the bottom-center of the generated image.
+ * The profile photo is placed below the CTA button area, with the name/role drawn by Gemini.
+ */
+async function compositeProfilePhoto(
+  imageBase64: string,
+  profileBase64DataUrl: string,
+  colorHex: string,
+): Promise<string> {
+  // Strip data URL prefix to get raw base64
+  const rawProfile = profileBase64DataUrl.replace(/^data:image\/\w+;base64,/, "");
+  const profileBuf = Buffer.from(rawProfile, "base64");
+  const imageBuf = Buffer.from(imageBase64, "base64");
+
+  // Get dimensions of the generated image
+  const meta = await sharp(imageBuf).metadata();
+  const imgW = meta.width || 1080;
+  const imgH = meta.height || 1920;
+
+  // Profile circle size: ~8% of image width
+  const circleSize = Math.round(imgW * 0.08);
+  const borderWidth = Math.round(circleSize * 0.06);
+  const outerSize = circleSize + borderWidth * 2;
+
+  // Resize profile image to circle
+  const resizedProfile = await sharp(profileBuf)
+    .resize(circleSize, circleSize, { fit: "cover" })
+    .toBuffer();
+
+  // Create circular mask
+  const circleMask = Buffer.from(
+    `<svg width="${circleSize}" height="${circleSize}">
+      <circle cx="${circleSize / 2}" cy="${circleSize / 2}" r="${circleSize / 2}" fill="white"/>
+    </svg>`,
+  );
+
+  const circularPhoto = await sharp(resizedProfile)
+    .composite([{ input: circleMask, blend: "dest-in" }])
+    .png()
+    .toBuffer();
+
+  // Create border ring
+  const borderRing = Buffer.from(
+    `<svg width="${outerSize}" height="${outerSize}">
+      <circle cx="${outerSize / 2}" cy="${outerSize / 2}" r="${outerSize / 2}" fill="${colorHex}"/>
+      <circle cx="${outerSize / 2}" cy="${outerSize / 2}" r="${outerSize / 2 - borderWidth}" fill="none"/>
+    </svg>`,
+  );
+
+  // Combine border ring + circular photo
+  const profileWithBorder = await sharp(borderRing)
+    .composite([
+      {
+        input: circularPhoto,
+        left: borderWidth,
+        top: borderWidth,
+      },
+    ])
+    .png()
+    .toBuffer();
+
+  // Position: bottom center, ~3% from bottom
+  const left = Math.round((imgW - outerSize) / 2);
+  const top = Math.round(imgH - outerSize - imgH * 0.03);
+
+  // Composite onto the main image
+  const result = await sharp(imageBuf)
+    .composite([
+      {
+        input: profileWithBorder,
+        left,
+        top,
+      },
+    ])
+    .png()
+    .toBuffer();
+
+  return result.toString("base64");
+}
 
 const backgroundDescriptions: Record<string, string> = {
   lighthouse:
@@ -117,7 +198,18 @@ ${includeProfile ? "- For the person section use ONLY a simple flat circular sil
 `;
 
     // Gemini generates the image
-    const { base64: imageBase64, mimeType } = await generateImage(prompt);
+    const { base64: rawBase64, mimeType } = await generateImage(prompt);
+
+    // Composite the real profile photo onto the AI image if provided
+    let imageBase64 = rawBase64;
+    if (includeProfile && hasProfileImage && typeof profileImage === "string" && profileImage.startsWith("data:")) {
+      try {
+        imageBase64 = await compositeProfilePhoto(rawBase64, profileImage, colorHex);
+      } catch (compErr) {
+        console.error("Profile composite error (using original):", compErr);
+        // Fall back to the original image without compositing
+      }
+    }
 
     // Save to Supabase Storage
     const fileName = `creative-${Date.now()}.png`;

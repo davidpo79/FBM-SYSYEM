@@ -126,8 +126,28 @@ export default function CreativeEditor({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Resize to max 300x300 to keep payload small for the API
     const reader = new FileReader();
-    reader.onloadend = () => setProfileImage(reader.result as string);
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 300;
+        let w = img.width;
+        let h = img.height;
+        if (w > max || h > max) {
+          const ratio = Math.min(max / w, max / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, w, h);
+        setProfileImage(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = reader.result as string;
+    };
     reader.readAsDataURL(file);
   };
 
@@ -154,9 +174,7 @@ export default function CreativeEditor({
         showProfile: showProfileUpload,
         designVision: designVision || undefined,
         ...(showProfileUpload && {
-          // Send a small flag instead of the full base64 data to avoid exceeding body size limits.
-          // The API only checks !!profileImage to decide the prompt text.
-          profileImage: profileImage ? "uploaded" : undefined,
+          profileImage: profileImage || undefined,
           displayName,
           displayRole,
         }),
