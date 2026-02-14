@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, createContext, useContext, useCallback } from "react";
+import { useEffect, useRef, useState, createContext, useContext, useCallback } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import PipelineStepper from "@/components/layout/PipelineStepper";
@@ -91,6 +91,10 @@ export default function ProjectLayout({
   // Downloads
   const [downloading, setDownloading] = useState<string | null>(null);
 
+  // Persistence
+  const [hydrated, setHydrated] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     async function load() {
       const { data, error: dbErr } = await supabase
@@ -109,6 +113,53 @@ export default function ProjectLayout({
     }
     load();
   }, [projectId]);
+
+  // Hydrate pipeline state from localStorage after project loads
+  useEffect(() => {
+    if (loading) return;
+    if (!project) { setHydrated(true); return; }
+    try {
+      const saved = localStorage.getItem(`fbm-pipeline-${projectId}`);
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.strategy) setStrategy(data.strategy);
+        if (data.strategyApproved) setStrategyApproved(true);
+        if (data.niches?.length) setNiches(data.niches);
+        if (data.selectedNiche) setSelectedNiche(data.selectedNiche);
+        if (data.painAnalysis) setPainAnalysis(data.painAnalysis);
+        if (data.scripts) setScripts(data.scripts);
+        if (data.generatedImages?.length) setGeneratedImages(data.generatedImages);
+      }
+    } catch (e) {
+      console.error("Failed to load pipeline state:", e);
+    }
+    setHydrated(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, project, projectId]);
+
+  // Save pipeline state to localStorage (debounced)
+  useEffect(() => {
+    if (!hydrated) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      try {
+        const data = {
+          strategy,
+          strategyApproved,
+          niches,
+          selectedNiche,
+          painAnalysis,
+          scripts,
+          // Save URLs only (skip base64 to avoid localStorage size limits)
+          generatedImages: generatedImages.map(({ url, scriptIdx }) => ({ url, scriptIdx })),
+        };
+        localStorage.setItem(`fbm-pipeline-${projectId}`, JSON.stringify(data));
+      } catch (e) {
+        console.error("Failed to save pipeline state:", e);
+      }
+    }, 300);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [hydrated, projectId, strategy, strategyApproved, niches, selectedNiche, painAnalysis, scripts, generatedImages]);
 
   const handleDownloadPdf = useCallback(async (title: string, content: string, filename: string) => {
     setDownloading(filename);
@@ -176,7 +227,7 @@ export default function ProjectLayout({
     creative: "קריאייטיב",
   };
 
-  if (loading) {
+  if (loading || !hydrated) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3">
