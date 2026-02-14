@@ -209,6 +209,7 @@ export default function CreativePage() {
                     }}
                     generatedImage={imageForScript ? { url: imageForScript.url, base64: imageForScript.base64 } : null}
                     onGenerate={handleGenerateCreative}
+                    scriptIdx={idx}
                   />
                 </div>
               )}

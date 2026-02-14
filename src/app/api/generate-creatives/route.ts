@@ -11,6 +11,14 @@ const backgroundDescriptions: Record<string, string> = {
   path: "illuminated winding path through mountains at dusk, journey and progress metaphor, cinematic lighting",
   office:
     "modern minimalist office interior with large windows, professional atmosphere, clean and bright",
+  city:
+    "cinematic night city skyline with glowing skyscrapers, urban energy, neon reflections on wet streets, professional metropolitan atmosphere",
+  sunset:
+    "dramatic golden hour sunset over calm ocean, warm orange and pink sky with silhouetted horizon, peaceful yet powerful atmosphere",
+  forest:
+    "mystical deep forest with sunlight streaming through tall trees, lush green canopy, peaceful natural atmosphere with depth and mystery",
+  studio:
+    "professional dark photography studio with dramatic rim lighting, sleek modern setup, premium and polished atmosphere",
 };
 
 export async function POST(req: NextRequest) {

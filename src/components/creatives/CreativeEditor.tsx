@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import html2canvas from "html2canvas-pro";
 import type {
   BackgroundType,
   ColorType,
@@ -10,6 +11,8 @@ import type {
   CreativeSuggestion,
 } from "@/types";
 import FBMLogo from "@/components/FBMLogo";
+
+/* ──────────────── Props ──────────────── */
 
 interface CreativeEditorProps {
   suggestion: CreativeSuggestion;
@@ -34,13 +37,21 @@ interface CreativeEditorProps {
     textPosition?: TextPositionType;
     format?: FormatType;
   }) => Promise<void>;
+  onSaveLocal?: (dataUrl: string, scriptIdx: number) => void;
+  scriptIdx?: number;
 }
 
-const backgrounds: { value: BackgroundType; icon: string; label: string }[] = [
-  { value: "lighthouse", icon: "\u{1F5FC}", label: "מגדלור" },
-  { value: "mountain", icon: "\u26F0\uFE0F", label: "הר" },
-  { value: "path", icon: "\u{1F6E4}\uFE0F", label: "דרך" },
-  { value: "office", icon: "\u{1F3E2}", label: "משרד" },
+/* ──────────────── Background config ──────────────── */
+
+const backgrounds: { value: BackgroundType; icon: string; label: string; gradient: string; credits: number }[] = [
+  { value: "lighthouse", icon: "\u{1F5FC}", label: "מגדלור", gradient: "linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)", credits: 1 },
+  { value: "mountain", icon: "\u26F0\uFE0F", label: "הר", gradient: "linear-gradient(135deg, #2b1055 0%, #5b3a8c 40%, #d4a843 100%)", credits: 1 },
+  { value: "path", icon: "\u{1F6E4}\uFE0F", label: "דרך", gradient: "linear-gradient(135deg, #3e2723 0%, #8d6e63 50%, #d4a843 100%)", credits: 1 },
+  { value: "office", icon: "\u{1F3E2}", label: "משרד", gradient: "linear-gradient(135deg, #e8eaf0 0%, #bdc3c7 50%, #8e99a4 100%)", credits: 1 },
+  { value: "city", icon: "\u{1F303}", label: "עיר", gradient: "linear-gradient(135deg, #141e30 0%, #243b55 50%, #4a6fa5 100%)", credits: 1 },
+  { value: "sunset", icon: "\u{1F305}", label: "שקיעה", gradient: "linear-gradient(135deg, #ee9ca7 0%, #ffdde1 30%, #f5af19 70%, #f12711 100%)", credits: 1 },
+  { value: "forest", icon: "\u{1F332}", label: "יער", gradient: "linear-gradient(135deg, #0b3d0b 0%, #1b5e20 40%, #388e3c 80%, #1b5e20 100%)", credits: 1 },
+  { value: "studio", icon: "\u{1F3A5}", label: "סטודיו", gradient: "linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 80%, #1a1a2e 100%)", credits: 1 },
 ];
 
 const colors: { value: ColorType; hex: string; label: string }[] = [
@@ -60,11 +71,15 @@ const textPositions: { value: TextPositionType; label: string }[] = [
   { value: "bottom", label: "למטה" },
 ];
 
+/* ──────────────── Component ──────────────── */
+
 export default function CreativeEditor({
   suggestion,
   userInfo,
   generatedImage,
   onGenerate,
+  onSaveLocal,
+  scriptIdx = 0,
 }: CreativeEditorProps) {
   const [mainText, setMainText] = useState(suggestion.main_text);
   const [subtitle, setSubtitle] = useState(`שיווק מבוסס תדר - לידים מדויקים ל${userInfo.niche}`);
@@ -75,23 +90,25 @@ export default function CreativeEditor({
   const [fontSize, setFontSize] = useState<FontSizeType>("medium");
   const [textPosition, setTextPosition] = useState<TextPositionType>("top");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showAiImage, setShowAiImage] = useState(false);
 
-  // Profile image upload state
+  // Profile
   const [showProfileUpload, setShowProfileUpload] = useState(false);
   const [profileImage, setProfileImage] = useState<string>("");
   const [displayName, setDisplayName] = useState(userInfo.name);
   const [displayRole, setDisplayRole] = useState(userInfo.role);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Track if user changed settings after last generation
+  // Preview ref for html2canvas export
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  // Track changes after AI generation
   const [hasChanges, setHasChanges] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(!!generatedImage);
 
-  // Mark changes when any setting is modified
   useEffect(() => {
-    if (hasGenerated) {
-      setHasChanges(true);
-    }
+    if (hasGenerated) setHasChanges(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainText, subtitle, cta, background, color, format, fontSize, textPosition, showProfileUpload, profileImage, displayName, displayRole]);
 
@@ -99,32 +116,21 @@ export default function CreativeEditor({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setProfileImage(reader.result as string);
-    };
+    reader.onloadend = () => setProfileImage(reader.result as string);
     reader.readAsDataURL(file);
   };
 
   const handleRemoveImage = () => {
     setProfileImage("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  /* ── AI generation (uses credits) ── */
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
       await onGenerate({
-        mainText,
-        subtitle,
-        cta,
-        background,
-        color,
-        userInfo,
-        format,
-        fontSize,
-        textPosition,
+        mainText, subtitle, cta, background, color, userInfo, format, fontSize, textPosition,
         showProfile: showProfileUpload,
         ...(showProfileUpload && {
           profileImage: profileImage || undefined,
@@ -134,95 +140,271 @@ export default function CreativeEditor({
       });
       setHasGenerated(true);
       setHasChanges(false);
+      setShowAiImage(true);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const imageSrc = generatedImage?.url || generatedImage?.base64;
+  /* ── Free PNG export via html2canvas ── */
+  const handleExportPng = useCallback(async () => {
+    if (!previewRef.current) return;
+    setIsExporting(true);
+    try {
+      const el = previewRef.current;
+      const w = format === "story" ? 1080 : 1080;
+      const h = format === "story" ? 1920 : 1080;
+      const scale = w / el.offsetWidth;
+
+      const canvas = await html2canvas(el, {
+        scale,
+        width: el.offsetWidth,
+        height: el.offsetHeight,
+        useCORS: true,
+        backgroundColor: null,
+      });
+
+      const dataUrl = canvas.toDataURL("image/png");
+
+      // Trigger download
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `creative-${scriptIdx + 1}-${format}.png`;
+      a.click();
+
+      // Notify parent
+      onSaveLocal?.(dataUrl, scriptIdx);
+    } catch (e) {
+      console.error("Export error:", e);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [format, scriptIdx, onSaveLocal]);
+
+  const colorHex = color === "gold" ? "#FFD700" : "#00A3E0";
+  const bgConfig = backgrounds.find((b) => b.value === background) || backgrounds[0];
+  const aiImageSrc = generatedImage?.url || generatedImage?.base64;
+
+  /* ── Font size mapping for preview ── */
+  const fontSizeMap = {
+    small: format === "story" ? "clamp(1rem, 3vw, 1.25rem)" : "clamp(0.875rem, 2.5vw, 1.1rem)",
+    medium: format === "story" ? "clamp(1.25rem, 4vw, 1.6rem)" : "clamp(1rem, 3vw, 1.3rem)",
+    large: format === "story" ? "clamp(1.5rem, 5vw, 2rem)" : "clamp(1.25rem, 3.5vw, 1.6rem)",
+  };
+
+  /* ── Text position mapping ── */
+  const positionMap: Record<TextPositionType, string> = {
+    top: "flex-start",
+    center: "center",
+    bottom: "flex-end",
+  };
 
   return (
     <div dir="rtl">
       {/* Header */}
-      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
-        <span className="font-semibold text-blue-600 inline-flex items-center gap-1">
+      <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mb-4">
+        <span className="font-semibold text-[var(--gold)] inline-flex items-center gap-1">
           <FBMLogo size={18} />
           FBM Studio
         </span>
         <span>מציע:</span>
-        <span className="italic text-gray-500">{suggestion.reasoning}</span>
+        <span className="italic text-[var(--text-muted)]">{suggestion.reasoning}</span>
       </div>
+
+      {suggestion.look_and_feel && (
+        <div className="mb-4 p-3 bg-[var(--gold-soft)] border border-[var(--gold)]/30 rounded-[10px] text-sm text-[var(--text-secondary)]">
+          <span className="font-bold text-[var(--gold)]">Look & Feel:</span> {suggestion.look_and_feel}
+        </div>
+      )}
 
       {/* Two-column layout */}
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left column - Image preview (60%) */}
-        <div className="lg:w-[60%] flex-shrink-0">
-          <div className="sticky top-4">
-            <div className={`${format === "story" ? "aspect-[9/16]" : "aspect-square"} w-full max-h-[70vh] rounded-2xl overflow-hidden border border-[var(--card-border)] bg-[var(--content-bg)] relative transition-all`}>
-              {isGenerating && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 rounded-2xl">
-                  <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                  <p className="text-white font-semibold mt-4 text-lg">יוצר קריאייטיב...</p>
-                  <p className="text-white/70 text-sm mt-1">~15 שניות</p>
+        {/* Left column - Live preview */}
+        <div className="lg:w-[55%] flex-shrink-0">
+          <div className="sticky top-4 space-y-3">
+            {/* Toggle: Live Preview / AI Image */}
+            {aiImageSrc && (
+              <div className="flex rounded-[10px] border border-[var(--card-border)] overflow-hidden text-sm">
+                <button
+                  type="button"
+                  onClick={() => setShowAiImage(false)}
+                  className={`flex-1 px-3 py-2 transition-colors cursor-pointer ${!showAiImage ? "bg-[var(--gold)] text-white font-semibold" : "bg-[var(--card-bg)] text-[var(--text-secondary)]"}`}
+                >
+                  תצוגה מקדימה
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAiImage(true)}
+                  className={`flex-1 px-3 py-2 transition-colors cursor-pointer ${showAiImage ? "bg-[var(--gold)] text-white font-semibold" : "bg-[var(--card-bg)] text-[var(--text-secondary)]"}`}
+                >
+                  תמונת AI
+                </button>
+              </div>
+            )}
+
+            {/* Preview container - constrained size */}
+            <div className={`relative ${format === "story" ? "max-h-[65vh]" : ""}`}>
+              {showAiImage && aiImageSrc ? (
+                <div className={`${format === "story" ? "aspect-[9/16] max-h-[65vh]" : "aspect-square"} w-full rounded-2xl overflow-hidden border border-[var(--card-border)] bg-black`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={aiImageSrc}
+                    alt="קריאטיב AI"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : (
+                /* Live HTML Preview */
+                <div
+                  ref={previewRef}
+                  className={`${format === "story" ? "aspect-[9/16]" : "aspect-square"} w-full rounded-2xl overflow-hidden border border-[var(--card-border)] relative`}
+                  style={{
+                    background: bgConfig.gradient,
+                    maxHeight: format === "story" ? "65vh" : "none",
+                  }}
+                >
+                  {/* Dark overlay for text readability */}
+                  <div className="absolute inset-0 bg-black/35" />
+
+                  {/* Content wrapper */}
+                  <div
+                    className="absolute inset-0 flex flex-col p-6"
+                    style={{
+                      justifyContent: positionMap[textPosition],
+                      direction: "rtl",
+                    }}
+                  >
+                    {/* Text block */}
+                    <div
+                      className="rounded-xl px-4 py-3"
+                      style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+                    >
+                      {/* Main text */}
+                      <h2
+                        className="font-bold leading-tight whitespace-pre-wrap"
+                        style={{
+                          color: colorHex,
+                          fontSize: fontSizeMap[fontSize],
+                          textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                        }}
+                      >
+                        {mainText || "הטקסט הראשי כאן"}
+                      </h2>
+
+                      {/* Subtitle */}
+                      {subtitle && (
+                        <p
+                          className="mt-2 opacity-90"
+                          style={{
+                            color: "#ffffff",
+                            fontSize: "clamp(0.7rem, 2vw, 0.85rem)",
+                          }}
+                        >
+                          {subtitle}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Spacer */}
+                    <div className="flex-1 min-h-4" />
+
+                    {/* Bottom section: profile + CTA */}
+                    <div className="flex items-end justify-between">
+                      {/* Profile */}
+                      {showProfileUpload && (
+                        <div className="flex items-center gap-2">
+                          {profileImage ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={profileImage}
+                              alt=""
+                              className="w-10 h-10 rounded-full object-cover"
+                              style={{ border: `3px solid ${colorHex}` }}
+                            />
+                          ) : (
+                            <div
+                              className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
+                              style={{ border: `3px solid ${colorHex}` }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-white text-xs font-bold leading-tight">{displayName}</p>
+                            <p className="text-white/70 text-[10px] leading-tight">{displayRole}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* CTA button */}
+                      <div
+                        className="px-5 py-2 rounded-full font-bold text-sm"
+                        style={{
+                          backgroundColor: colorHex,
+                          color: color === "gold" ? "#1a1a1a" : "#ffffff",
+                        }}
+                      >
+                        {cta || "שלחו הודעה"}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
-              {imageSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imageSrc}
-                  alt="קריאטיב שנוצר"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 p-8">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 mb-4 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-lg font-medium">התמונה תופיע כאן</p>
-                  <p className="text-sm mt-1">ערוך את ההגדרות ולחץ על &quot;צור קריאייטיב&quot;</p>
-                </div>
+            </div>
+
+            {/* Export buttons under preview */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleExportPng}
+                disabled={isExporting || showAiImage}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-[var(--gold)] text-white rounded-[10px] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+              >
+                {isExporting ? "מייצא..." : "הורד PNG (חינם)"}
+              </button>
+              {aiImageSrc && showAiImage && (
+                <a
+                  href={aiImageSrc}
+                  download={`creative-ai-${scriptIdx + 1}.png`}
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold bg-[var(--success)] text-white rounded-[10px] hover:opacity-90 transition-opacity text-center cursor-pointer"
+                >
+                  הורד תמונת AI
+                </a>
               )}
             </div>
           </div>
         </div>
 
-        {/* Right column - Editor panel (40%) */}
-        <div className="lg:w-[40%] space-y-5 max-h-[80vh] lg:overflow-y-auto lg:pl-2">
+        {/* Right column - Editor panel */}
+        <div className="lg:w-[45%] space-y-5 max-h-[85vh] lg:overflow-y-auto lg:pl-2">
           {/* Format */}
           <section>
             <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
               פורמט תמונה
             </label>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setFormat("feed")}
-                className={`flex-1 px-3 py-2 rounded-[10px] border text-sm cursor-pointer transition-all ${
-                  format === "feed"
-                    ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
-                    : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
-                }`}
-              >
-                פיד 1:1
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormat("story")}
-                className={`flex-1 px-3 py-2 rounded-[10px] border text-sm cursor-pointer transition-all ${
-                  format === "story"
-                    ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
-                    : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
-                }`}
-              >
-                סטורי 9:16
-              </button>
+              {(["feed", "story"] as FormatType[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFormat(f)}
+                  className={`flex-1 px-3 py-2 rounded-[10px] border text-sm cursor-pointer transition-all ${
+                    format === f
+                      ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
+                      : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                  }`}
+                >
+                  {f === "feed" ? "פיד 1:1" : "סטורי 9:16"}
+                </button>
+              ))}
             </div>
           </section>
 
-          {/* A. Main Text */}
+          {/* Main Text */}
           <section>
-            <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 mb-1.5">
-              📝 טקסט ראשי
+            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+              טקסט ראשי
             </label>
             <textarea
               value={mainText}
@@ -230,15 +412,15 @@ export default function CreativeEditor({
               placeholder="הטקסט שיופיע על התמונה..."
               maxLength={120}
               rows={3}
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+              className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
             />
-            <p className="text-xs text-gray-500 mt-0.5">{mainText.length}/120</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{mainText.length}/120</p>
           </section>
 
-          {/* A2. Subtitle */}
+          {/* Subtitle */}
           <section>
-            <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 mb-1.5">
-              🏷️ תת-כותרת
+            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+              תת-כותרת
             </label>
             <input
               type="text"
@@ -246,15 +428,15 @@ export default function CreativeEditor({
               onChange={(e) => setSubtitle(e.target.value)}
               maxLength={80}
               placeholder="שיווק מבוסס תדר - לידים מדויקים ל..."
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+              className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
             />
-            <p className="text-xs text-gray-500 mt-0.5">{subtitle.length}/80</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{subtitle.length}/80</p>
           </section>
 
-          {/* B. CTA */}
+          {/* CTA */}
           <section>
-            <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 mb-1.5">
-              💬 קריאה לפעולה (CTA)
+            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+              קריאה לפעולה (CTA)
             </label>
             <input
               type="text"
@@ -262,15 +444,15 @@ export default function CreativeEditor({
               onChange={(e) => setCta(e.target.value)}
               maxLength={30}
               placeholder="שלחו הודעה"
-              className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+              className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
             />
-            <p className="text-xs text-gray-500 mt-0.5">{cta.length}/30</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{cta.length}/30</p>
           </section>
 
-          {/* C. Background */}
+          {/* Background */}
           <section>
-            <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 mb-1.5">
-              🖼️ סוג רקע
+            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+              סוג רקע
             </label>
             <div className="grid grid-cols-2 gap-2">
               {backgrounds.map((bg) => (
@@ -278,7 +460,7 @@ export default function CreativeEditor({
                   key={bg.value}
                   type="button"
                   onClick={() => setBackground(bg.value)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-[10px] border text-sm cursor-pointer transition-all ${
                     background === bg.value
                       ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
                       : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
@@ -291,10 +473,10 @@ export default function CreativeEditor({
             </div>
           </section>
 
-          {/* D. Color */}
+          {/* Color */}
           <section>
-            <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 mb-1.5">
-              🎨 צבע
+            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+              צבע
             </label>
             <div className="flex gap-2">
               {colors.map((c) => (
@@ -302,26 +484,26 @@ export default function CreativeEditor({
                   key={c.value}
                   type="button"
                   onClick={() => setColor(c.value)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm cursor-pointer transition-all flex-1 ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-[10px] border text-sm cursor-pointer transition-all flex-1 ${
                     color === c.value
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950 font-semibold"
-                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                      ? "border-[var(--gold)] bg-[var(--gold-soft)] font-semibold"
+                      : "border-[var(--card-border)] hover:border-[var(--text-muted)]"
                   }`}
                 >
                   <span
-                    className="inline-block w-5 h-5 rounded-full border border-gray-300"
+                    className="inline-block w-5 h-5 rounded-full border border-[var(--card-border)]"
                     style={{ backgroundColor: c.hex }}
                   />
-                  <span className="text-gray-900 dark:text-gray-100">{c.label}</span>
+                  <span className="text-[var(--text-primary)]">{c.label}</span>
                 </button>
               ))}
             </div>
           </section>
 
-          {/* E. Font Size */}
+          {/* Font Size */}
           <section>
-            <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 mb-1.5">
-              🔤 גודל טקסט
+            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+              גודל טקסט
             </label>
             <div className="flex gap-2">
               {fontSizes.map((fs) => (
@@ -329,7 +511,7 @@ export default function CreativeEditor({
                   key={fs.value}
                   type="button"
                   onClick={() => setFontSize(fs.value)}
-                  className={`flex-1 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-all ${
+                  className={`flex-1 px-3 py-2 rounded-[10px] border text-sm cursor-pointer transition-all ${
                     fontSize === fs.value
                       ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
                       : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
@@ -341,10 +523,10 @@ export default function CreativeEditor({
             </div>
           </section>
 
-          {/* F. Text Position */}
+          {/* Text Position */}
           <section>
-            <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 mb-1.5">
-              📍 מיקום טקסט
+            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+              מיקום טקסט
             </label>
             <div className="flex gap-2">
               {textPositions.map((tp) => (
@@ -352,7 +534,7 @@ export default function CreativeEditor({
                   key={tp.value}
                   type="button"
                   onClick={() => setTextPosition(tp.value)}
-                  className={`flex-1 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-all ${
+                  className={`flex-1 px-3 py-2 rounded-[10px] border text-sm cursor-pointer transition-all ${
                     textPosition === tp.value
                       ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
                       : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
@@ -364,17 +546,17 @@ export default function CreativeEditor({
             </div>
           </section>
 
-          {/* G. Profile Image Upload */}
-          <section className="border border-gray-200 dark:border-gray-700 rounded-xl p-3">
+          {/* Profile Image Upload */}
+          <section className="border border-[var(--card-border)] rounded-[10px] p-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                📸 תמונה אישית
+              <label className="text-sm font-bold text-[var(--text-primary)]">
+                תמונה אישית
               </label>
               <button
                 type="button"
                 onClick={() => setShowProfileUpload(!showProfileUpload)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  showProfileUpload ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+                  showProfileUpload ? "bg-[var(--gold)]" : "bg-[var(--card-border)]"
                 }`}
               >
                 <span
@@ -387,7 +569,6 @@ export default function CreativeEditor({
 
             {showProfileUpload && (
               <div className="mt-3 space-y-3">
-                {/* Image Upload */}
                 <div className="flex items-center gap-3">
                   {profileImage ? (
                     <div className="relative flex-shrink-0">
@@ -395,18 +576,18 @@ export default function CreativeEditor({
                       <img
                         src={profileImage}
                         alt="תמונת פרופיל"
-                        className="w-14 h-14 rounded-full object-cover border-2 border-blue-500"
+                        className="w-14 h-14 rounded-full object-cover border-2 border-[var(--gold)]"
                       />
                       <button
                         type="button"
                         onClick={handleRemoveImage}
                         className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600 cursor-pointer"
                       >
-                        ✕
+                        &times;
                       </button>
                     </div>
                   ) : (
-                    <div className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-400 flex-shrink-0">
+                    <div className="w-14 h-14 rounded-full bg-[var(--content-bg)] flex items-center justify-center text-[var(--text-muted)] flex-shrink-0 border border-[var(--card-border)]">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
@@ -419,65 +600,62 @@ export default function CreativeEditor({
                       accept="image/*"
                       onChange={handleImageUpload}
                       className="hidden"
-                      id="profile-upload"
+                      id={`profile-upload-${scriptIdx}`}
                     />
                     <label
-                      htmlFor="profile-upload"
-                      className="inline-block px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400 rounded-lg cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
+                      htmlFor={`profile-upload-${scriptIdx}`}
+                      className="inline-block px-3 py-1.5 text-xs font-medium text-[var(--gold)] bg-[var(--gold-soft)] rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                     >
                       {profileImage ? "החלף תמונה" : "העלה תמונה"}
                     </label>
                   </div>
                 </div>
 
-                {/* Display Name */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    שם מלא
-                  </label>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">שם מלא</label>
                   <input
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder={userInfo.name}
-                    className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
+                    className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] transition-all text-sm"
                   />
                 </div>
 
-                {/* Display Role */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    תפקיד / תיאור
-                  </label>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">תפקיד / תיאור</label>
                   <input
                     type="text"
                     value={displayRole}
                     onChange={(e) => setDisplayRole(e.target.value)}
                     placeholder={userInfo.role}
-                    className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-right placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
+                    className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] transition-all text-sm"
                   />
                 </div>
               </div>
             )}
           </section>
 
-          {/* H. Generate Button */}
-          <div className="pt-3 border-t border-gray-200 dark:border-gray-800">
+          {/* Generate with AI button */}
+          <div className="pt-3 border-t border-[var(--card-border)]">
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !mainText.trim() || !cta.trim()}
-              className={`w-full h-12 text-base font-bold rounded-xl text-white transition-all shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`w-full h-12 text-base font-bold rounded-[10px] text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                 hasGenerated && hasChanges
                   ? "bg-orange-500 hover:bg-orange-600"
                   : "bg-green-600 hover:bg-green-700"
               }`}
             >
               {isGenerating
-                ? "⏳ יוצר קריאייטיב... (~15 שניות)"
+                ? "יוצר תמונת AI... (~15 שניות)"
                 : hasGenerated && hasChanges
-                  ? "🔄 צור מחדש עם השינויים"
-                  : "✨ צור קריאייטיב"}
+                  ? "צור מחדש עם AI (1 קרדיט)"
+                  : "צור תמונה עם AI (1 קרדיט)"}
             </button>
+            <p className="text-xs text-[var(--text-muted)] text-center mt-2">
+              התצוגה המקדימה ניתנת להורדה בחינם. רינדור AI יוצר תמונה ברזולוציה גבוהה.
+            </p>
           </div>
         </div>
       </div>

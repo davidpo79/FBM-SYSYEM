@@ -1,4 +1,4 @@
-export type BackgroundType = "lighthouse" | "mountain" | "path" | "office";
+export type BackgroundType = "lighthouse" | "mountain" | "path" | "office" | "city" | "sunset" | "forest" | "studio";
 export type ColorType = "gold" | "teal";
 export type FontSizeType = "small" | "medium" | "large";
 export type TextPositionType = "top" | "center" | "bottom";
@@ -10,6 +10,7 @@ export interface CreativeSuggestion {
   background: BackgroundType;
   color: ColorType;
   reasoning: string;
+  look_and_feel?: string;
 }
 
 export interface CreativeConfig {
