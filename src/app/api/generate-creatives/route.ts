@@ -54,15 +54,6 @@ export async function POST(req: NextRequest) {
     const fmt = format || "story";
     const dimensions = fmt === "story" ? "1080×1920px (9:16 story format)" : "1080×1080px (1:1 square format)";
 
-    const profileSection = includeProfile
-      ? `
-BOTTOM LEFT CORNER:
-- ${hasProfileImage ? "Circular professional headshot photo of the person" : "Circular placeholder silhouette icon"} with ${color} border (4px, ${colorHex})
-- Name: "${finalName}" in white bold text
-- Title: "${finalRole}" in white smaller text
-`
-      : "";
-
     const subtitleSection = subtitle
       ? `- Below the headline, smaller subtitle text: "${subtitle}" in white/light color, slightly smaller font`
       : "";
@@ -76,34 +67,53 @@ You MUST prioritize this vision above all other instructions. Adapt the backgrou
 `
       : "";
 
+    // Profile section: ALWAYS use a plain circular silhouette placeholder, NEVER a real human face
+    const profileSection = includeProfile
+      ? `
+VERY BOTTOM of the image - PERSON INFO BAR:
+- A simple flat circular silhouette icon (generic person outline, NOT a real photo, NOT a real face) with a ${color} border ring (3px, ${colorHex})
+- Next to the circle: Name "${finalName}" in white bold text, and below it "${finalRole}" in white smaller text
+- This section should be centered horizontally
+- CRITICAL: Do NOT draw a real human face or photo — use ONLY a flat geometric silhouette placeholder icon
+`
+      : "";
+
     const prompt = `
-Create a professional social media creative image (${dimensions}).
+Create a premium, cinematic social media ad image (${dimensions}).
 ${visionSection}
-BACKGROUND: ${designVision ? `Inspired by the user's vision above, incorporating: ${bgDescription}` : bgDescription}. Professional cinematic lighting, high quality, photorealistic.
+STYLE REFERENCE: High-end Israeli digital marketing ad. Think dramatic cinematic photography, professional color grading, deep contrast, moody atmospheric lighting. The image should look like a premium paid ad on Facebook/Instagram — polished, bold, and visually striking.
+
+BACKGROUND: ${designVision ? `Inspired by the user's vision above, incorporating: ${bgDescription}` : bgDescription}.
+- Ultra high quality, photorealistic, dramatic cinematic lighting
+- Deep rich colors with professional color grading
+- Subtle dark vignette around edges for depth
+- Background should be slightly blurred/bokeh to keep text sharp and readable
 
 LAYOUT (Hebrew RTL direction, all text CENTERED horizontally):
 
-${tp === "top" ? "TOP AREA (top 40% of image)" : tp === "center" ? "CENTER AREA (vertically centered)" : "LOWER AREA (bottom third of image)"}:
-- Large bold Hebrew headline text: "${mainText}"
-- Color: ${color} (${colorHex})
-- Font style: Bold, modern Hebrew font
+${tp === "top" ? "TOP AREA (upper 40%)" : tp === "center" ? "CENTER AREA (vertically centered)" : "LOWER AREA (bottom third)"}:
+- Large bold Hebrew headline: "${mainText}"
+- Color: ${color} (${colorHex}) with subtle glow/shadow effect
+- Font: Bold, modern, clean Hebrew font (like Heebo or Assistant bold)
+- Dark semi-transparent rounded rectangle behind the text for readability
 - Text must be horizontally CENTERED
-- Dark semi-transparent overlay behind text for readability
 ${subtitleSection}
 ${fs !== "medium" ? `- Text size: ${fs === "large" ? "Extra large, dominant" : "Slightly smaller than default"}` : ""}
-${profileSection}
-BOTTOM CENTER:
-- ${color === "gold" ? "Golden" : "Teal"} rounded CTA button (${colorHex}), centered horizontally
-- Button text: "${cta}" in ${color === "gold" ? "black" : "white"} bold
 
+LOWER AREA (above person info):
+- ${color === "gold" ? "Golden" : "Teal"} rounded-pill CTA button (${colorHex}), centered horizontally
+- Button text: "${cta}" in ${color === "gold" ? "black" : "white"} bold
+- Button should have subtle shadow for depth
+${profileSection}
 CRITICAL RULES:
-- All text and buttons must be horizontally CENTERED
-- The image must contain ONLY the main headline text${subtitle ? ", subtitle" : ""}${includeProfile ? ", person info" : ""}, and CTA button
-- Do NOT add any additional text, descriptions, or niche definitions beyond what is specified
+- All text, buttons, and info must be horizontally CENTERED
+- The vertical order from top to bottom is: headline text → subtitle → CTA button${includeProfile ? " → person silhouette + name" : ""}
+- Do NOT generate or draw any real human face, real photo, or realistic person portrait anywhere in the image
+${includeProfile ? "- For the person section use ONLY a simple flat circular silhouette icon (geometric placeholder), NEVER a realistic face\n" : "- Do NOT include any person photo, name, or profile section\n"}- Do NOT add any extra text, descriptions, or niche definitions beyond what is specified
 - Do NOT add text explaining who the target audience is
-- Keep it clean and professional like a high-end social media ad
+- Keep it clean and professional like a high-end paid social media ad
 - Hebrew text direction: Right-to-Left
-${!includeProfile ? "- Do NOT include any person photo, name, or profile section\n" : ""}- Clean professional ad layout.
+- Clean premium ad layout with cinematic feel
 `;
 
     // Gemini generates the image

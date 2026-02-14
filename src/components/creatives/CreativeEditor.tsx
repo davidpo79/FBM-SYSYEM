@@ -352,9 +352,28 @@ export default function CreativeEditor({
                     {/* Spacer */}
                     <div className="flex-1 min-h-4" />
 
-                    {/* Profile (centered) */}
+                    {/* CTA button - CENTERED & EDITABLE (above profile) */}
+                    <div className="flex justify-center mb-3">
+                      <div
+                        ref={ctaRef}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onFocus={() => setEditingField("cta")}
+                        onBlur={() => handleContentEditBlur("cta", ctaRef)}
+                        className="px-6 py-2.5 rounded-full font-bold text-sm text-center"
+                        style={{
+                          backgroundColor: colorHex,
+                          color: color === "gold" ? "#1a1a1a" : "#ffffff",
+                          ...editableStyle("cta"),
+                        }}
+                      >
+                        {cta || "שלחו הודעה"}
+                      </div>
+                    </div>
+
+                    {/* Profile (below CTA, at very bottom) */}
                     {showProfileUpload && (
-                      <div className="flex items-center justify-center gap-2 mb-3">
+                      <div className="flex items-center justify-center gap-2">
                         {profileImage ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img
@@ -379,25 +398,6 @@ export default function CreativeEditor({
                         </div>
                       </div>
                     )}
-
-                    {/* CTA button - CENTERED & EDITABLE */}
-                    <div className="flex justify-center">
-                      <div
-                        ref={ctaRef}
-                        contentEditable
-                        suppressContentEditableWarning
-                        onFocus={() => setEditingField("cta")}
-                        onBlur={() => handleContentEditBlur("cta", ctaRef)}
-                        className="px-6 py-2.5 rounded-full font-bold text-sm text-center"
-                        style={{
-                          backgroundColor: colorHex,
-                          color: color === "gold" ? "#1a1a1a" : "#ffffff",
-                          ...editableStyle("cta"),
-                        }}
-                      >
-                        {cta || "שלחו הודעה"}
-                      </div>
-                    </div>
                   </div>
 
                   {/* Loading overlay */}
