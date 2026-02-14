@@ -84,6 +84,10 @@ export default function ResultsPage() {
   const [painAnalysis, setPainAnalysis] = useState("");
   const [scripts, setScripts] = useState("");
 
+  // script editing
+  const [editingScriptIdx, setEditingScriptIdx] = useState<number | null>(null);
+  const [editedScripts, setEditedScripts] = useState<Record<number, string>>({});
+
   // creative flow
   const [activeScriptIdx, setActiveScriptIdx] = useState<number | null>(null);
   const [suggestion, setSuggestion] = useState<CreativeSuggestion | null>(null);
@@ -574,7 +578,12 @@ export default function ResultsPage() {
               4. תסריטים + קריאייטיבים
             </h2>
             <button
-              onClick={() => handleDownloadPdf("תסריטי וידאו FBM", scripts, "scripts.pdf")}
+              onClick={() => {
+                // Build final scripts with edits applied
+                const parts = splitScripts(scripts);
+                const finalScripts = parts.map((s, i) => editedScripts[i] ?? s).join("\n\n");
+                handleDownloadPdf("תסריטי וידאו FBM", finalScripts, "scripts.pdf");
+              }}
               disabled={downloading === "scripts.pdf"}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
             >
@@ -587,21 +596,57 @@ export default function ResultsPage() {
             const imageForScript = generatedImages.find(
               (img) => img.scriptIdx === idx,
             );
+            const isEditing = editingScriptIdx === idx;
+            const displayText = editedScripts[idx] ?? scriptText;
 
             return (
               <div
                 key={idx}
                 className="mb-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden"
               >
-                {/* script content */}
-                <details>
-                  <summary className="cursor-pointer p-4 font-semibold text-gray-900 dark:text-gray-100">
-                    תסריט {idx + 1} (לחץ לפתיחה)
-                  </summary>
-                  <div className="px-4 pb-4 prose dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
-                    {scriptText}
+                {/* script header */}
+                <div className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
+                  <h3 className="font-bold text-gray-900 dark:text-gray-100">
+                    תסריט {idx + 1}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      if (isEditing) {
+                        setEditingScriptIdx(null);
+                      } else {
+                        if (!(idx in editedScripts)) {
+                          setEditedScripts((prev) => ({ ...prev, [idx]: scriptText }));
+                        }
+                        setEditingScriptIdx(idx);
+                      }
+                    }}
+                    className="text-sm px-3 py-1.5 rounded-lg transition-colors cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  >
+                    {isEditing ? "סיום עריכה" : "עריכה"}
+                  </button>
+                </div>
+
+                {/* script content - editable or read-only */}
+                {isEditing ? (
+                  <div className="p-4">
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mb-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-2">
+                      מומלץ לא לשנות את התסריט באופן משמעותי - תיקונים קטנים בלבד
+                    </p>
+                    <textarea
+                      value={editedScripts[idx] ?? scriptText}
+                      onChange={(e) =>
+                        setEditedScripts((prev) => ({ ...prev, [idx]: e.target.value }))
+                      }
+                      dir="rtl"
+                      rows={15}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm leading-relaxed focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-y"
+                    />
                   </div>
-                </details>
+                ) : (
+                  <div className="p-4 prose dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap">
+                    {displayText}
+                  </div>
+                )}
 
                 {/* generated image */}
                 {hasImage && imageForScript && (
@@ -642,7 +687,7 @@ export default function ResultsPage() {
                       className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {activeScriptIdx === null
-                        ? "🎨 צור Creative לתסריט"
+                        ? "צור Creative לתסריט"
                         : "ממתין..."}
                     </button>
                   </div>

@@ -42,6 +42,20 @@ function ensureSpace(c: PdfCursor, needed: number) {
   }
 }
 
+function fixRtlBrackets(text: string): string {
+  // jsPDF renders brackets/parentheses incorrectly in RTL - swap them
+  return text
+    .replace(/\(/g, "\u0000")
+    .replace(/\)/g, "(")
+    .replace(/\u0000/g, ")")
+    .replace(/\[/g, "\u0000")
+    .replace(/\]/g, "[")
+    .replace(/\u0000/g, "]")
+    .replace(/\{/g, "\u0000")
+    .replace(/\}/g, "{")
+    .replace(/\u0000/g, "}");
+}
+
 function stripMarkdown(text: string): string {
   return text
     .replace(/\*\*(.*?)\*\*/g, "$1")
@@ -55,15 +69,14 @@ function renderLine(c: PdfCursor, text: string, fontSize: number, bold: boolean)
   ensureSpace(c, fontSize * 0.5 + 2);
 
   c.doc.setFontSize(fontSize);
-  // jsPDF uses font style string
   c.doc.setFont("Rubik", bold ? "bold" : "normal");
 
-  // Split long lines to fit the content width
-  const lines = c.doc.splitTextToSize(text, c.contentWidth);
+  // Fix RTL brackets and split long lines
+  const fixedText = fixRtlBrackets(text);
+  const lines = c.doc.splitTextToSize(fixedText, c.contentWidth);
 
   for (const line of lines) {
     ensureSpace(c, fontSize * 0.5);
-    // RTL: right-align text
     c.doc.text(line, c.pageWidth - c.margin, c.y, { align: "right" });
     c.y += fontSize * 0.45;
   }
