@@ -49,22 +49,22 @@ export default function AlbumPage() {
     return () => window.removeEventListener("focus", handleFocus);
   }, [projectId]);
 
-  // Mark project as completed automatically when entering album page
+  // Track completed status locally so UI reacts immediately
+  const [isCompleted, setIsCompleted] = useState(project?.status === "completed");
+
   useEffect(() => {
-    async function markComplete() {
-      if (projectId) {
-        await supabase
-          .from("projects")
-          .update({
-            status: "completed",
-            completed_at: new Date().toISOString(),
-          })
-          .eq("id", projectId)
-          .neq("status", "completed");
-      }
-    }
-    markComplete();
-  }, [projectId]);
+    if (project?.status === "completed") setIsCompleted(true);
+  }, [project?.status]);
+
+  const handleMarkComplete = async () => {
+    if (!projectId) return;
+    await supabase
+      .from("projects")
+      .update({ status: "completed", completed_at: new Date().toISOString() })
+      .eq("id", projectId)
+      .neq("status", "completed");
+    setIsCompleted(true);
+  };
 
   const toggleSelect = (idx: number) => {
     setSelectedIds((prev) => {
@@ -355,29 +355,27 @@ export default function AlbumPage() {
               </div>
 
               {/* Download buttons */}
-              <div className="mt-6 space-y-3">
-                {selectedIds.size > 0 && (
-                  <button
-                    onClick={handleDownloadZip}
-                    disabled={downloading}
-                    className="w-full py-3.5 text-base font-bold bg-green-700 text-white rounded-[10px] hover:bg-green-800 transition-colors disabled:opacity-50 cursor-pointer"
-                  >
-                    {downloading ? "מכין ZIP..." : `הורד ${selectedIds.size} תמונות נבחרות + מסמכים (ZIP)`}
-                  </button>
-                )}
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => {
+                    if (selectedIds.size === 0) setSelectedIds(new Set(displayImages.map((_, i) => i)));
+                    handleDownloadZip();
+                  }}
+                  disabled={downloading}
+                  className="flex-1 py-3.5 text-base font-bold rounded-[10px] transition-all disabled:opacity-50 cursor-pointer bg-green-700 hover:bg-green-800 text-white"
+                >
+                  {downloading
+                    ? "מכין ZIP..."
+                    : selectedIds.size > 0
+                      ? `הורד ${selectedIds.size} נבחרות (ZIP)`
+                      : "הורד הכל (ZIP)"}
+                </button>
                 <button
                   onClick={handleExportSummaryPdf}
                   disabled={downloading}
-                  className="w-full py-3.5 text-base font-bold border-2 border-[var(--card-border)] text-[var(--text-secondary)] rounded-[12px] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-all disabled:opacity-50 cursor-pointer"
+                  className="py-3.5 px-5 text-sm font-bold border-2 border-[var(--card-border)] text-[var(--text-secondary)] rounded-[10px] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-all disabled:opacity-50 cursor-pointer"
                 >
-                  {downloading ? "מייצא..." : "📄 ייצוא PDF מסכם"}
-                </button>
-                <button
-                  onClick={() => { setSelectedIds(new Set(displayImages.map((_, i) => i))); handleDownloadZip(); }}
-                  disabled={downloading}
-                  className="w-full py-4 text-lg font-bold rounded-[12px] transition-all disabled:opacity-50 cursor-pointer bg-green-700 hover:bg-green-800 text-white"
-                >
-                  {downloading ? "מכין ZIP..." : "הורד הכל ב-ZIP (מסמכים + קריאטיבים)"}
+                  {downloading ? "..." : "PDF"}
                 </button>
               </div>
             </>
@@ -387,7 +385,7 @@ export default function AlbumPage() {
         {/* Right - Project summary */}
         <div className="lg:w-[40%]">
           <div className="sticky top-4 space-y-3">
-            {/* Summary header */}
+            {/* Summary header + complete button */}
             <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5">
               <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">
                 סיכום הפרויקט
@@ -395,12 +393,25 @@ export default function AlbumPage() {
               <p className="text-sm text-[var(--text-muted)]">
                 {project?.user_name}
               </p>
-              <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-[var(--success)] rounded-full text-sm font-semibold">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                הפרויקט הושלם
-              </div>
+              {isCompleted ? (
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-[var(--success)] rounded-full text-sm font-semibold">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  הפרויקט הושלם
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleMarkComplete}
+                  className="mt-3 w-full py-3 text-base font-bold bg-[var(--success)] text-white rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  סיים פרויקט
+                </button>
+              )}
             </div>
 
             {/* Clickable summary cards */}
