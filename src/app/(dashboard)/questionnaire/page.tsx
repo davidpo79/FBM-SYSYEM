@@ -74,6 +74,7 @@ export default function QuestionnairePage() {
   };
 
   const handleAnswerChange = (value: string) => {
+    if (!currentQuestion) return;
     setAnswers((prev) => ({ ...prev, [currentQuestion.id]: value }));
     if (error) setError("");
   };
