@@ -312,7 +312,7 @@ export default function CreativePage() {
           onClick={() => setModalImage(null)}
         >
           <div
-            className="relative max-w-2xl w-full bg-[var(--card-bg)] rounded-[16px] overflow-hidden shadow-2xl"
+            className="relative max-w-lg w-full max-h-[90vh] flex flex-col bg-[var(--card-bg)] rounded-[16px] overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -321,13 +321,15 @@ export default function CreativePage() {
             >
               &times;
             </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={modalImage.url || modalImage.base64}
-              alt={`קריאטיב לתסריט ${modalImage.scriptIdx + 1}`}
-              className="w-full"
-            />
-            <div className="p-4 flex items-center justify-between" dir="rtl">
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={modalImage.url || modalImage.base64}
+                alt={`קריאטיב לתסריט ${modalImage.scriptIdx + 1}`}
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="flex-shrink-0 p-4 flex items-center justify-between border-t border-[var(--card-border)]" dir="rtl">
               <p className="text-sm font-semibold text-[var(--text-secondary)]">
                 קריאטיב לתסריט {modalImage.scriptIdx + 1}
               </p>
