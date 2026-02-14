@@ -126,37 +126,102 @@ export default function StrategyPage() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
-      {/* Main content - strategy document */}
-      <div className="flex-1">
-        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] overflow-hidden">
-          <div className="p-6 border-b border-[var(--card-border)]">
-            <h2 className="text-xl font-bold text-[var(--text-primary)]">
-              מסמך אסטרטגיה {strategyApproved && <span className="text-[var(--success)] text-base font-medium mr-2">(אושר)</span>}
-            </h2>
+    <div>
+      <div className={`flex flex-col lg:flex-row gap-6${!strategyApproved ? " pb-4" : ""}`}>
+        {/* Main content - strategy document */}
+        <div className="flex-1">
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] overflow-hidden">
+            <div className="p-6 border-b border-[var(--card-border)]">
+              <h2 className="text-xl font-bold text-[var(--text-primary)]">
+                מסמך אסטרטגיה {strategyApproved && <span className="text-[var(--success)] text-base font-medium mr-2">(אושר)</span>}
+              </h2>
+            </div>
+            <div className="p-6 prose max-w-none text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-primary)]">
+              {strategy}
+            </div>
           </div>
-          <div className="p-6 prose max-w-none text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-primary)]">
-            {strategy}
-          </div>
+
+          {/* Download after approval */}
+          {strategyApproved && (
+            <div className="mt-4 flex items-center gap-3 bg-green-50 border border-green-200 rounded-[16px] p-4">
+              <p className="text-sm font-medium text-[var(--success)]">
+                המסמך אושר - עכשיו ניתן להוריד
+              </p>
+              <button
+                onClick={() => handleDownloadPdf("מסמך אסטרטגיה FBM", strategy, "strategy.pdf")}
+                disabled={downloading === "strategy.pdf"}
+                className="px-4 py-2 text-sm font-medium bg-white border border-[var(--card-border)] text-[var(--text-secondary)] rounded-[10px] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {downloading === "strategy.pdf" ? "מייצא..." : "הורד כ-PDF"}
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Approval flow */}
-        {!strategyApproved && (
-          <div className="mt-6 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-6">
-            <h3 className="font-bold text-[var(--text-primary)] text-lg mb-2">
+        {/* Sidebar info */}
+        <div className="lg:w-[340px] flex-shrink-0 space-y-4">
+          {/* Status card */}
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5">
+            <h3 className="font-bold text-[var(--text-primary)] mb-3 text-sm">סטטוס התהליך</h3>
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+              <div
+                className="bg-[var(--gold)] h-2 rounded-full transition-all"
+                style={{ width: strategyApproved ? "20%" : "10%" }}
+              />
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">
+              {strategyApproved ? "שלב 1 מתוך 5 הושלם" : "שלב 1 מתוך 5 - בתהליך"}
+            </p>
+          </div>
+
+          {/* Project info card */}
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5">
+            <h3 className="font-bold text-[var(--text-primary)] mb-3 text-sm">פרטי הפרויקט</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-[var(--text-muted)]">שם</span>
+                <span className="text-[var(--text-primary)] font-medium">{project?.user_name}</span>
+              </div>
+              {strategy && (
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">מילים</span>
+                  <span className="text-[var(--text-primary)] font-medium">
+                    {strategy.split(/\s+/).length.toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky approval flow - floats at bottom while scrolling */}
+      {!strategyApproved && (
+        <div
+          className="sticky bottom-0 z-20 -mx-6 lg:-mx-8 px-6 lg:px-8 py-4 mt-6"
+          style={{
+            backgroundColor: "rgba(248, 249, 252, 0.95)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            borderTop: "1px solid var(--card-border)",
+            boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.06)",
+          }}
+        >
+          <div className="max-w-4xl">
+            <h3 className="font-bold text-[var(--text-primary)] text-base mb-2">
               האם המסמך מאפיין אותך?
             </h3>
-            <p className="text-sm text-[var(--text-secondary)] mb-4">
+            <p className="text-sm text-[var(--text-secondary)] mb-3">
               תרצה לדייק או לשנות משהו? כתוב את ההערות שלך ונתקן את המסמך.
             </p>
             <textarea
               value={strategyFeedback}
               onChange={(e) => setStrategyFeedback(e.target.value)}
               placeholder="לדוגמה: אני עובד בתחום כבר 10 שנים ולא 5, הניסיון שלי הוא בעיקר עם עסקים קטנים..."
-              rows={3}
-              className="w-full px-4 py-3 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] transition-colors text-sm"
+              rows={2}
+              className="w-full px-4 py-3 rounded-[10px] border border-[var(--card-border)] bg-white text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] transition-colors text-sm"
             />
-            <div className="flex gap-3 mt-4">
+            <div className="flex gap-3 mt-3">
               <button
                 onClick={handleRefineStrategy}
                 disabled={isRefining || !strategyFeedback.trim()}
@@ -173,60 +238,8 @@ export default function StrategyPage() {
               </button>
             </div>
           </div>
-        )}
-
-        {/* Download after approval */}
-        {strategyApproved && (
-          <div className="mt-4 flex items-center gap-3 bg-green-50 border border-green-200 rounded-[16px] p-4">
-            <p className="text-sm font-medium text-[var(--success)]">
-              המסמך אושר - עכשיו ניתן להוריד
-            </p>
-            <button
-              onClick={() => handleDownloadPdf("מסמך אסטרטגיה FBM", strategy, "strategy.pdf")}
-              disabled={downloading === "strategy.pdf"}
-              className="px-4 py-2 text-sm font-medium bg-white border border-[var(--card-border)] text-[var(--text-secondary)] rounded-[10px] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              {downloading === "strategy.pdf" ? "מייצא..." : "הורד כ-PDF"}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Sidebar info */}
-      <div className="lg:w-[340px] flex-shrink-0 space-y-4">
-        {/* Status card */}
-        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5">
-          <h3 className="font-bold text-[var(--text-primary)] mb-3 text-sm">סטטוס התהליך</h3>
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-            <div
-              className="bg-[var(--gold)] h-2 rounded-full transition-all"
-              style={{ width: strategyApproved ? "20%" : "10%" }}
-            />
-          </div>
-          <p className="text-xs text-[var(--text-muted)]">
-            {strategyApproved ? "שלב 1 מתוך 5 הושלם" : "שלב 1 מתוך 5 - בתהליך"}
-          </p>
         </div>
-
-        {/* Project info card */}
-        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5">
-          <h3 className="font-bold text-[var(--text-primary)] mb-3 text-sm">פרטי הפרויקט</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-[var(--text-muted)]">שם</span>
-              <span className="text-[var(--text-primary)] font-medium">{project?.user_name}</span>
-            </div>
-            {strategy && (
-              <div className="flex justify-between">
-                <span className="text-[var(--text-muted)]">מילים</span>
-                <span className="text-[var(--text-primary)] font-medium">
-                  {strategy.split(/\s+/).length.toLocaleString()}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
