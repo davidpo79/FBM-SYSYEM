@@ -20,7 +20,7 @@ export default function ProjectCard({ project }: { project: Project }) {
       </h3>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{date}</p>
       <Link
-        href={`/project/${project.id}`}
+        href={`/results/${project.id}`}
         className="inline-block text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
       >
         פתח
