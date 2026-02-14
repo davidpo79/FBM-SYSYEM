@@ -246,11 +246,26 @@ export default function ResultsPage() {
     setStep("pains");
   };
 
+  const goBackToNiches = () => {
+    setSelectedNiche(null);
+    setPainAnalysis("");
+    setScripts("");
+    setStep("niches");
+  };
+
+  const goBackToPains = () => {
+    setScripts("");
+    setStep("pains");
+  };
+
   const splitScripts = (raw: string): string[] => {
     // scripts are separated by "## תסריט" headings
     const parts = raw.split(/(?=## תסריט \d)/);
     return parts.filter((p) => p.trim().length > 0);
   };
+
+  // creative error (separate from pipeline error)
+  const [creativeError, setCreativeError] = useState("");
 
   const handleSuggestCreative = useCallback(
     async (scriptIdx: number) => {
@@ -258,6 +273,7 @@ export default function ResultsPage() {
       const scriptText = scriptParts[scriptIdx] ?? "";
       setActiveScriptIdx(scriptIdx);
       setSuggestion(null);
+      setCreativeError("");
 
       try {
         const res = await fetch("/api/suggest-creative", {
@@ -268,8 +284,10 @@ export default function ResultsPage() {
         const json = await res.json();
         if (!res.ok) throw new Error(json.error);
         setSuggestion(json.suggestion as CreativeSuggestion);
-      } catch {
-        setError("Failed to suggest creative");
+      } catch (e) {
+        console.error("Suggest creative error:", e);
+        setActiveScriptIdx(null);
+        setCreativeError("שגיאה ביצירת הצעת קריאטיב. נסה שוב.");
       }
     },
     [scripts],
@@ -283,24 +301,30 @@ export default function ResultsPage() {
       color: string;
       userInfo: { name: string; role: string; niche: string };
     }) => {
-      const res = await fetch("/api/generate-creatives", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
-      });
-      const json: CreativeResponse = await res.json();
-      if (!res.ok || !json.success) throw new Error("Generation failed");
+      setCreativeError("");
+      try {
+        const res = await fetch("/api/generate-creatives", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(config),
+        });
+        const json: CreativeResponse = await res.json();
+        if (!res.ok || !json.success) throw new Error("Generation failed");
 
-      setGeneratedImages((prev) => [
-        ...prev,
-        {
-          url: json.imageUrl,
-          base64: json.imageBase64,
-          scriptIdx: activeScriptIdx ?? 0,
-        },
-      ]);
-      setSuggestion(null);
-      setActiveScriptIdx(null);
+        setGeneratedImages((prev) => [
+          ...prev,
+          {
+            url: json.imageUrl,
+            base64: json.imageBase64,
+            scriptIdx: activeScriptIdx ?? 0,
+          },
+        ]);
+        setSuggestion(null);
+        setActiveScriptIdx(null);
+      } catch (e) {
+        console.error("Generate creative error:", e);
+        setCreativeError("שגיאה ביצירת התמונה. נסה שוב.");
+      }
     },
     [activeScriptIdx],
   );
@@ -381,7 +405,7 @@ export default function ResultsPage() {
     niches: "נישות",
     pains: "ניתוח כאבים",
     scripts: "תסריטים",
-    creatives: "קריאייטיב",
+    creatives: "קריאטיב (תמונה)",
   };
   const currentStepIdx = stepsOrder.indexOf(step);
 
@@ -560,6 +584,13 @@ export default function ResultsPage() {
               </button>
             </div>
           </details>
+          {/* back button */}
+          <button
+            onClick={goBackToNiches}
+            className="mt-3 inline-flex items-center gap-1 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer"
+          >
+            &larr; חזרה לבחירת נישה
+          </button>
         </section>
       )}
 
@@ -579,7 +610,7 @@ export default function ResultsPage() {
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              4. תסריטים + קריאייטיבים
+              4. תסריטים + קריאטיב (תמונה)
             </h2>
             <button
               onClick={() => {
@@ -656,12 +687,12 @@ export default function ResultsPage() {
                 {hasImage && imageForScript && (
                   <div className="p-4 border-t border-gray-200 dark:border-gray-800">
                     <p className="text-sm font-semibold text-green-600 mb-2">
-                      Creative נוצר בהצלחה!
+                      קריאטיב נוצר בהצלחה!
                     </p>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={imageForScript.url || imageForScript.base64}
-                      alt={`Creative for script ${idx + 1}`}
+                      alt={`קריאטיב לתסריט ${idx + 1}`}
                       className="w-full max-w-md mx-auto rounded-xl shadow-lg"
                     />
                   </div>
@@ -683,6 +714,13 @@ export default function ResultsPage() {
                 )}
 
                 {/* action button */}
+                {/* creative error for this script */}
+                {creativeError && activeScriptIdx === null && !hasImage && (
+                  <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-red-600 dark:text-red-400 mb-2">{creativeError}</p>
+                  </div>
+                )}
+
                 {!hasImage && activeScriptIdx !== idx && (
                   <div className="p-4 border-t border-gray-200 dark:border-gray-800">
                     <button
@@ -691,7 +729,7 @@ export default function ResultsPage() {
                       className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {activeScriptIdx === null
-                        ? "צור Creative לתסריט"
+                        ? "צור קריאטיב (תמונה) לתסריט"
                         : "ממתין..."}
                     </button>
                   </div>
@@ -702,13 +740,20 @@ export default function ResultsPage() {
                   <div className="p-4 border-t border-gray-200 dark:border-gray-800 text-center">
                     <CountdownTimer seconds={10} />
                     <p className="text-sm text-gray-500 mt-2">
-                      FBM Studio מנתח את התסריט ומציע creative...
+                      FBM Studio מנתח את התסריט ומציע קריאטיב...
                     </p>
                   </div>
                 )}
               </div>
             );
           })}
+          {/* back button */}
+          <button
+            onClick={goBackToNiches}
+            className="mt-2 inline-flex items-center gap-1 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer"
+          >
+            &larr; חזרה לבחירת נישה
+          </button>
         </section>
       )}
 
@@ -721,7 +766,7 @@ export default function ResultsPage() {
                 הורדת כל המסמכים
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                כל ה-PDFs + תמונות Creative בקובץ ZIP אחד
+                כל ה-PDFs + תמונות קריאטיב בקובץ ZIP אחד
               </p>
             </div>
             <button
@@ -751,7 +796,7 @@ export default function ResultsPage() {
               הכל מוכן!
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
-              כל התסריטים והקריאייטיבים נוצרו בהצלחה
+              כל התסריטים והקריאטיבים נוצרו בהצלחה
             </p>
           </div>
         )}

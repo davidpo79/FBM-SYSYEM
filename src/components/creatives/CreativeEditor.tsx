@@ -174,7 +174,7 @@ export default function CreativeEditor({
           disabled={isGenerating || !mainText.trim() || !cta.trim()}
           className="w-full h-12 text-lg font-semibold rounded-xl text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg cursor-pointer"
         >
-          {isGenerating ? "⏳ יוצר Creative..." : "✨ צור Creative"}
+          {isGenerating ? "יוצר קריאטיב..." : "צור קריאטיב (תמונה)"}
         </button>
       </div>
     </div>
