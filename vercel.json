@@ -1,0 +1,22 @@
+{
+  "functions": {
+    "src/app/api/generate-strategy/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/generate-niches/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/generate-pains/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/generate-scripts/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/suggest-creative/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/generate-creatives/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
