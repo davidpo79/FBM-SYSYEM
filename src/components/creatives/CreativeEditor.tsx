@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import type { BackgroundType, ColorType, CreativeSuggestion } from "@/types";
+import FBMLogo from "@/components/FBMLogo";
 
 interface CreativeEditorProps {
   suggestion: CreativeSuggestion;
@@ -63,7 +63,7 @@ export default function CreativeEditor({
       <div className="border-b border-gray-200 dark:border-gray-800 pb-4">
         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
           <span className="font-semibold text-blue-600 inline-flex items-center gap-1">
-            <Image src="/logo.svg" alt="FBM" width={18} height={18} />
+            <FBMLogo size={18} />
             FBM Studio
           </span>
           <span>מציע:</span>

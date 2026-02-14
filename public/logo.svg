@@ -1,14 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-  <!-- Signal/frequency waves - top left -->
-  <path d="M24 6C14.059 6 6 14.059 6 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.4"/>
-  <path d="M24 12C17.373 12 12 17.373 12 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.65"/>
-  <path d="M24 18C20.686 18 18 20.686 18 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.9"/>
-  <!-- Signal/frequency waves - top right -->
-  <path d="M24 6C33.941 6 42 14.059 42 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.4"/>
-  <path d="M24 12C30.627 12 36 17.373 36 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.65"/>
-  <path d="M24 18C27.314 18 30 20.686 30 24" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.9"/>
-  <!-- Power button arc (bottom semi-circle) -->
-  <path d="M15 28a13 13 0 1 0 18 0" stroke="#FFD700" stroke-width="3" stroke-linecap="round" fill="none"/>
-  <!-- Power button line -->
-  <line x1="24" y1="20" x2="24" y2="30" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Broadcast signal arcs -->
+  <path d="M6 16a10 10 0 0 1 10-10" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none" opacity="0.45"/>
+  <path d="M10 16a6 6 0 0 1 6-6" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none" opacity="0.7"/>
+  <path d="M26 16a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none" opacity="0.45"/>
+  <path d="M22 16a6 6 0 0 0-6-6" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none" opacity="0.7"/>
+  <!-- Center dot -->
+  <circle cx="16" cy="16" r="3" fill="currentColor"/>
+  <!-- Bottom wave line (frequency) -->
+  <path d="M7 24c3-4 5 4 9 0s6-4 9 0" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/>
 </svg>
