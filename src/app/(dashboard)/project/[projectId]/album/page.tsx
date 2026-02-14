@@ -62,30 +62,24 @@ export default function AlbumPage() {
     if (!projectId) return;
     setMarkError("");
 
-    // Ensure fresh auth token before update
+    // Get auth token to pass to API route
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setMarkError("לא מחובר — יש להתחבר מחדש");
-      return;
-    }
 
-    // .select() forces Supabase to return affected rows
-    // Without it, RLS silent blocks return error:null — indistinguishable from success
-    const { data, error } = await supabase
-      .from("projects")
-      .update({ status: "completed" })
-      .eq("id", projectId)
-      .select();
+    const res = await fetch("/api/complete-project", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {}),
+      },
+      body: JSON.stringify({ projectId }),
+    });
 
-    if (error) {
-      console.error("Supabase update error:", error);
-      setMarkError("שגיאה בשמירה: " + error.message);
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      console.error("Update returned 0 rows. projectId:", projectId, "session uid:", session.user.id);
-      setMarkError("לא ניתן לעדכן — נסה לרענן את הדף");
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      console.error("complete-project API error:", res.status, body);
+      setMarkError(body.error || "שגיאה בשמירה");
       return;
     }
 
