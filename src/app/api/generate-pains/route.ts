@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callClaude } from "@/lib/claude";
+import { callAI } from "@/lib/ai";
 import { buildPainsPrompt } from "@/lib/prompts";
 
 export async function POST(req: NextRequest) {
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = buildPainsPrompt(strategyDocument, selectedNiche);
-    const painAnalysis = await callClaude("", prompt);
+    const painAnalysis = await callAI("", prompt);
 
     return NextResponse.json({ painAnalysis });
   } catch (error) {

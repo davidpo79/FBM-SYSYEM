@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callClaude } from "@/lib/claude";
+import { callAI } from "@/lib/ai";
 import { buildStrategyPrompt } from "@/lib/prompts";
 
 export async function POST(req: NextRequest) {
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = buildStrategyPrompt({ userName, answers });
-    const strategy = await callClaude("", prompt);
+    const strategy = await callAI("", prompt);
 
     return NextResponse.json({ strategy });
   } catch (error: unknown) {

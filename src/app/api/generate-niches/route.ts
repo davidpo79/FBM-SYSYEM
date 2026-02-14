@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callClaude } from "@/lib/claude";
+import { callAI } from "@/lib/ai";
 import { buildNichesPrompt } from "@/lib/prompts";
 
 export async function POST(req: NextRequest) {
@@ -14,12 +14,12 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = buildNichesPrompt(strategyDocument);
-    const result = await callClaude("", prompt, 4000);
+    const result = await callAI("", prompt, 4000);
 
     // Parse the JSON response
     const jsonMatch = result.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error("Failed to parse JSON from Claude response");
+      throw new Error("Failed to parse JSON from AI response");
     }
 
     const niches = JSON.parse(jsonMatch[0]);

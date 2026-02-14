@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! });
 
-export async function callClaude(
+export async function callAI(
   systemPrompt: string,
   userMessage: string,
   _maxTokens = 8000,

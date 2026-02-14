@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import CreativeEditor from "@/components/creatives/CreativeEditor";
@@ -35,6 +35,35 @@ type PipelineStep =
   | "creatives"
   | "done"
   | "error";
+
+/* ──────────────── countdown helper ──────────────── */
+
+function CountdownTimer({ seconds }: { seconds: number }) {
+  const [remaining, setRemaining] = useState(seconds);
+  const startRef = useRef(Date.now());
+
+  useEffect(() => {
+    startRef.current = Date.now();
+    setRemaining(seconds);
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
+      const left = Math.max(0, seconds - elapsed);
+      setRemaining(left);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [seconds]);
+
+  return (
+    <div className="inline-flex flex-col items-center">
+      <div className="text-4xl font-bold text-blue-600 tabular-nums">
+        {remaining > 0 ? `${remaining}` : "..."}
+      </div>
+      <span className="text-sm text-gray-500 mt-1">
+        {remaining > 0 ? "שניות לסיום המשוער" : "עוד רגע..."}
+      </span>
+    </div>
+  );
+}
 
 /* ──────────────── component ──────────────── */
 
@@ -401,7 +430,7 @@ export default function ResultsPage() {
       {/* ── loading state ── */}
       {step === "loading" && (
         <div className="text-center py-20">
-          <div className="inline-block w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <CountdownTimer seconds={5} />
           <p className="mt-4 text-gray-600 dark:text-gray-400">טוען פרויקט...</p>
         </div>
       )}
@@ -409,7 +438,7 @@ export default function ResultsPage() {
       {/* ── step 1: strategy generating ── */}
       {step === "strategy" && (
         <div className="text-center py-20">
-          <div className="inline-block w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <CountdownTimer seconds={30} />
           <h2 className="text-xl font-bold mt-4 text-gray-900 dark:text-gray-100">
             יוצר אסטרטגיית FBM...
           </h2>
@@ -435,7 +464,7 @@ export default function ResultsPage() {
                 disabled={downloading === "strategy.pdf"}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
               >
-                {downloading === "strategy.pdf" ? "מייצא..." : "PDF הורד כ-"}
+                {downloading === "strategy.pdf" ? "מייצא..." : "הורד כ-PDF"}
               </button>
             </div>
           </details>
@@ -445,7 +474,7 @@ export default function ResultsPage() {
       {/* ── step 2: niches selection ── */}
       {step === "niches" && niches.length === 0 && (
         <div className="text-center py-12">
-          <div className="inline-block w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <CountdownTimer seconds={15} />
           <p className="mt-4 text-gray-600 dark:text-gray-400">
             מזהה נישות מושלמות...
           </p>
@@ -491,7 +520,7 @@ export default function ResultsPage() {
       {/* ── step 3: pains generating ── */}
       {step === "pains" && (
         <div className="text-center py-12">
-          <div className="inline-block w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <CountdownTimer seconds={20} />
           <h2 className="text-xl font-bold mt-4 text-gray-900 dark:text-gray-100">
             מנתח כאבים של &quot;{selectedNiche?.name}&quot;...
           </h2>
@@ -519,7 +548,7 @@ export default function ResultsPage() {
                 disabled={downloading === "pain-analysis.pdf"}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
               >
-                {downloading === "pain-analysis.pdf" ? "מייצא..." : "PDF הורד כ-"}
+                {downloading === "pain-analysis.pdf" ? "מייצא..." : "הורד כ-PDF"}
               </button>
             </div>
           </details>
@@ -529,7 +558,7 @@ export default function ResultsPage() {
       {/* ── step 4: scripts generating ── */}
       {step === "scripts" && (
         <div className="text-center py-12">
-          <div className="inline-block w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <CountdownTimer seconds={25} />
           <h2 className="text-xl font-bold mt-4 text-gray-900 dark:text-gray-100">
             כותב תסריטים...
           </h2>
@@ -549,7 +578,7 @@ export default function ResultsPage() {
               disabled={downloading === "scripts.pdf"}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
             >
-              {downloading === "scripts.pdf" ? "מייצא..." : "PDF הורד תסריטים"}
+              {downloading === "scripts.pdf" ? "מייצא..." : "הורד תסריטים כ-PDF"}
             </button>
           </div>
 
@@ -622,7 +651,7 @@ export default function ResultsPage() {
                 {/* loading suggestion */}
                 {activeScriptIdx === idx && !suggestion && (
                   <div className="p-4 border-t border-gray-200 dark:border-gray-800 text-center">
-                    <div className="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    <CountdownTimer seconds={10} />
                     <p className="text-sm text-gray-500 mt-2">
                       FBM Studio מנתח את התסריט ומציע creative...
                     </p>
@@ -651,7 +680,7 @@ export default function ResultsPage() {
               disabled={downloading === "zip"}
               className="inline-flex items-center gap-2 px-6 py-3 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all disabled:opacity-50 cursor-pointer"
             >
-              {downloading === "zip" ? "מכין ZIP..." : "ZIP הורד הכל כ-"}
+              {downloading === "zip" ? "מכין ZIP..." : "הורד הכל כ-ZIP"}
             </button>
           </div>
         </section>

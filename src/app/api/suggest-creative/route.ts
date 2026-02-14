@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callClaude } from "@/lib/claude";
+import { callAI } from "@/lib/ai";
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 }
 `;
 
-    const result = await callClaude("", prompt, 1000);
+    const result = await callAI("", prompt, 1000);
 
     const jsonMatch = result.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
