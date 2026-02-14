@@ -114,7 +114,13 @@ export default function CreativePage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(config),
         });
-        const json = await res.json();
+        const text = await res.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          throw new Error(`שגיאת שרת (${res.status}): ${text.slice(0, 100)}`);
+        }
         if (!res.ok || !json.success) {
           throw new Error(json.error || "Generation failed");
         }
@@ -273,6 +279,12 @@ export default function CreativePage() {
           <p className="text-[var(--text-secondary)] mt-2">
             כל התסריטים והקריאטיבים נוצרו בהצלחה
           </p>
+          <button
+            onClick={() => router.push(`/project/${projectId}/album`)}
+            className="mt-4 px-8 py-3 text-lg font-bold bg-[var(--gold)] text-white rounded-[12px] hover:opacity-90 transition-opacity cursor-pointer"
+          >
+            עבור לאלבום הקריאטיבים
+          </button>
         </div>
       )}
 

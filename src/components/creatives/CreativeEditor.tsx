@@ -154,7 +154,9 @@ export default function CreativeEditor({
         showProfile: showProfileUpload,
         designVision: designVision || undefined,
         ...(showProfileUpload && {
-          profileImage: profileImage || undefined,
+          // Send a small flag instead of the full base64 data to avoid exceeding body size limits.
+          // The API only checks !!profileImage to decide the prompt text.
+          profileImage: profileImage ? "uploaded" : undefined,
           displayName,
           displayRole,
         }),
