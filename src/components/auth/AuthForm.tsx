@@ -15,6 +15,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState(false);
 
   const isLogin = mode === "login";
 
@@ -24,22 +25,63 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setLoading(true);
 
     try {
-      const { error: authError } = isLogin
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
-
-      if (authError) {
-        setError(authError.message);
-        return;
+      if (isLogin) {
+        const { error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (authError) {
+          setError(authError.message);
+          return;
+        }
+        router.push("/dashboard");
+      } else {
+        const { data, error: authError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (authError) {
+          setError(authError.message);
+          return;
+        }
+        // If session exists, user is immediately logged in (no email confirmation needed)
+        if (data.session) {
+          router.push("/dashboard");
+        } else {
+          // Email confirmation required
+          setConfirmEmail(true);
+        }
       }
-
-      router.push("/dashboard");
     } catch {
       setError("אירעה שגיאה. נסה שוב.");
     } finally {
       setLoading(false);
     }
   };
+
+  if (confirmEmail) {
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-800 text-center">
+          <div className="text-5xl mb-4">📧</div>
+          <h2 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">
+            בדוק את האימייל שלך
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-6">
+            שלחנו קישור אימות ל-<strong dir="ltr">{email}</strong>.
+            <br />
+            לחץ על הקישור כדי להפעיל את החשבון.
+          </p>
+          <Link
+            href="/login"
+            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+          >
+            חזור לדף ההתחברות
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto">
