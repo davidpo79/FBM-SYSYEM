@@ -113,8 +113,10 @@ export default function CreativePage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(config),
         });
-        const json: CreativeResponse = await res.json();
-        if (!res.ok || !json.success) throw new Error("Generation failed");
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || "Generation failed");
+        }
 
         const newImage = {
           url: json.imageUrl,
@@ -127,8 +129,9 @@ export default function CreativePage() {
         });
         setModalImage(newImage);
       } catch (e) {
-        console.error("Generate creative error:", e);
-        setCreativeError("שגיאה ביצירת התמונה. נסה שוב.");
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("Generate creative error:", msg, e);
+        setCreativeError(`שגיאה ביצירת התמונה: ${msg}`);
       }
     },
     [activeScriptIdx, setGeneratedImages],

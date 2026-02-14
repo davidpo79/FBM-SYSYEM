@@ -33,9 +33,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!userInfo?.name || !userInfo?.role) {
+    if (!userInfo?.name) {
       return NextResponse.json(
-        { error: "Missing userInfo (name, role required)" },
+        { error: "Missing userInfo (name required)" },
         { status: 400 },
       );
     }

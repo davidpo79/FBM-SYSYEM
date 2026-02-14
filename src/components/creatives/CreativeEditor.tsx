@@ -43,15 +43,15 @@ interface CreativeEditorProps {
 
 /* ──────────────── Background config ──────────────── */
 
-const backgrounds: { value: BackgroundType; icon: string; label: string; gradient: string; credits: number }[] = [
-  { value: "lighthouse", icon: "\u{1F5FC}", label: "מגדלור", gradient: "linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)", credits: 1 },
-  { value: "mountain", icon: "\u26F0\uFE0F", label: "הר", gradient: "linear-gradient(135deg, #2b1055 0%, #5b3a8c 40%, #d4a843 100%)", credits: 1 },
-  { value: "path", icon: "\u{1F6E4}\uFE0F", label: "דרך", gradient: "linear-gradient(135deg, #3e2723 0%, #8d6e63 50%, #d4a843 100%)", credits: 1 },
-  { value: "office", icon: "\u{1F3E2}", label: "משרד", gradient: "linear-gradient(135deg, #e8eaf0 0%, #bdc3c7 50%, #8e99a4 100%)", credits: 1 },
-  { value: "city", icon: "\u{1F303}", label: "עיר", gradient: "linear-gradient(135deg, #141e30 0%, #243b55 50%, #4a6fa5 100%)", credits: 1 },
-  { value: "sunset", icon: "\u{1F305}", label: "שקיעה", gradient: "linear-gradient(135deg, #ee9ca7 0%, #ffdde1 30%, #f5af19 70%, #f12711 100%)", credits: 1 },
-  { value: "forest", icon: "\u{1F332}", label: "יער", gradient: "linear-gradient(135deg, #0b3d0b 0%, #1b5e20 40%, #388e3c 80%, #1b5e20 100%)", credits: 1 },
-  { value: "studio", icon: "\u{1F3A5}", label: "סטודיו", gradient: "linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 80%, #1a1a2e 100%)", credits: 1 },
+const backgrounds: { value: BackgroundType; icon: string; label: string; gradient: string }[] = [
+  { value: "lighthouse", icon: "\u{1F5FC}", label: "מגדלור", gradient: "linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)" },
+  { value: "mountain", icon: "\u26F0\uFE0F", label: "הר", gradient: "linear-gradient(135deg, #2b1055 0%, #5b3a8c 40%, #d4a843 100%)" },
+  { value: "path", icon: "\u{1F6E4}\uFE0F", label: "דרך", gradient: "linear-gradient(135deg, #3e2723 0%, #8d6e63 50%, #d4a843 100%)" },
+  { value: "office", icon: "\u{1F3E2}", label: "משרד", gradient: "linear-gradient(135deg, #e8eaf0 0%, #bdc3c7 50%, #8e99a4 100%)" },
+  { value: "city", icon: "\u{1F303}", label: "עיר", gradient: "linear-gradient(135deg, #141e30 0%, #243b55 50%, #4a6fa5 100%)" },
+  { value: "sunset", icon: "\u{1F305}", label: "שקיעה", gradient: "linear-gradient(135deg, #ee9ca7 0%, #ffdde1 30%, #f5af19 70%, #f12711 100%)" },
+  { value: "forest", icon: "\u{1F332}", label: "יער", gradient: "linear-gradient(135deg, #0b3d0b 0%, #1b5e20 40%, #388e3c 80%, #1b5e20 100%)" },
+  { value: "studio", icon: "\u{1F3A5}", label: "סטודיו", gradient: "linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 80%, #1a1a2e 100%)" },
 ];
 
 const colors: { value: ColorType; hex: string; label: string }[] = [
@@ -81,9 +81,11 @@ export default function CreativeEditor({
   onSaveLocal,
   scriptIdx = 0,
 }: CreativeEditorProps) {
+  const defaultSubtitle = `שיווק מבוסס תדר - לידים מדויקים ל${userInfo.niche}`.slice(0, 80);
   const [mainText, setMainText] = useState(suggestion.main_text);
-  const [subtitle, setSubtitle] = useState(`שיווק מבוסס תדר - לידים מדויקים ל${userInfo.niche}`);
+  const [subtitle, setSubtitle] = useState(defaultSubtitle);
   const [cta, setCta] = useState(suggestion.cta || "שלחו הודעה");
+  const [freeText, setFreeText] = useState("");
   const [background, setBackground] = useState<BackgroundType>(suggestion.background);
   const [color, setColor] = useState<ColorType>(suggestion.color);
   const [format, setFormat] = useState<FormatType>("story");
@@ -93,15 +95,24 @@ export default function CreativeEditor({
   const [isExporting, setIsExporting] = useState(false);
   const [showAiImage, setShowAiImage] = useState(false);
 
+  // Which element is currently being edited on canvas
+  const [editingField, setEditingField] = useState<"main" | "subtitle" | "cta" | "free" | null>(null);
+
   // Profile
   const [showProfileUpload, setShowProfileUpload] = useState(false);
   const [profileImage, setProfileImage] = useState<string>("");
   const [displayName, setDisplayName] = useState(userInfo.name);
-  const [displayRole, setDisplayRole] = useState(userInfo.role);
+  const [displayRole, setDisplayRole] = useState(userInfo.role || "");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Preview ref for html2canvas export
   const previewRef = useRef<HTMLDivElement>(null);
+
+  // Refs for contentEditable elements
+  const mainTextRef = useRef<HTMLHeadingElement>(null);
+  const subtitleRef = useRef<HTMLParagraphElement>(null);
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const freeTextRef = useRef<HTMLDivElement>(null);
 
   // Track changes after AI generation
   const [hasChanges, setHasChanges] = useState(false);
@@ -110,7 +121,7 @@ export default function CreativeEditor({
   useEffect(() => {
     if (hasGenerated) setHasChanges(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mainText, subtitle, cta, background, color, format, fontSize, textPosition, showProfileUpload, profileImage, displayName, displayRole]);
+  }, [mainText, subtitle, cta, freeText, background, color, format, fontSize, textPosition, showProfileUpload, profileImage, displayName, displayRole]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -123,6 +134,16 @@ export default function CreativeEditor({
   const handleRemoveImage = () => {
     setProfileImage("");
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  /* ── Sync contentEditable → state ── */
+  const handleContentEditBlur = (field: "main" | "subtitle" | "cta" | "free", ref: React.RefObject<HTMLElement | null>) => {
+    const text = ref.current?.innerText ?? "";
+    if (field === "main") setMainText(text.slice(0, 120));
+    else if (field === "subtitle") setSubtitle(text.slice(0, 80));
+    else if (field === "cta") setCta(text.slice(0, 30));
+    else if (field === "free") setFreeText(text);
+    setEditingField(null);
   };
 
   /* ── AI generation (uses credits) ── */
@@ -152,8 +173,7 @@ export default function CreativeEditor({
     setIsExporting(true);
     try {
       const el = previewRef.current;
-      const w = format === "story" ? 1080 : 1080;
-      const h = format === "story" ? 1920 : 1080;
+      const w = 1080;
       const scale = w / el.offsetWidth;
 
       const canvas = await html2canvas(el, {
@@ -166,13 +186,11 @@ export default function CreativeEditor({
 
       const dataUrl = canvas.toDataURL("image/png");
 
-      // Trigger download
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = `creative-${scriptIdx + 1}-${format}.png`;
       a.click();
 
-      // Notify parent
       onSaveLocal?.(dataUrl, scriptIdx);
     } catch (e) {
       console.error("Export error:", e);
@@ -185,19 +203,26 @@ export default function CreativeEditor({
   const bgConfig = backgrounds.find((b) => b.value === background) || backgrounds[0];
   const aiImageSrc = generatedImage?.url || generatedImage?.base64;
 
-  /* ── Font size mapping for preview ── */
   const fontSizeMap = {
     small: format === "story" ? "clamp(1rem, 3vw, 1.25rem)" : "clamp(0.875rem, 2.5vw, 1.1rem)",
     medium: format === "story" ? "clamp(1.25rem, 4vw, 1.6rem)" : "clamp(1rem, 3vw, 1.3rem)",
     large: format === "story" ? "clamp(1.5rem, 5vw, 2rem)" : "clamp(1.25rem, 3.5vw, 1.6rem)",
   };
 
-  /* ── Text position mapping ── */
   const positionMap: Record<TextPositionType, string> = {
     top: "flex-start",
     center: "center",
     bottom: "flex-end",
   };
+
+  /* ── Editable element wrapper style ── */
+  const editableStyle = (field: "main" | "subtitle" | "cta" | "free") => ({
+    outline: editingField === field ? `2px solid ${colorHex}` : "none",
+    borderRadius: "4px",
+    cursor: "text",
+    minWidth: "40px",
+    minHeight: "1em",
+  });
 
   return (
     <div dir="rtl">
@@ -216,6 +241,11 @@ export default function CreativeEditor({
           <span className="font-bold text-[var(--gold)]">Look & Feel:</span> {suggestion.look_and_feel}
         </div>
       )}
+
+      {/* Hint about direct editing */}
+      <div className="mb-4 p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-[10px] text-xs text-blue-700 dark:text-blue-300 text-center">
+        לחץ על כל טקסט בתצוגה המקדימה כדי לערוך אותו ישירות על התמונה
+      </div>
 
       {/* Two-column layout */}
       <div className="flex flex-col lg:flex-row gap-6">
@@ -242,7 +272,7 @@ export default function CreativeEditor({
               </div>
             )}
 
-            {/* Preview container - constrained size */}
+            {/* Preview container */}
             <div className={`relative ${format === "story" ? "max-h-[65vh]" : ""}`}>
               {showAiImage && aiImageSrc ? (
                 <div className={`${format === "story" ? "aspect-[9/16] max-h-[65vh]" : "aspect-square"} w-full rounded-2xl overflow-hidden border border-[var(--card-border)] bg-black`}>
@@ -254,56 +284,99 @@ export default function CreativeEditor({
                   />
                 </div>
               ) : (
-                /* Live HTML Preview */
+                /* Live HTML Preview - click to edit text directly */
                 <div
                   ref={previewRef}
-                  className={`${format === "story" ? "aspect-[9/16]" : "aspect-square"} w-full rounded-2xl overflow-hidden border border-[var(--card-border)] relative`}
+                  className={`${format === "story" ? "aspect-[9/16]" : "aspect-square"} w-full rounded-2xl overflow-hidden border-2 border-dashed border-[var(--card-border)] relative`}
                   style={{
                     background: bgConfig.gradient,
                     maxHeight: format === "story" ? "65vh" : "none",
                   }}
                 >
-                  {/* Dark overlay for text readability */}
-                  <div className="absolute inset-0 bg-black/35" />
+                  {/* Dark overlay */}
+                  <div className="absolute inset-0 bg-black/35 pointer-events-none" />
 
                   {/* Content wrapper */}
                   <div
-                    className="absolute inset-0 flex flex-col p-6"
+                    className="absolute inset-0 flex flex-col p-5"
                     style={{
                       justifyContent: positionMap[textPosition],
                       direction: "rtl",
                     }}
                   >
-                    {/* Text block */}
+                    {/* Main text block */}
                     <div
                       className="rounded-xl px-4 py-3"
                       style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
                     >
-                      {/* Main text */}
+                      {/* Main text - EDITABLE */}
                       <h2
+                        ref={mainTextRef}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onFocus={() => setEditingField("main")}
+                        onBlur={() => handleContentEditBlur("main", mainTextRef)}
                         className="font-bold leading-tight whitespace-pre-wrap"
                         style={{
                           color: colorHex,
                           fontSize: fontSizeMap[fontSize],
                           textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                          ...editableStyle("main"),
                         }}
                       >
-                        {mainText || "הטקסט הראשי כאן"}
+                        {mainText || "לחץ כאן לכתוב כותרת"}
                       </h2>
 
-                      {/* Subtitle */}
-                      {subtitle && (
-                        <p
-                          className="mt-2 opacity-90"
-                          style={{
-                            color: "#ffffff",
-                            fontSize: "clamp(0.7rem, 2vw, 0.85rem)",
-                          }}
-                        >
-                          {subtitle}
-                        </p>
-                      )}
+                      {/* Subtitle - EDITABLE */}
+                      <p
+                        ref={subtitleRef}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onFocus={() => setEditingField("subtitle")}
+                        onBlur={() => handleContentEditBlur("subtitle", subtitleRef)}
+                        className="mt-2 opacity-90"
+                        style={{
+                          color: "#ffffff",
+                          fontSize: "clamp(0.7rem, 2vw, 0.85rem)",
+                          ...editableStyle("subtitle"),
+                        }}
+                      >
+                        {subtitle || "לחץ כאן לכתוב תת-כותרת"}
+                      </p>
                     </div>
+
+                    {/* Free text area - EDITABLE */}
+                    <div
+                      ref={freeTextRef}
+                      contentEditable
+                      suppressContentEditableWarning
+                      onFocus={() => setEditingField("free")}
+                      onBlur={() => handleContentEditBlur("free", freeTextRef)}
+                      className="mt-3 px-3 py-2"
+                      style={{
+                        color: "#ffffff",
+                        fontSize: "clamp(0.75rem, 2vw, 0.9rem)",
+                        textShadow: "0 1px 4px rgba(0,0,0,0.6)",
+                        ...editableStyle("free"),
+                        minHeight: "1.5em",
+                        backgroundColor: freeText || editingField === "free" ? "rgba(0,0,0,0.25)" : "transparent",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      {freeText || (editingField === "free" ? "" : "")}
+                    </div>
+                    {!freeText && editingField !== "free" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingField("free");
+                          setTimeout(() => freeTextRef.current?.focus(), 50);
+                        }}
+                        className="self-start mt-1 px-3 py-1 text-[10px] text-white/60 border border-white/20 rounded-lg hover:text-white/90 hover:border-white/40 transition-colors cursor-pointer"
+                      >
+                        + הוסף טקסט חופשי
+                      </button>
+                    )}
 
                     {/* Spacer */}
                     <div className="flex-1 min-h-4" />
@@ -338,23 +411,38 @@ export default function CreativeEditor({
                         </div>
                       )}
 
-                      {/* CTA button */}
+                      {/* CTA button - EDITABLE */}
                       <div
+                        ref={ctaRef}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onFocus={() => setEditingField("cta")}
+                        onBlur={() => handleContentEditBlur("cta", ctaRef)}
                         className="px-5 py-2 rounded-full font-bold text-sm"
                         style={{
                           backgroundColor: colorHex,
                           color: color === "gold" ? "#1a1a1a" : "#ffffff",
+                          ...editableStyle("cta"),
                         }}
                       >
                         {cta || "שלחו הודעה"}
                       </div>
                     </div>
                   </div>
+
+                  {/* Loading overlay */}
+                  {isGenerating && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 rounded-2xl">
+                      <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                      <p className="text-white font-semibold mt-4 text-lg">יוצר תמונת AI...</p>
+                      <p className="text-white/70 text-sm mt-1">~15 שניות</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Export buttons under preview */}
+            {/* Export buttons */}
             <div className="flex gap-2">
               <button
                 onClick={handleExportPng}
@@ -377,7 +465,7 @@ export default function CreativeEditor({
         </div>
 
         {/* Right column - Editor panel */}
-        <div className="lg:w-[45%] space-y-5 max-h-[85vh] lg:overflow-y-auto lg:pl-2">
+        <div className="lg:w-[45%] space-y-4 max-h-[85vh] lg:overflow-y-auto lg:pl-2">
           {/* Format */}
           <section>
             <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
@@ -408,10 +496,13 @@ export default function CreativeEditor({
             </label>
             <textarea
               value={mainText}
-              onChange={(e) => setMainText(e.target.value)}
+              onChange={(e) => {
+                setMainText(e.target.value);
+                if (mainTextRef.current) mainTextRef.current.innerText = e.target.value;
+              }}
               placeholder="הטקסט שיופיע על התמונה..."
               maxLength={120}
-              rows={3}
+              rows={2}
               className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
             />
             <p className="text-xs text-[var(--text-muted)] mt-0.5">{mainText.length}/120</p>
@@ -425,7 +516,10 @@ export default function CreativeEditor({
             <input
               type="text"
               value={subtitle}
-              onChange={(e) => setSubtitle(e.target.value)}
+              onChange={(e) => {
+                setSubtitle(e.target.value);
+                if (subtitleRef.current) subtitleRef.current.innerText = e.target.value;
+              }}
               maxLength={80}
               placeholder="שיווק מבוסס תדר - לידים מדויקים ל..."
               className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
@@ -441,12 +535,32 @@ export default function CreativeEditor({
             <input
               type="text"
               value={cta}
-              onChange={(e) => setCta(e.target.value)}
+              onChange={(e) => {
+                setCta(e.target.value);
+                if (ctaRef.current) ctaRef.current.innerText = e.target.value;
+              }}
               maxLength={30}
               placeholder="שלחו הודעה"
               className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
             />
             <p className="text-xs text-[var(--text-muted)] mt-0.5">{cta.length}/30</p>
+          </section>
+
+          {/* Free Text */}
+          <section>
+            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+              טקסט חופשי (אופציונלי)
+            </label>
+            <textarea
+              value={freeText}
+              onChange={(e) => {
+                setFreeText(e.target.value);
+                if (freeTextRef.current) freeTextRef.current.innerText = e.target.value;
+              }}
+              placeholder="כתוב טקסט נוסף שיופיע על התמונה..."
+              rows={2}
+              className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
+            />
           </section>
 
           {/* Background */}
