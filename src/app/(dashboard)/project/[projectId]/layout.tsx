@@ -286,15 +286,7 @@ export default function ProjectLayout({
           ]}
           actions={
             <div className="flex items-center gap-2">
-              {strategy && (
-                <button
-                  onClick={() => handleDownloadAll()}
-                  disabled={downloading === "zip"}
-                  className="px-4 py-2 text-sm font-medium bg-[var(--gold)] text-white rounded-[10px] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
-                >
-                  {downloading === "zip" ? "מכין..." : "הורד הכל ZIP"}
-                </button>
-              )}
+              <FbmExpertButton />
             </div>
           }
         />
@@ -309,5 +301,54 @@ export default function ProjectLayout({
         </div>
       </div>
     </ProjectContext.Provider>
+  );
+}
+
+/* ─── FBM Expert Button (top bar) ─── */
+
+function FbmExpertButton() {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setShowTooltip((v) => !v)}
+        onBlur={() => setTimeout(() => setShowTooltip(false), 150)}
+        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[10px] cursor-pointer transition-all hover:opacity-90"
+        style={{
+          backgroundColor: "#D4A843",
+          color: "#1a1a1a",
+          boxShadow: "0 0 12px rgba(212, 168, 67, 0.4)",
+          animation: "fbm-glow 2s ease-in-out infinite alternate",
+        }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="10" rx="2" />
+          <circle cx="12" cy="5" r="4" />
+          <line x1="8" y1="16" x2="8" y2="16.01" />
+          <line x1="16" y1="16" x2="16" y2="16.01" />
+        </svg>
+        מומחה FBM אישי
+      </button>
+      {showTooltip && (
+        <div
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-2 text-xs font-medium text-white rounded-lg whitespace-nowrap z-50"
+          style={{ backgroundColor: "#1a1a1a" }}
+        >
+          בקרוב — המומחה האישי שלך
+          <div
+            className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45"
+            style={{ backgroundColor: "#1a1a1a" }}
+          />
+        </div>
+      )}
+      <style jsx>{`
+        @keyframes fbm-glow {
+          from { box-shadow: 0 0 8px rgba(212, 168, 67, 0.3); }
+          to   { box-shadow: 0 0 16px rgba(212, 168, 67, 0.6); }
+        }
+      `}</style>
+    </div>
   );
 }
