@@ -105,9 +105,10 @@ Style: Professional social media creative, cinematic atmosphere, Instagram squar
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("generate-creatives error:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("generate-creatives error:", errMsg, error);
     return NextResponse.json(
-      { error: "Failed to generate creative" },
+      { error: `Failed to generate creative: ${errMsg}` },
       { status: 500 },
     );
   }
