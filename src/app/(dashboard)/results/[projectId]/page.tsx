@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import CreativeEditor from "@/components/creatives/CreativeEditor";
 import type { CreativeSuggestion, CreativeResponse } from "@/types";
+import { exportToPdf, downloadBlob } from "@/lib/pdf-export";
+import { downloadAllAsZip } from "@/lib/zip-export";
 
 /* ──────────────── types ──────────────── */
 
@@ -270,6 +272,65 @@ export default function ResultsPage() {
     [activeScriptIdx],
   );
 
+  /* ──────────────── PDF / ZIP downloads ──────────────── */
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const handleDownloadPdf = async (title: string, content: string, filename: string) => {
+    setDownloading(filename);
+    try {
+      const blob = await exportToPdf(title, content);
+      downloadBlob(blob, filename);
+    } catch (e) {
+      console.error("PDF export error:", e);
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    setDownloading("zip");
+    try {
+      const documents = [];
+      if (strategy) {
+        documents.push({
+          title: "מסמך אסטרטגיה FBM",
+          content: strategy,
+          filename: "strategy.pdf",
+        });
+      }
+      if (painAnalysis) {
+        documents.push({
+          title: `ניתוח כאבים - ${selectedNiche?.name ?? ""}`,
+          content: painAnalysis,
+          filename: "pain-analysis.pdf",
+        });
+      }
+      if (scripts) {
+        documents.push({
+          title: "תסריטי וידאו FBM",
+          content: scripts,
+          filename: "scripts.pdf",
+        });
+      }
+
+      const images = generatedImages.map((img, i) => ({
+        url: img.url,
+        base64: img.base64,
+        filename: `creative-${i + 1}.png`,
+      }));
+
+      await downloadAllAsZip(
+        documents,
+        images,
+        `fbm-project-${project?.user_name ?? "export"}.zip`,
+      );
+    } catch (e) {
+      console.error("ZIP export error:", e);
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   /* ──────────────── progress indicator ──────────────── */
   const stepsOrder: PipelineStep[] = [
     "strategy",
@@ -368,6 +429,15 @@ export default function ResultsPage() {
             <div className="p-4 pt-0 prose dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap">
               {strategy}
             </div>
+            <div className="p-4 pt-0">
+              <button
+                onClick={() => handleDownloadPdf("מסמך אסטרטגיה FBM", strategy, "strategy.pdf")}
+                disabled={downloading === "strategy.pdf"}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {downloading === "strategy.pdf" ? "מייצא..." : "PDF הורד כ-"}
+              </button>
+            </div>
           </details>
         </section>
       )}
@@ -437,6 +507,21 @@ export default function ResultsPage() {
             <div className="p-4 pt-0 prose dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap">
               {painAnalysis}
             </div>
+            <div className="p-4 pt-0">
+              <button
+                onClick={() =>
+                  handleDownloadPdf(
+                    `ניתוח כאבים - ${selectedNiche?.name ?? ""}`,
+                    painAnalysis,
+                    "pain-analysis.pdf",
+                  )
+                }
+                disabled={downloading === "pain-analysis.pdf"}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {downloading === "pain-analysis.pdf" ? "מייצא..." : "PDF הורד כ-"}
+              </button>
+            </div>
           </details>
         </section>
       )}
@@ -455,9 +540,18 @@ export default function ResultsPage() {
       {/* ── step 5: creatives (scripts ready) ── */}
       {scripts && (
         <section className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            4. תסריטים + קריאייטיבים
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              4. תסריטים + קריאייטיבים
+            </h2>
+            <button
+              onClick={() => handleDownloadPdf("תסריטי וידאו FBM", scripts, "scripts.pdf")}
+              disabled={downloading === "scripts.pdf"}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {downloading === "scripts.pdf" ? "מייצא..." : "PDF הורד תסריטים"}
+            </button>
+          </div>
 
           {splitScripts(scripts).map((scriptText, idx) => {
             const hasImage = generatedImages.some((img) => img.scriptIdx === idx);
@@ -537,6 +631,29 @@ export default function ResultsPage() {
               </div>
             );
           })}
+        </section>
+      )}
+
+      {/* ── Download All as ZIP ── */}
+      {(strategy || painAnalysis || scripts) && step !== "loading" && step !== "strategy" && (
+        <section className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border border-blue-200 dark:border-blue-800 rounded-2xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                הורדת כל המסמכים
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                כל ה-PDFs + תמונות Creative בקובץ ZIP אחד
+              </p>
+            </div>
+            <button
+              onClick={handleDownloadAll}
+              disabled={downloading === "zip"}
+              className="inline-flex items-center gap-2 px-6 py-3 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {downloading === "zip" ? "מכין ZIP..." : "ZIP הורד הכל כ-"}
+            </button>
+          </div>
         </section>
       )}
 
