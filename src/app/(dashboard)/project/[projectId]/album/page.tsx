@@ -58,12 +58,15 @@ export default function AlbumPage() {
 
   const handleMarkComplete = async () => {
     if (!projectId) return;
-    await supabase
+    const { error } = await supabase
       .from("projects")
-      .update({ status: "completed", completed_at: new Date().toISOString() })
-      .eq("id", projectId)
-      .neq("status", "completed");
-    setIsCompleted(true);
+      .update({ status: "completed" })
+      .eq("id", projectId);
+    if (!error) {
+      setIsCompleted(true);
+    } else {
+      console.error("Failed to mark project as completed:", error);
+    }
   };
 
   const toggleSelect = (idx: number) => {
