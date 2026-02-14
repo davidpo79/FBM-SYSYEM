@@ -150,8 +150,12 @@ export default function ProjectLayout({
           selectedNiche,
           painAnalysis,
           scripts,
-          // Save URLs only (skip base64 to avoid localStorage size limits)
-          generatedImages: generatedImages.map(({ url, scriptIdx }) => ({ url, scriptIdx })),
+          // Save URLs; keep base64 only when URL is missing (upload failed fallback)
+          generatedImages: generatedImages.map(({ url, base64, scriptIdx }) => ({
+            url,
+            scriptIdx,
+            ...((!url && base64) ? { base64 } : {}),
+          })),
         };
         localStorage.setItem(`fbm-pipeline-${projectId}`, JSON.stringify(data));
       } catch (e) {

@@ -177,13 +177,28 @@ export default function CreativePage() {
               {/* Generated image */}
               {hasImage && imageForScript && (
                 <div className="p-5 border-b border-[var(--card-border)]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imageForScript.url || imageForScript.base64}
-                    alt={`קריאטיב לתסריט ${idx + 1}`}
-                    className="w-full max-w-md mx-auto rounded-[10px] shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => setModalImage(imageForScript)}
-                  />
+                  {(imageForScript.url || imageForScript.base64) ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imageForScript.url || imageForScript.base64}
+                        alt={`קריאטיב לתסריט ${idx + 1}`}
+                        className="w-full max-w-md mx-auto rounded-[10px] shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => setModalImage(imageForScript)}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                        }}
+                      />
+                      <div className="hidden w-full max-w-md mx-auto rounded-[10px] bg-[var(--content-bg)] border border-[var(--card-border)] p-8 text-center">
+                        <p className="text-[var(--text-muted)] text-sm">התמונה לא זמינה - צור מחדש</p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full max-w-md mx-auto rounded-[10px] bg-[var(--content-bg)] border border-[var(--card-border)] p-8 text-center">
+                      <p className="text-[var(--text-muted)] text-sm">התמונה לא זמינה - צור מחדש</p>
+                    </div>
+                  )}
                   <div className="flex items-center justify-center gap-3 mt-3">
                     <button
                       onClick={() => setModalImage(imageForScript)}
@@ -191,13 +206,15 @@ export default function CreativePage() {
                     >
                       הגדל תמונה
                     </button>
-                    <a
-                      href={imageForScript.url || imageForScript.base64}
-                      download={`creative-${idx + 1}.png`}
-                      className="px-4 py-2 text-sm font-medium bg-[var(--success)] text-white rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
-                    >
-                      הורד תמונה
-                    </a>
+                    {(imageForScript.url || imageForScript.base64) && (
+                      <a
+                        href={imageForScript.url || imageForScript.base64}
+                        download={`creative-${idx + 1}.png`}
+                        className="px-4 py-2 text-sm font-medium bg-[var(--success)] text-white rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
+                      >
+                        הורד תמונה
+                      </a>
+                    )}
                   </div>
                 </div>
               )}
