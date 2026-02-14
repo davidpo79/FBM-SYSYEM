@@ -6,7 +6,6 @@ import type { CreativeConfig, CreativeResponse } from "@/types";
 
 /**
  * Composite a circular profile photo onto the bottom-center of the generated image.
- * The profile photo is placed below the CTA button area, with the name/role drawn by Gemini.
  */
 async function compositeProfilePhoto(
   imageBase64: string,
@@ -23,38 +22,44 @@ async function compositeProfilePhoto(
   const imgW = meta.width || 1080;
   const imgH = meta.height || 1920;
 
-  // Profile circle size: ~8% of image width
-  const circleSize = Math.round(imgW * 0.08);
-  const borderWidth = Math.round(circleSize * 0.06);
+  // Profile circle size: ~10% of image width, with visible border
+  const circleSize = Math.round(imgW * 0.10);
+  const borderWidth = Math.max(4, Math.round(circleSize * 0.08));
   const outerSize = circleSize + borderWidth * 2;
+  const r = circleSize / 2;
+  const outerR = outerSize / 2;
 
-  // Resize profile image to circle
+  // Step 1: Resize profile photo to fit the circle
   const resizedProfile = await sharp(profileBuf)
     .resize(circleSize, circleSize, { fit: "cover" })
-    .toBuffer();
-
-  // Create circular mask
-  const circleMask = Buffer.from(
-    `<svg width="${circleSize}" height="${circleSize}">
-      <circle cx="${circleSize / 2}" cy="${circleSize / 2}" r="${circleSize / 2}" fill="white"/>
-    </svg>`,
-  );
-
-  const circularPhoto = await sharp(resizedProfile)
-    .composite([{ input: circleMask, blend: "dest-in" }])
+    .ensureAlpha()
     .png()
     .toBuffer();
 
-  // Create border ring
-  const borderRing = Buffer.from(
-    `<svg width="${outerSize}" height="${outerSize}">
-      <circle cx="${outerSize / 2}" cy="${outerSize / 2}" r="${outerSize / 2}" fill="${colorHex}"/>
-      <circle cx="${outerSize / 2}" cy="${outerSize / 2}" r="${outerSize / 2 - borderWidth}" fill="none"/>
+  // Step 2: Create a circular mask (white circle on transparent background)
+  const circleMaskSvg = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${circleSize}" height="${circleSize}">
+      <circle cx="${r}" cy="${r}" r="${r}" fill="white"/>
     </svg>`,
   );
 
-  // Combine border ring + circular photo
-  const profileWithBorder = await sharp(borderRing)
+  // Apply circular mask to the profile photo
+  const circularPhoto = await sharp(resizedProfile)
+    .composite([{ input: circleMaskSvg, blend: "dest-in" }])
+    .png()
+    .toBuffer();
+
+  // Step 3: Create the colored border circle (full colored disc)
+  const borderDiscSvg = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${outerSize}" height="${outerSize}">
+      <circle cx="${outerR}" cy="${outerR}" r="${outerR}" fill="${colorHex}"/>
+    </svg>`,
+  );
+
+  // Convert border SVG to PNG, then composite the circular photo on top
+  const borderDisc = await sharp(borderDiscSvg).png().toBuffer();
+
+  const profileWithBorder = await sharp(borderDisc)
     .composite([
       {
         input: circularPhoto,
@@ -65,9 +70,9 @@ async function compositeProfilePhoto(
     .png()
     .toBuffer();
 
-  // Position: bottom center, ~3% from bottom
+  // Step 4: Position at bottom center, ~4% from bottom
   const left = Math.round((imgW - outerSize) / 2);
-  const top = Math.round(imgH - outerSize - imgH * 0.03);
+  const top = Math.round(imgH - outerSize - imgH * 0.04);
 
   // Composite onto the main image
   const result = await sharp(imageBuf)
@@ -202,11 +207,14 @@ ${includeProfile ? "- For the person section use ONLY a simple flat circular sil
 
     // Composite the real profile photo onto the AI image if provided
     let imageBase64 = rawBase64;
+    console.log("[composite] includeProfile:", includeProfile, "hasProfileImage:", hasProfileImage, "profileImage type:", typeof profileImage, "starts with data:", typeof profileImage === "string" && profileImage.startsWith("data:"), "profileImage length:", typeof profileImage === "string" ? profileImage.length : 0);
     if (includeProfile && hasProfileImage && typeof profileImage === "string" && profileImage.startsWith("data:")) {
       try {
+        console.log("[composite] Starting profile photo compositing...");
         imageBase64 = await compositeProfilePhoto(rawBase64, profileImage, colorHex);
+        console.log("[composite] Profile photo composited successfully");
       } catch (compErr) {
-        console.error("Profile composite error (using original):", compErr);
+        console.error("[composite] Profile composite error (using original):", compErr);
         // Fall back to the original image without compositing
       }
     }
