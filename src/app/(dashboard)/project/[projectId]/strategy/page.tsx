@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "../layout";
+import MarkdownContent from "@/components/MarkdownContent";
 
 function CountdownTimer({ seconds }: { seconds: number }) {
   const [remaining, setRemaining] = useState(seconds);
@@ -148,8 +149,8 @@ export default function StrategyPage() {
                 מסמך אסטרטגיה {strategyApproved && <span className="text-[var(--success)] text-base font-medium mr-2">(אושר)</span>}
               </h2>
             </div>
-            <div className="p-6 prose max-w-none text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-primary)]">
-              {strategy}
+            <div className="p-6">
+              <MarkdownContent content={strategy} />
             </div>
           </div>
 

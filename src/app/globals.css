@@ -76,3 +76,156 @@ body {
 .gold-glow {
   box-shadow: 0 0 20px var(--gold-glow), 0 0 40px rgba(212, 168, 67, 0.1);
 }
+
+/* ──────────────── Markdown Content ──────────────── */
+
+.markdown-content {
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+}
+
+.markdown-content h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--gold);
+  color: var(--text-primary);
+}
+.markdown-content h1:first-child {
+  margin-top: 0;
+}
+
+.markdown-content h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+  color: var(--gold);
+}
+
+.markdown-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.markdown-content h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+  color: var(--text-secondary);
+}
+
+.markdown-content p {
+  margin-bottom: 0.75rem;
+}
+
+.markdown-content strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.markdown-content em {
+  font-style: italic;
+}
+
+/* Lists */
+.markdown-content ul {
+  list-style-type: disc;
+  padding-inline-start: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+  padding-inline-start: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-content li > ul,
+.markdown-content li > ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+
+/* Tables */
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  font-size: 0.8125rem;
+}
+
+.markdown-content thead {
+  background: var(--gold);
+  color: #fff;
+}
+
+.markdown-content thead th {
+  padding: 0.625rem 0.75rem;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.markdown-content tbody tr {
+  border-bottom: 1px solid var(--card-border);
+}
+
+.markdown-content tbody tr:nth-child(even) {
+  background: rgba(248, 249, 252, 0.6);
+}
+
+.markdown-content tbody tr:hover {
+  background: var(--gold-soft);
+}
+
+.markdown-content tbody td {
+  padding: 0.5rem 0.75rem;
+  text-align: right;
+  vertical-align: top;
+}
+
+/* Blockquotes */
+.markdown-content blockquote {
+  border-right: 4px solid var(--gold);
+  padding: 0.5rem 1rem;
+  margin: 0.75rem 0;
+  background: var(--gold-soft);
+  border-radius: 0 8px 8px 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.markdown-content blockquote p {
+  margin-bottom: 0;
+}
+
+/* Horizontal rule */
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--card-border);
+  margin: 1.5rem 0;
+}
+
+/* Inline code */
+.markdown-content code {
+  background: rgba(212, 168, 67, 0.1);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+}

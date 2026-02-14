@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
+import MarkdownContent from "@/components/MarkdownContent";
 
 function CountdownTimer({ seconds }: { seconds: number }) {
   const [remaining, setRemaining] = useState(seconds);
@@ -130,8 +131,8 @@ export default function PainsPage() {
             {downloading === "pain-analysis.pdf" ? "מייצא..." : "הורד כ-PDF"}
           </button>
         </div>
-        <div className="p-6 prose max-w-none text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-primary)]">
-          {painAnalysis}
+        <div className="p-6">
+          <MarkdownContent content={painAnalysis} />
         </div>
       </div>
 
