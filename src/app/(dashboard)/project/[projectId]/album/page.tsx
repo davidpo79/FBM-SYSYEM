@@ -26,16 +26,25 @@ export default function AlbumPage() {
   const [downloading, setDownloading] = useState(false);
   const markedComplete = useRef(false);
 
-  // Mark project as completed on first visit
+  // Mark project as completed when there are images
   useEffect(() => {
     if (markedComplete.current || !project) return;
+    if (generatedImages.length === 0) return;
     markedComplete.current = true;
     supabase
       .from("projects")
-      .update({ status: "completed" })
+      .update({ status: "completed", completed_at: new Date().toISOString() })
       .eq("id", projectId)
       .then(() => {});
-  }, [project, projectId]);
+  }, [project, projectId, generatedImages.length]);
+
+  const handleMarkComplete = async () => {
+    await supabase
+      .from("projects")
+      .update({ status: "completed", completed_at: new Date().toISOString() })
+      .eq("id", projectId);
+    markedComplete.current = true;
+  };
 
   const toggleSelect = (idx: number) => {
     setSelectedIds((prev) => {
@@ -154,7 +163,25 @@ export default function AlbumPage() {
         <div className="lg:w-[60%]">
           {generatedImages.length === 0 ? (
             <div className="bg-[var(--card-bg)] border-2 border-dashed border-[var(--card-border)] rounded-[16px] p-12 text-center">
-              <p className="text-[var(--text-muted)]">עדיין לא נוצרו קריאטיבים</p>
+              <p className="text-[var(--text-muted)] mb-2">עדיין לא נוצרו קריאטיבים.</p>
+              <p className="text-[var(--text-muted)] text-sm mb-6">
+                חזור לשלב הקריאייטיב ולחץ על יצירת תמונות
+              </p>
+              {!markedComplete.current && (
+                <>
+                  <div className="text-[var(--text-muted)] text-xs mb-4">— או —</div>
+                  <button
+                    type="button"
+                    onClick={handleMarkComplete}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--success)] text-white font-semibold rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    סמן פרויקט כהושלם בכל זאת
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <>
