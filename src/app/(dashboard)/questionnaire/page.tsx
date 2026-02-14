@@ -93,7 +93,7 @@ export default function QuestionnairePage() {
         .from("projects")
         .insert({
           user_id: user.id,
-          name: answers[1]?.slice(0, 60) || "פרויקט חדש",
+          name: answers["1"]?.slice(0, 60) || "פרויקט חדש",
           answers: answersArray,
           status: "pending",
         })
