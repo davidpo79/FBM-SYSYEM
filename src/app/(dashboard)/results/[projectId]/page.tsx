@@ -414,7 +414,7 @@ export default function ResultsPage() {
             יוצר אסטרטגיית FBM...
           </h2>
           <p className="text-gray-500 mt-2">
-            Claude מנתח את התשובות שלך ובונה מסמך אסטרטגיה מותאם אישית
+            FBM Studio מנתח את התשובות שלך ובונה מסמך אסטרטגיה מותאם אישית
           </p>
         </div>
       )}
@@ -458,7 +458,7 @@ export default function ResultsPage() {
             2. בחר נישה
           </h2>
           <p className="text-gray-500 mb-4">
-            Claude זיהה 3 נישות שמתאימות לתדר שלך. בחר את הנישה שהכי מדברת אליך:
+            FBM Studio זיהה 3 נישות שמתאימות לתדר שלך. בחר את הנישה שהכי מדברת אליך:
           </p>
           <div className="grid gap-4">
             {niches.map((niche, i) => (
@@ -624,7 +624,7 @@ export default function ResultsPage() {
                   <div className="p-4 border-t border-gray-200 dark:border-gray-800 text-center">
                     <div className="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                     <p className="text-sm text-gray-500 mt-2">
-                      Claude מנתח את התסריט ומציע creative...
+                      FBM Studio מנתח את התסריט ומציע creative...
                     </p>
                   </div>
                 )}
