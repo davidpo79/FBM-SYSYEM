@@ -18,6 +18,7 @@ export default function DashboardLayout({
   const [projectCount, setProjectCount] = useState(0);
   const [projectName, setProjectName] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [albumCount, setAlbumCount] = useState(0);
 
   // Extract projectId from URL if on a project page
   const projectIdMatch = pathname.match(/\/project\/([^/]+)/);
@@ -63,6 +64,27 @@ export default function DashboardLayout({
       });
   }, [activeProjectId]);
 
+  // Read album count from localStorage
+  useEffect(() => {
+    if (!activeProjectId) { setAlbumCount(0); return; }
+    const readCount = () => {
+      try {
+        const saved = localStorage.getItem(`album_${activeProjectId}`);
+        if (saved) {
+          const arr = JSON.parse(saved);
+          setAlbumCount(Array.isArray(arr) ? arr.length : 0);
+        } else {
+          setAlbumCount(0);
+        }
+      } catch { setAlbumCount(0); }
+    };
+    readCount();
+    // Re-read on focus and storage changes
+    window.addEventListener("focus", readCount);
+    window.addEventListener("storage", readCount);
+    return () => { window.removeEventListener("focus", readCount); window.removeEventListener("storage", readCount); };
+  }, [activeProjectId, pathname]);
+
   // Close mobile sidebar on route change
   useEffect(() => {
     setSidebarOpen(false);
@@ -98,6 +120,7 @@ export default function DashboardLayout({
         projectId={activeProjectId}
         projectName={projectName}
         projectCount={projectCount}
+        albumCount={albumCount}
         onLogout={handleLogout}
       />
 
@@ -130,6 +153,7 @@ export default function DashboardLayout({
               projectId={activeProjectId}
               projectName={projectName}
               projectCount={projectCount}
+              albumCount={albumCount}
               onLogout={handleLogout}
             />
           </aside>
@@ -163,12 +187,14 @@ function MobileSidebarContent({
   projectId,
   projectName,
   projectCount = 0,
+  albumCount = 0,
   onLogout,
 }: {
   userEmail: string;
   projectId?: string | null;
   projectName?: string;
   projectCount?: number;
+  albumCount?: number;
   onLogout: () => void;
 }) {
   const pathname = usePathname();
@@ -187,7 +213,7 @@ function MobileSidebarContent({
         { href: `/project/${projectId}/pains`, label: "ניתוח כאבים", emoji: "\u{1F494}" },
         { href: `/project/${projectId}/scripts`, label: "תסריטים", emoji: "\u{1F4DD}" },
         { href: `/project/${projectId}/creative`, label: "קריאייטיב", emoji: "\u{1F3A8}" },
-        { href: `/project/${projectId}/album`, label: "אלבום וסיכום", emoji: "\u{1F4F8}" },
+        { href: `/project/${projectId}/album`, label: "אלבום וסיכום", emoji: "\u{1F4F8}", badge: albumCount > 0 ? albumCount : undefined },
       ]
     : [];
 
@@ -259,6 +285,14 @@ function MobileSidebarContent({
                 >
                   <span className="text-base">{item.emoji}</span>
                   <span className="flex-1">{item.label}</span>
+                  {item.badge !== undefined && (
+                    <span
+                      className="text-[10px] min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-bold"
+                      style={{ backgroundColor: "rgba(212, 168, 67, 0.2)", color: "#D4A843" }}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
                 </a>
               ))}
             </div>

@@ -10,6 +10,7 @@ interface SidebarProps {
   projectId?: string | null;
   projectName?: string;
   projectCount?: number;
+  albumCount?: number;
   onLogout: () => void;
 }
 
@@ -19,6 +20,7 @@ export default function Sidebar({
   projectId,
   projectName,
   projectCount = 0,
+  albumCount = 0,
   onLogout,
 }: SidebarProps) {
   const pathname = usePathname();
@@ -37,7 +39,7 @@ export default function Sidebar({
         { href: `/project/${projectId}/pains`, label: "ניתוח כאבים", emoji: "\u{1F494}" },
         { href: `/project/${projectId}/scripts`, label: "תסריטים", emoji: "\u{1F4DD}" },
         { href: `/project/${projectId}/creative`, label: "קריאייטיב", emoji: "\u{1F3A8}" },
-        { href: `/project/${projectId}/album`, label: "אלבום וסיכום", emoji: "\u{1F4F8}" },
+        { href: `/project/${projectId}/album`, label: "אלבום וסיכום", emoji: "\u{1F4F8}", badge: albumCount > 0 ? albumCount : undefined },
       ]
     : [];
 
@@ -166,6 +168,14 @@ export default function Sidebar({
                   )}
                   <span className="text-base">{item.emoji}</span>
                   <span className="flex-1">{item.label}</span>
+                  {item.badge !== undefined && (
+                    <span
+                      className="text-[10px] min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-bold"
+                      style={{ backgroundColor: "rgba(212, 168, 67, 0.2)", color: "#D4A843" }}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>

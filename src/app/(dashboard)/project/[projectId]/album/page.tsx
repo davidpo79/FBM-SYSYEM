@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useProject } from "../layout";
 import { supabase } from "@/lib/supabase";
 import JSZip from "jszip";
@@ -9,28 +9,47 @@ import { exportToPdf } from "@/lib/pdf-export";
 import { downloadBlob } from "@/lib/pdf-export";
 import FBMLogo from "@/components/FBMLogo";
 
+type AlbumImage = { url: string; base64?: string; scriptIdx: number };
+
 export default function AlbumPage() {
+  const router = useRouter();
   const { projectId } = useParams<{ projectId: string }>();
   const {
     project,
     strategy,
     strategyApproved,
     selectedNiche,
-    niches,
     painAnalysis,
     scripts,
     generatedImages,
   } = useProject();
 
-  // Load heart selections from creative page
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => {
+  // Load album images from the new album_${projectId} localStorage key
+  const [albumImages, setAlbumImages] = useState<AlbumImage[]>(() => {
     try {
-      const saved = localStorage.getItem(`album_selections_${projectId}`);
-      return saved ? new Set(JSON.parse(saved) as number[]) : new Set();
-    } catch { return new Set(); }
+      const saved = localStorage.getItem(`album_${projectId}`);
+      return saved ? (JSON.parse(saved) as AlbumImage[]) : [];
+    } catch {
+      return [];
+    }
   });
+
+  // Selection state for download actions
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [downloading, setDownloading] = useState(false);
   const markedComplete = useRef(false);
+
+  // Re-read album images when page gains focus (in case user added from creative page)
+  useEffect(() => {
+    const handleFocus = () => {
+      try {
+        const saved = localStorage.getItem(`album_${projectId}`);
+        if (saved) setAlbumImages(JSON.parse(saved) as AlbumImage[]);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [projectId]);
 
   // Mark project as completed when there are images
   useEffect(() => {
@@ -62,22 +81,25 @@ export default function AlbumPage() {
   };
 
   const selectAll = () => {
-    if (selectedIds.size === generatedImages.length) {
+    if (selectedIds.size === displayImages.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(generatedImages.map((_, i) => i)));
+      setSelectedIds(new Set(displayImages.map((_, i) => i)));
     }
   };
 
+  // Use album images if available, otherwise fall back to generatedImages
+  const displayImages: AlbumImage[] = albumImages.length > 0 ? albumImages : generatedImages;
+
   // Download single image
-  const handleDownloadSingle = useCallback(async (img: { url: string; base64?: string }, idx: number) => {
+  const handleDownloadSingle = useCallback(async (img: AlbumImage, idx: number) => {
     try {
-      const src = img.url || img.base64;
+      const src = img.base64 || img.url;
       if (!src) return;
 
-      if (img.base64?.startsWith("data:")) {
+      if (src.startsWith("data:")) {
         const a = document.createElement("a");
-        a.href = img.base64;
+        a.href = src;
         a.download = `creative-${idx + 1}.png`;
         a.click();
         return;
@@ -112,12 +134,12 @@ export default function AlbumPage() {
         docsFolder.file("scripts.pdf", pdfBlob);
       }
 
-      // Add selected images
+      // Add selected images (or all if none selected)
       const imgFolder = zip.folder("creatives");
       if (imgFolder) {
         const imagesToDownload = selectedIds.size > 0
-          ? generatedImages.filter((_, i) => selectedIds.has(i))
-          : generatedImages;
+          ? displayImages.filter((_, i) => selectedIds.has(i))
+          : displayImages;
 
         for (let i = 0; i < imagesToDownload.length; i++) {
           const img = imagesToDownload[i];
@@ -141,12 +163,73 @@ export default function AlbumPage() {
     } finally {
       setDownloading(false);
     }
-  }, [selectedIds, generatedImages, strategy, painAnalysis, scripts, selectedNiche, project]);
+  }, [selectedIds, displayImages, strategy, painAnalysis, scripts, selectedNiche, project]);
+
+  // Export summary PDF
+  const handleExportSummaryPdf = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const sections: string[] = [];
+      sections.push(`# סיכום פרויקט FBM — ${project?.user_name ?? ""}\n`);
+      if (strategy) {
+        sections.push(`## אסטרטגיה\n${strategy.slice(0, 500)}...\n`);
+      }
+      if (selectedNiche) {
+        sections.push(`## נישה שנבחרה\n${selectedNiche.name}\n${selectedNiche.why_perfect_match}\n`);
+      }
+      if (painAnalysis) {
+        sections.push(`## ניתוח כאבים\n${painAnalysis.slice(0, 500)}...\n`);
+      }
+      if (scripts) {
+        sections.push(`## תסריטים\n${scripts.slice(0, 500)}...\n`);
+      }
+      sections.push(`\n## קריאטיבים\n${displayImages.length} תמונות נוצרו\n`);
+
+      const blob = await exportToPdf("סיכום פרויקט FBM", sections.join("\n"));
+      downloadBlob(blob, `fbm-summary-${project?.user_name ?? "export"}.pdf`);
+    } catch (e) {
+      console.error("PDF export error:", e);
+    } finally {
+      setDownloading(false);
+    }
+  }, [project, strategy, selectedNiche, painAnalysis, scripts, displayImages.length]);
 
   // Split scripts for counting
   const scriptParts = scripts
     ? scripts.split(/(?=## תסריט \d)/).filter((p) => p.trim().length > 0)
     : [];
+
+  // Summary card component
+  const SummaryCard = ({
+    title,
+    href,
+    children,
+  }: {
+    title: string;
+    href: string;
+    children: React.ReactNode;
+  }) => (
+    <button
+      type="button"
+      onClick={() => router.push(href)}
+      className="w-full text-right bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-4 cursor-pointer transition-all hover:bg-[var(--gold-soft,rgba(212,168,67,0.06))] hover:border-[var(--gold)] group"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-6 h-6 rounded-full bg-[var(--success)] flex items-center justify-center flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <h4 className="text-sm font-bold text-[var(--text-primary)]">{title}</h4>
+        </div>
+        <span className="text-[var(--text-muted)] group-hover:text-[var(--gold)] transition-colors text-lg leading-none mt-0.5">
+          &larr;
+        </span>
+      </div>
+      {children}
+    </button>
+  );
 
   return (
     <div dir="rtl">
@@ -158,7 +241,9 @@ export default function AlbumPage() {
             אלבום הקריאטיבים
           </h2>
           <p className="text-sm text-[var(--text-muted)] mt-1">
-            הפרויקט הושלם! בחר תמונות להורדה או הורד הכל כ-ZIP
+            {albumImages.length > 0
+              ? `${albumImages.length} תמונות נבחרו לאלבום`
+              : "הפרויקט הושלם! בחר תמונות להורדה או הורד הכל כ-ZIP"}
           </p>
         </div>
       </div>
@@ -167,15 +252,24 @@ export default function AlbumPage() {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left - Image gallery */}
         <div className="lg:w-[60%]">
-          {generatedImages.length === 0 ? (
+          {displayImages.length === 0 ? (
             <div className="bg-[var(--card-bg)] border-2 border-dashed border-[var(--card-border)] rounded-[16px] p-12 text-center">
-              <p className="text-[var(--text-muted)] mb-2">עדיין לא נוצרו קריאטיבים.</p>
-              <p className="text-[var(--text-muted)] text-sm mb-6">
-                חזור לשלב הקריאייטיב ולחץ על יצירת תמונות
+              <p className="text-lg font-semibold text-[var(--text-secondary)] mb-2">
+                עדיין לא הוספת תמונות לאלבום
               </p>
+              <p className="text-[var(--text-muted)] text-sm mb-6">
+                חזור לשלב הקריאייטיב ולחץ על &quot;הוסף לאלבום&quot; מתחת לכל תמונה
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push(`/project/${projectId}/creative`)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--gold)] text-white font-semibold rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                חזור לקריאייטיב
+              </button>
               {!markedComplete.current && (
                 <>
-                  <div className="text-[var(--text-muted)] text-xs mb-4">— או —</div>
+                  <div className="text-[var(--text-muted)] text-xs my-4">— או —</div>
                   <button
                     type="button"
                     onClick={handleMarkComplete}
@@ -198,19 +292,19 @@ export default function AlbumPage() {
                   onClick={selectAll}
                   className="text-sm font-medium text-[var(--gold)] hover:underline cursor-pointer"
                 >
-                  {selectedIds.size === generatedImages.length ? "בטל בחירה" : "בחר הכל"}
+                  {selectedIds.size === displayImages.length ? "בטל בחירה" : "בחר הכל"}
                 </button>
                 <span className="text-xs text-[var(--text-muted)]">
                   {selectedIds.size > 0
                     ? `${selectedIds.size} תמונות נבחרו`
-                    : `${generatedImages.length} קריאטיבים`}
+                    : `${displayImages.length} קריאטיבים באלבום`}
                 </span>
               </div>
 
               {/* Image grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {generatedImages.map((img, idx) => {
-                  const src = img.url || img.base64;
+                {displayImages.map((img, idx) => {
+                  const src = img.base64 || img.url;
                   const isSelected = selectedIds.has(idx);
                   return (
                     <div
@@ -242,10 +336,20 @@ export default function AlbumPage() {
                           src={src}
                           alt={`קריאטיב ${idx + 1}`}
                           className="w-full aspect-square object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                            const parent = (e.target as HTMLImageElement).parentElement;
+                            if (parent && !parent.querySelector(".img-fallback")) {
+                              const fallback = document.createElement("div");
+                              fallback.className = "img-fallback w-full aspect-square bg-[var(--content-bg)] flex items-center justify-center";
+                              fallback.innerHTML = `<span class="text-xs text-center px-2 text-[var(--text-muted)]">תמונה לא זמינה — צור מחדש</span>`;
+                              parent.appendChild(fallback);
+                            }
+                          }}
                         />
                       ) : (
                         <div className="w-full aspect-square bg-[var(--content-bg)] flex items-center justify-center text-[var(--text-muted)]">
-                          תמונה לא זמינה
+                          <span className="text-xs text-center px-2">תמונה לא זמינה — צור מחדש</span>
                         </div>
                       )}
 
@@ -276,19 +380,22 @@ export default function AlbumPage() {
                   <button
                     onClick={handleDownloadZip}
                     disabled={downloading}
-                    className="w-full py-3.5 text-base font-bold bg-[var(--gold)] text-white rounded-[10px] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+                    className="w-full py-3.5 text-base font-bold bg-green-700 text-white rounded-[10px] hover:bg-green-800 transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     {downloading ? "מכין ZIP..." : `הורד ${selectedIds.size} תמונות נבחרות + מסמכים (ZIP)`}
                   </button>
                 )}
                 <button
-                  onClick={() => { setSelectedIds(new Set(generatedImages.map((_, i) => i))); handleDownloadZip(); }}
+                  onClick={handleExportSummaryPdf}
                   disabled={downloading}
-                  className={`w-full py-4 text-lg font-bold rounded-[12px] transition-all disabled:opacity-50 cursor-pointer ${
-                    selectedIds.size > 0
-                      ? "bg-green-600 hover:bg-green-700 text-white"
-                      : "bg-[var(--gold)] hover:opacity-90 text-white"
-                  }`}
+                  className="w-full py-3.5 text-base font-bold border-2 border-[var(--card-border)] text-[var(--text-secondary)] rounded-[12px] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {downloading ? "מייצא..." : "📄 ייצוא PDF מסכם"}
+                </button>
+                <button
+                  onClick={() => { setSelectedIds(new Set(displayImages.map((_, i) => i))); handleDownloadZip(); }}
+                  disabled={downloading}
+                  className="w-full py-4 text-lg font-bold rounded-[12px] transition-all disabled:opacity-50 cursor-pointer bg-green-700 hover:bg-green-800 text-white"
                 >
                   {downloading ? "מכין ZIP..." : "הורד הכל ב-ZIP (מסמכים + קריאטיבים)"}
                 </button>
@@ -299,7 +406,7 @@ export default function AlbumPage() {
 
         {/* Right - Project summary */}
         <div className="lg:w-[40%]">
-          <div className="sticky top-4 space-y-4">
+          <div className="sticky top-4 space-y-3">
             {/* Summary header */}
             <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5">
               <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">
@@ -308,8 +415,6 @@ export default function AlbumPage() {
               <p className="text-sm text-[var(--text-muted)]">
                 {project?.user_name}
               </p>
-
-              {/* Completion badge */}
               <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-[var(--success)] rounded-full text-sm font-semibold">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
@@ -318,100 +423,50 @@ export default function AlbumPage() {
               </div>
             </div>
 
-            {/* Strategy summary */}
+            {/* Clickable summary cards */}
             {strategyApproved && (
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-[var(--success)] flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                  <h4 className="text-sm font-bold text-[var(--text-primary)]">אסטרטגיה</h4>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] line-clamp-2">
+              <SummaryCard title="אסטרטגיה" href={`/project/${projectId}/strategy`}>
+                <p className="text-xs text-[var(--text-muted)] line-clamp-2 pr-8">
                   {strategy.slice(0, 150)}...
                 </p>
-              </div>
+              </SummaryCard>
             )}
 
-            {/* Niche */}
             {selectedNiche && (
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-[var(--success)] flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                  <h4 className="text-sm font-bold text-[var(--text-primary)]">נישה שנבחרה</h4>
-                </div>
-                <p className="text-sm font-semibold text-[var(--gold)]">{selectedNiche.name}</p>
-                <p className="text-xs text-[var(--text-muted)] mt-1">{selectedNiche.why_perfect_match}</p>
-              </div>
+              <SummaryCard title="נישה שנבחרה" href={`/project/${projectId}/niches`}>
+                <p className="text-sm font-semibold text-[var(--gold)] pr-8">{selectedNiche.name}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1 pr-8">{selectedNiche.why_perfect_match}</p>
+              </SummaryCard>
             )}
 
-            {/* Pains */}
             {painAnalysis && (
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-[var(--success)] flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                  <h4 className="text-sm font-bold text-[var(--text-primary)]">ניתוח כאבים</h4>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] line-clamp-2">
+              <SummaryCard title="ניתוח כאבים" href={`/project/${projectId}/pains`}>
+                <p className="text-xs text-[var(--text-muted)] line-clamp-2 pr-8">
                   {painAnalysis.slice(0, 150)}...
                 </p>
-              </div>
+              </SummaryCard>
             )}
 
-            {/* Scripts */}
             {scriptParts.length > 0 && (
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-[var(--success)] flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                  <h4 className="text-sm font-bold text-[var(--text-primary)]">תסריטים</h4>
-                </div>
-                <p className="text-sm text-[var(--text-secondary)]">{scriptParts.length} תסריטי וידאו נוצרו</p>
-              </div>
+              <SummaryCard title="תסריטים" href={`/project/${projectId}/scripts`}>
+                <p className="text-sm text-[var(--text-secondary)] pr-8">{scriptParts.length} תסריטי וידאו נוצרו</p>
+              </SummaryCard>
             )}
 
-            {/* Creatives stats */}
-            {generatedImages.length > 0 && (
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-[var(--success)] flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                  <h4 className="text-sm font-bold text-[var(--text-primary)]">קריאטיבים</h4>
-                </div>
-                <p className="text-sm text-[var(--text-secondary)]">{generatedImages.length} תמונות נוצרו</p>
-              </div>
+            {displayImages.length > 0 && (
+              <SummaryCard title="קריאטיבים" href={`/project/${projectId}/creative`}>
+                <p className="text-sm text-[var(--text-secondary)] pr-8">{displayImages.length} תמונות נוצרו</p>
+              </SummaryCard>
             )}
 
-            {/* Questionnaire answers */}
-            {project?.answers_map && Object.keys(project.answers_map).length > 0 && (
-              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-4">
-                <h4 className="text-sm font-bold text-[var(--text-primary)] mb-3">פרטי השאלון</h4>
-                <div className="space-y-2">
-                  {Object.entries(project.answers_map).slice(0, 6).map(([key, value]) => (
-                    <div key={key} className="text-xs">
-                      <span className="font-medium text-[var(--text-secondary)]">{key}: </span>
-                      <span className="text-[var(--text-muted)]">{String(value).slice(0, 80)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Start new project button */}
+            <button
+              type="button"
+              onClick={() => router.push("/questionnaire")}
+              className="w-full mt-4 py-4 text-base font-bold bg-[var(--card-bg)] border-2 border-dashed border-[var(--card-border)] text-[var(--text-secondary)] rounded-[16px] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-all cursor-pointer"
+            >
+              🔄 התחל פרויקט חדש
+            </button>
           </div>
         </div>
       </div>
