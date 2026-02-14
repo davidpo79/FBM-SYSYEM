@@ -31,6 +31,7 @@ export interface CreativeConfig {
   profileImage?: string;
   displayName?: string;
   displayRole?: string;
+  designVision?: string;
 }
 
 export interface CreativeResponse {

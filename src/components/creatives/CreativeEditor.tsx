@@ -36,6 +36,7 @@ interface CreativeEditorProps {
     fontSize?: FontSizeType;
     textPosition?: TextPositionType;
     format?: FormatType;
+    designVision?: string;
   }) => Promise<void>;
   onSaveLocal?: (dataUrl: string, scriptIdx: number) => void;
   scriptIdx?: number;
@@ -85,7 +86,7 @@ export default function CreativeEditor({
   const [mainText, setMainText] = useState(suggestion.main_text);
   const [subtitle, setSubtitle] = useState(defaultSubtitle);
   const [cta, setCta] = useState(suggestion.cta || "שלחו הודעה");
-  const [freeText, setFreeText] = useState("");
+  const [designVision, setDesignVision] = useState("");
   const [background, setBackground] = useState<BackgroundType>(suggestion.background);
   const [color, setColor] = useState<ColorType>(suggestion.color);
   const [format, setFormat] = useState<FormatType>("story");
@@ -96,7 +97,7 @@ export default function CreativeEditor({
   const [showAiImage, setShowAiImage] = useState(false);
 
   // Which element is currently being edited on canvas
-  const [editingField, setEditingField] = useState<"main" | "subtitle" | "cta" | "free" | null>(null);
+  const [editingField, setEditingField] = useState<"main" | "subtitle" | "cta" | null>(null);
 
   // Profile
   const [showProfileUpload, setShowProfileUpload] = useState(false);
@@ -112,7 +113,6 @@ export default function CreativeEditor({
   const mainTextRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
-  const freeTextRef = useRef<HTMLDivElement>(null);
 
   // Track changes after AI generation
   const [hasChanges, setHasChanges] = useState(false);
@@ -121,7 +121,7 @@ export default function CreativeEditor({
   useEffect(() => {
     if (hasGenerated) setHasChanges(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mainText, subtitle, cta, freeText, background, color, format, fontSize, textPosition, showProfileUpload, profileImage, displayName, displayRole]);
+  }, [mainText, subtitle, cta, designVision, background, color, format, fontSize, textPosition, showProfileUpload, profileImage, displayName, displayRole]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,12 +137,11 @@ export default function CreativeEditor({
   };
 
   /* ── Sync contentEditable → state ── */
-  const handleContentEditBlur = (field: "main" | "subtitle" | "cta" | "free", ref: React.RefObject<HTMLElement | null>) => {
+  const handleContentEditBlur = (field: "main" | "subtitle" | "cta", ref: React.RefObject<HTMLElement | null>) => {
     const text = ref.current?.innerText ?? "";
     if (field === "main") setMainText(text.slice(0, 120));
     else if (field === "subtitle") setSubtitle(text.slice(0, 80));
     else if (field === "cta") setCta(text.slice(0, 30));
-    else if (field === "free") setFreeText(text);
     setEditingField(null);
   };
 
@@ -153,6 +152,7 @@ export default function CreativeEditor({
       await onGenerate({
         mainText, subtitle, cta, background, color, userInfo, format, fontSize, textPosition,
         showProfile: showProfileUpload,
+        designVision: designVision || undefined,
         ...(showProfileUpload && {
           profileImage: profileImage || undefined,
           displayName,
@@ -216,7 +216,7 @@ export default function CreativeEditor({
   };
 
   /* ── Editable element wrapper style ── */
-  const editableStyle = (field: "main" | "subtitle" | "cta" | "free") => ({
+  const editableStyle = (field: "main" | "subtitle" | "cta") => ({
     outline: editingField === field ? `2px solid ${colorHex}` : "none",
     borderRadius: "4px",
     cursor: "text",
@@ -304,9 +304,9 @@ export default function CreativeEditor({
                       direction: "rtl",
                     }}
                   >
-                    {/* Main text block */}
+                    {/* Main text block - CENTERED */}
                     <div
-                      className="rounded-xl px-4 py-3"
+                      className="rounded-xl px-4 py-3 text-center"
                       style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
                     >
                       {/* Main text - EDITABLE */}
@@ -321,6 +321,7 @@ export default function CreativeEditor({
                           color: colorHex,
                           fontSize: fontSizeMap[fontSize],
                           textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                          textAlign: "center",
                           ...editableStyle("main"),
                         }}
                       >
@@ -338,6 +339,7 @@ export default function CreativeEditor({
                         style={{
                           color: "#ffffff",
                           fontSize: "clamp(0.7rem, 2vw, 0.85rem)",
+                          textAlign: "center",
                           ...editableStyle("subtitle"),
                         }}
                       >
@@ -345,80 +347,46 @@ export default function CreativeEditor({
                       </p>
                     </div>
 
-                    {/* Free text area - EDITABLE */}
-                    <div
-                      ref={freeTextRef}
-                      contentEditable
-                      suppressContentEditableWarning
-                      onFocus={() => setEditingField("free")}
-                      onBlur={() => handleContentEditBlur("free", freeTextRef)}
-                      className="mt-3 px-3 py-2"
-                      style={{
-                        color: "#ffffff",
-                        fontSize: "clamp(0.75rem, 2vw, 0.9rem)",
-                        textShadow: "0 1px 4px rgba(0,0,0,0.6)",
-                        ...editableStyle("free"),
-                        minHeight: "1.5em",
-                        backgroundColor: freeText || editingField === "free" ? "rgba(0,0,0,0.25)" : "transparent",
-                        borderRadius: "8px",
-                      }}
-                    >
-                      {freeText || (editingField === "free" ? "" : "")}
-                    </div>
-                    {!freeText && editingField !== "free" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingField("free");
-                          setTimeout(() => freeTextRef.current?.focus(), 50);
-                        }}
-                        className="self-start mt-1 px-3 py-1 text-[10px] text-white/60 border border-white/20 rounded-lg hover:text-white/90 hover:border-white/40 transition-colors cursor-pointer"
-                      >
-                        + הוסף טקסט חופשי
-                      </button>
-                    )}
-
                     {/* Spacer */}
                     <div className="flex-1 min-h-4" />
 
-                    {/* Bottom section: profile + CTA */}
-                    <div className="flex items-end justify-between">
-                      {/* Profile */}
-                      {showProfileUpload && (
-                        <div className="flex items-center gap-2">
-                          {profileImage ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={profileImage}
-                              alt=""
-                              className="w-10 h-10 rounded-full object-cover"
-                              style={{ border: `3px solid ${colorHex}` }}
-                            />
-                          ) : (
-                            <div
-                              className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
-                              style={{ border: `3px solid ${colorHex}` }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                              </svg>
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-white text-xs font-bold leading-tight">{displayName}</p>
-                            <p className="text-white/70 text-[10px] leading-tight">{displayRole}</p>
+                    {/* Profile (centered) */}
+                    {showProfileUpload && (
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        {profileImage ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={profileImage}
+                            alt=""
+                            className="w-10 h-10 rounded-full object-cover"
+                            style={{ border: `3px solid ${colorHex}` }}
+                          />
+                        ) : (
+                          <div
+                            className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
+                            style={{ border: `3px solid ${colorHex}` }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
                           </div>
+                        )}
+                        <div className="text-right">
+                          <p className="text-white text-xs font-bold leading-tight">{displayName}</p>
+                          <p className="text-white/70 text-[10px] leading-tight">{displayRole}</p>
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {/* CTA button - EDITABLE */}
+                    {/* CTA button - CENTERED & EDITABLE */}
+                    <div className="flex justify-center">
                       <div
                         ref={ctaRef}
                         contentEditable
                         suppressContentEditableWarning
                         onFocus={() => setEditingField("cta")}
                         onBlur={() => handleContentEditBlur("cta", ctaRef)}
-                        className="px-5 py-2 rounded-full font-bold text-sm"
+                        className="px-6 py-2.5 rounded-full font-bold text-sm text-center"
                         style={{
                           backgroundColor: colorHex,
                           color: color === "gold" ? "#1a1a1a" : "#ffffff",
@@ -546,20 +514,20 @@ export default function CreativeEditor({
             <p className="text-xs text-[var(--text-muted)] mt-0.5">{cta.length}/30</p>
           </section>
 
-          {/* Free Text */}
-          <section>
-            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-              טקסט חופשי (אופציונלי)
+          {/* Design Vision - AI instructions */}
+          <section className="border border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-950/20 rounded-[10px] p-3">
+            <label className="block text-sm font-bold text-purple-700 dark:text-purple-300 mb-1.5">
+              חזון עיצוב - הנחיות ל-AI
             </label>
+            <p className="text-[11px] text-purple-600 dark:text-purple-400 mb-2">
+              תאר לבינה המלאכותית איך אתה רוצה שהתמונה תיראה. החזון שלך יקבל עדיפות בעת יצירת התמונה.
+            </p>
             <textarea
-              value={freeText}
-              onChange={(e) => {
-                setFreeText(e.target.value);
-                if (freeTextRef.current) freeTextRef.current.innerText = e.target.value;
-              }}
-              placeholder="כתוב טקסט נוסף שיופיע על התמונה..."
-              rows={2}
-              className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
+              value={designVision}
+              onChange={(e) => setDesignVision(e.target.value)}
+              placeholder="למשל: אווירה חמה עם תאורה דרמטית, אדם עומד על במה מול קהל, צבעים כהים עם הדגשות זהב..."
+              rows={3}
+              className="w-full px-3 py-2 rounded-[10px] border border-purple-200 dark:border-purple-700 bg-white dark:bg-purple-950/30 text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm"
             />
           </section>
 

@@ -105,6 +105,7 @@ export default function CreativePage() {
       fontSize?: string;
       textPosition?: string;
       format?: string;
+      designVision?: string;
     }) => {
       setCreativeError("");
       try {

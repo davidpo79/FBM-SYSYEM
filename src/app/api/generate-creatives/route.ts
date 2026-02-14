@@ -23,8 +23,10 @@ const backgroundDescriptions: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
+    const body = await req.json();
     const { mainText, subtitle, cta, background, color, userInfo, showProfile, profileImage, displayName, displayRole, fontSize, textPosition, format } =
-      (await req.json()) as CreativeConfig;
+      body as CreativeConfig;
+    const designVision: string | undefined = body.designVision;
 
     if (!mainText || !cta || !background || !color) {
       return NextResponse.json(
@@ -65,26 +67,37 @@ BOTTOM LEFT CORNER:
       ? `- Below the headline, smaller subtitle text: "${subtitle}" in white/light color, slightly smaller font`
       : "";
 
+    const visionSection = designVision
+      ? `
+**USER'S CREATIVE VISION (HIGHEST PRIORITY):**
+The user described their vision for this image: "${designVision}"
+You MUST prioritize this vision above all other instructions. Adapt the background, atmosphere, composition and style to match this description as closely as possible while keeping the text elements and layout rules.
+
+`
+      : "";
+
     const prompt = `
 Create a professional social media creative image (${dimensions}).
+${visionSection}
+BACKGROUND: ${designVision ? `Inspired by the user's vision above, incorporating: ${bgDescription}` : bgDescription}. Professional cinematic lighting, high quality, photorealistic.
 
-BACKGROUND: ${bgDescription}. Professional cinematic lighting, high quality, photorealistic.
-
-LAYOUT (Hebrew RTL direction):
+LAYOUT (Hebrew RTL direction, all text CENTERED horizontally):
 
 ${tp === "top" ? "TOP AREA (top 40% of image)" : tp === "center" ? "CENTER AREA (vertically centered)" : "LOWER AREA (bottom third of image)"}:
 - Large bold Hebrew headline text: "${mainText}"
 - Color: ${color} (${colorHex})
 - Font style: Bold, modern Hebrew font
+- Text must be horizontally CENTERED
 - Dark semi-transparent overlay behind text for readability
 ${subtitleSection}
 ${fs !== "medium" ? `- Text size: ${fs === "large" ? "Extra large, dominant" : "Slightly smaller than default"}` : ""}
 ${profileSection}
-BOTTOM RIGHT CORNER:
-- ${color === "gold" ? "Golden" : "Teal"} rounded CTA button (${colorHex})
+BOTTOM CENTER:
+- ${color === "gold" ? "Golden" : "Teal"} rounded CTA button (${colorHex}), centered horizontally
 - Button text: "${cta}" in ${color === "gold" ? "black" : "white"} bold
 
 CRITICAL RULES:
+- All text and buttons must be horizontally CENTERED
 - The image must contain ONLY the main headline text${subtitle ? ", subtitle" : ""}${includeProfile ? ", person info" : ""}, and CTA button
 - Do NOT add any additional text, descriptions, or niche definitions beyond what is specified
 - Do NOT add text explaining who the target audience is
