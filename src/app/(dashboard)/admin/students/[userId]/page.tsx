@@ -114,8 +114,13 @@ export default function StudentDetailPage({
   if (error || !student) {
     return (
       <div dir="rtl" className="text-center py-20">
-        <p className="text-red-500 text-lg mb-4">{error || "תלמיד לא נמצא"}</p>
-        <Link href="/admin/students" className="text-[var(--gold)] hover:underline">
+        <p className="text-red-500 text-lg mb-4">
+          {error || "תלמיד לא נמצא"}
+        </p>
+        <Link
+          href="/admin/students"
+          className="text-[var(--gold)] hover:underline"
+        >
           חזור לרשימת תלמידים
         </Link>
       </div>
@@ -133,7 +138,7 @@ export default function StudentDetailPage({
         <span>חזור לרשימת תלמידים</span>
       </Link>
 
-      {/* Header Card */}
+      {/* Profile Header Card */}
       <div className="card-elevated p-6 mb-6 animate-in delay-1">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           {/* Avatar */}
@@ -144,7 +149,9 @@ export default function StudentDetailPage({
               color: "#0F1117",
             }}
           >
-            {student.avatarLetter || student.fullName?.[0]?.toUpperCase() || "?"}
+            {student.avatarLetter ||
+              student.fullName?.[0]?.toUpperCase() ||
+              "?"}
           </div>
 
           <div className="flex-1">
@@ -177,7 +184,9 @@ export default function StudentDetailPage({
             <button
               className="btn-outline text-sm !py-2 !px-4"
               style={{ color: "#EF4444", borderColor: "#EF4444" }}
-              onClick={() => alert("פונקציונליות השעיה תתווסף בהמשך")}
+              onClick={() =>
+                alert("פונקציונליות השעיה תתווסף בהמשך")
+              }
             >
               השעה משתמש
             </button>
@@ -191,7 +200,9 @@ export default function StudentDetailPage({
           פרויקטים
         </h2>
         {student.projects.length === 0 ? (
-          <p className="text-[var(--text-muted)] text-sm">אין פרויקטים עדיין</p>
+          <p className="text-[var(--text-muted)] text-sm">
+            אין פרויקטים עדיין
+          </p>
         ) : (
           <div className="space-y-3">
             {student.projects.map((project) => (
@@ -237,34 +248,40 @@ export default function StudentDetailPage({
                 status: "future" as const,
               }))
           ).map((step, i, arr) => (
-            <div key={step.name} className="flex items-center gap-2 flex-shrink-0">
+            <div
+              key={step.name}
+              className="flex items-center gap-2 flex-shrink-0"
+            >
               <div className="flex flex-col items-center gap-1">
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
                   style={
                     step.status === "completed"
                       ? {
-                          background: "linear-gradient(135deg, #22C55E, #16A34A)",
+                          background:
+                            "linear-gradient(135deg, #22C55E, #16A34A)",
                           color: "#fff",
                         }
                       : step.status === "current"
-                      ? {
-                          background: "linear-gradient(135deg, #D4A843, #C49A38)",
-                          color: "#0F1117",
-                          boxShadow: "0 0 0 4px rgba(212, 168, 67, 0.2)",
-                        }
-                      : {
-                          backgroundColor: "var(--content-bg)",
-                          border: "2px solid var(--card-border)",
-                          color: "var(--text-muted)",
-                        }
+                        ? {
+                            background:
+                              "linear-gradient(135deg, #D4A843, #C49A38)",
+                            color: "#0F1117",
+                            boxShadow:
+                              "0 0 0 4px rgba(212, 168, 67, 0.2)",
+                          }
+                        : {
+                            backgroundColor: "var(--content-bg)",
+                            border: "2px solid var(--card-border)",
+                            color: "var(--text-muted)",
+                          }
                   }
                 >
                   {step.status === "completed"
                     ? "\u2705"
                     : step.status === "current"
-                    ? "\u23F3"
-                    : "\u25CB"}
+                      ? "\u23F3"
+                      : "\u25CB"}
                 </div>
                 <span
                   className="text-[10px] font-medium whitespace-nowrap"
@@ -273,8 +290,8 @@ export default function StudentDetailPage({
                       step.status === "current"
                         ? "var(--gold)"
                         : step.status === "completed"
-                        ? "#22C55E"
-                        : "var(--text-muted)",
+                          ? "#22C55E"
+                          : "var(--text-muted)",
                   }}
                 >
                   {step.label}
@@ -341,9 +358,11 @@ export default function StudentDetailPage({
             }}
           >
             <div className="text-2xl font-bold text-[var(--text-primary)]">
-              {student.outputs.niche || "—"}
+              {student.outputs.niche || "\u2014"}
             </div>
-            <div className="text-xs text-[var(--text-muted)] mt-1">נישה</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">
+              נישה
+            </div>
           </div>
 
           <div
@@ -356,7 +375,9 @@ export default function StudentDetailPage({
             <div className="text-2xl font-bold text-[var(--text-primary)]">
               {student.outputs.scriptsCount}
             </div>
-            <div className="text-xs text-[var(--text-muted)] mt-1">תסריטים</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">
+              תסריטים
+            </div>
             {student.outputs.scriptsPreview && (
               <button
                 onClick={() =>
@@ -390,7 +411,7 @@ export default function StudentDetailPage({
         </div>
       </div>
 
-      {/* API Usage */}
+      {/* API Usage Stats */}
       <div className="card-elevated p-6 mb-6 animate-in delay-5">
         <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">
           שימוש ב-API
@@ -419,11 +440,18 @@ export default function StudentDetailPage({
           >
             <div
               className="text-2xl font-bold"
-              style={{ color: student.apiUsage.errors > 0 ? "#EF4444" : "var(--text-primary)" }}
+              style={{
+                color:
+                  student.apiUsage.errors > 0
+                    ? "#EF4444"
+                    : "var(--text-primary)",
+              }}
             >
               {student.apiUsage.errors}
             </div>
-            <div className="text-xs text-[var(--text-muted)] mt-1">שגיאות</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">
+              שגיאות
+            </div>
           </div>
           <div
             className="p-4 rounded-xl text-center"
@@ -444,7 +472,10 @@ export default function StudentDetailPage({
 
       {/* Output Content Modal */}
       {outputModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" dir="rtl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          dir="rtl"
+        >
           <div
             className="absolute inset-0"
             style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
@@ -462,7 +493,11 @@ export default function StudentDetailPage({
               </h2>
               <button
                 onClick={() =>
-                  setOutputModal({ open: false, title: "", content: "" })
+                  setOutputModal({
+                    open: false,
+                    title: "",
+                    content: "",
+                  })
                 }
                 className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
                 style={{ color: "var(--text-muted)" }}
