@@ -39,7 +39,9 @@ export async function POST(req: NextRequest) {
     const bgDescription =
       backgroundDescriptions[background] || backgroundDescriptions.lighthouse;
     const fmt = format || "story";
-    const dimensions = fmt === "story" ? "1080x1920px (9:16 story)" : "1080x1080px (1:1 square)";
+    const dimensions = fmt === "story"
+      ? "VERTICAL PORTRAIT 1080x1920px - MUST be taller than wide (9:16 phone/story format)"
+      : "PERFECT SQUARE 1080x1080px - width must equal height exactly (1:1 feed format)";
 
     const visionSection = designVision
       ? `\nUSER'S CREATIVE VISION (HIGHEST PRIORITY):\nThe user described their vision: "${designVision}"\nAdapt the background scene to match this description as closely as possible.\n`

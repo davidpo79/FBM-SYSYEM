@@ -11,6 +11,8 @@ export interface DraggableTextProps {
   fontWeight?: string;
   maxWidth?: string;
   textAlign?: CanvasTextAlign;
+  textShadow?: string;
+  lineHeight?: number;
   visible?: boolean;
   onDragEnd: (x: number, y: number) => void;
 }
@@ -24,6 +26,8 @@ export default function DraggableText({
   fontWeight = "bold",
   maxWidth = "85%",
   textAlign = "center",
+  textShadow = "0 2px 8px rgba(0,0,0,0.8)",
+  lineHeight = 1.3,
   visible = true,
   onDragEnd,
 }: DraggableTextProps) {
@@ -107,11 +111,11 @@ export default function DraggableText({
         fontSize: `${fontSize}px`,
         color,
         fontWeight,
-        textShadow: "0 2px 8px rgba(0,0,0,0.8)",
+        textShadow,
         direction: "rtl",
         maxWidth,
         textAlign,
-        lineHeight: 1.3,
+        lineHeight,
         whiteSpace: "pre-wrap",
         cursor: isDragging ? "grabbing" : "grab",
         outline: isDragging ? "2px dashed rgba(212,168,67,0.8)" : "none",

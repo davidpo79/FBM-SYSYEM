@@ -10,6 +10,8 @@ export interface DraggableCTAProps {
   textColor: string;
   borderRadius?: number;
   fontSize?: number;
+  padding?: string;
+  shadow?: string;
   visible?: boolean;
   onDragEnd: (x: number, y: number) => void;
 }
@@ -22,6 +24,8 @@ export default function DraggableCTA({
   textColor,
   borderRadius = 25,
   fontSize = 14,
+  padding = "10px 28px",
+  shadow = "0 4px 12px rgba(0,0,0,0.4)",
   visible = true,
   onDragEnd,
 }: DraggableCTAProps) {
@@ -112,12 +116,12 @@ export default function DraggableCTA({
           backgroundColor: bgColor,
           color: textColor,
           borderRadius: `${borderRadius}px`,
-          padding: "10px 28px",
+          padding,
           fontSize: `${fontSize}px`,
           fontWeight: "bold",
           textAlign: "center",
           whiteSpace: "nowrap",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+          boxShadow: shadow,
           direction: "rtl",
         }}
       >

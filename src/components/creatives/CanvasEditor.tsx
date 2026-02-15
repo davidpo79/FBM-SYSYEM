@@ -35,6 +35,7 @@ interface CanvasEditorProps {
     designVision?: string;
   }) => Promise<void>;
   onSaveToAlbum?: (base64: string, scriptIdx: number) => void;
+  onUploadBackground?: (base64: string) => void;
   scriptIdx?: number;
 }
 
@@ -82,6 +83,7 @@ export default function CanvasEditor({
   backgroundImage,
   onGenerateBackground,
   onSaveToAlbum,
+  onUploadBackground,
   scriptIdx = 0,
 }: CanvasEditorProps) {
   // Format
@@ -762,6 +764,28 @@ export default function CanvasEditor({
                   ? "צור רקע מחדש (1 קרדיט)"
                   : "צור רקע AI (1 קרדיט)"}
             </button>
+            {/* Upload background */}
+            <label className="w-full h-11 flex items-center justify-center text-sm font-bold rounded-[10px] border-2 border-dashed border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-all cursor-pointer">
+              {"\uD83D\uDCC1"} העלה רקע מותאם (0 credits)
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !file.type.startsWith("image/")) return;
+                  if (file.size > 10 * 1024 * 1024) {
+                    alert("מקסימום 10MB");
+                    return;
+                  }
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    if (onUploadBackground) onUploadBackground(reader.result as string);
+                  };
+                  reader.readAsDataURL(file);
+                }}
+                className="hidden"
+              />
+            </label>
             <p className="text-xs text-[var(--text-muted)] text-center">
               שינוי טקסט, צבע, גודל, מיקום — מיידי, בלי API. רק &quot;צור רקע&quot; קורא ל-AI.
             </p>
