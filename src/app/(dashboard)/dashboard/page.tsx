@@ -229,7 +229,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {/* New project card */}
             <Link
-              href="/questionnaire"
+              href="/questionnaire?new=true"
               className="card-elevated border-2 border-dashed !border-[var(--card-border)] p-6 flex flex-col items-center justify-center gap-3 hover:!border-[var(--gold)] hover:bg-[var(--gold-soft)] group cursor-pointer min-h-[220px] animate-in delay-6"
             >
               <div className="w-12 h-12 rounded-full bg-[var(--gold-soft)] flex items-center justify-center text-[var(--gold)] group-hover:scale-110 transition-transform">

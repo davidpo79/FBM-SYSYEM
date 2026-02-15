@@ -171,7 +171,7 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">הפרויקטים שלי</h1>
         <Link
-          href="/questionnaire"
+          href="/questionnaire?new=true"
           className="px-5 py-2.5 bg-[var(--gold)] text-white font-semibold rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
         >
           פרויקט חדש

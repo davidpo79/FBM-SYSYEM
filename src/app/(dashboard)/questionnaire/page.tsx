@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { getQuestions, type QuestionnaireAnswers } from "@/lib/questions";
 import StepIndicator from "@/components/questionnaire/StepIndicator";
 import QuestionCard from "@/components/questionnaire/QuestionCard";
-import AudioRecorder from "@/components/questionnaire/AudioRecorder";
+import QuestionRecordCard from "@/components/questionnaire/QuestionRecordCard";
 import AudioUploader from "@/components/questionnaire/AudioUploader";
 import TranscriptionProgress from "@/components/questionnaire/TranscriptionProgress";
 import AnswerReview from "@/components/questionnaire/AnswerReview";
@@ -79,8 +79,15 @@ export default function QuestionnairePage() {
     }
   };
 
-  // Load saved progress
+  // Load saved progress (or clear if ?new=true)
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "true") {
+      localStorage.removeItem(STORAGE_KEY);
+      window.history.replaceState({}, "", "/questionnaire");
+      return;
+    }
+
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -404,7 +411,8 @@ export default function QuestionnairePage() {
             type="button"
             onClick={() => {
               setMode("record");
-              setFlowStage("recording");
+              setManualStep(0);
+              setFlowStage("manual");
             }}
             className="w-full text-right card-elevated p-5 cursor-pointer transition-all hover:!border-[var(--gold)] group"
           >
@@ -412,11 +420,10 @@ export default function QuestionnairePage() {
               <div className="text-3xl">🎙️</div>
               <div>
                 <h3 className="text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--gold)] transition-colors">
-                  הקלטה בזמן אמת
+                  הקלטה שאלה-שאלה
                 </h3>
                 <p className="text-sm text-[var(--text-muted)] mt-0.5">
-                  לחץ הקלט ודבר עם בעל העסק. המערכת תתמלל ותמלא
-                  אוטומטית
+                  הקלט תשובה לכל שאלה בנפרד. התמלול נשמר אוטומטית
                 </p>
               </div>
             </div>
@@ -479,24 +486,7 @@ export default function QuestionnairePage() {
         </div>
       )}
 
-      {/* ─── Recording mode ─── */}
-      {flowStage === "recording" && (
-        <div className="animate-in">
-          <AudioRecorder
-            ownerNiche={ownerNiche}
-            onRecordingComplete={(blob) => processAudio(blob)}
-          />
-          <div className="flex justify-start mt-4">
-            <button
-              type="button"
-              onClick={() => setFlowStage("modeSelect")}
-              className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-            >
-              הקודם ←
-            </button>
-          </div>
-        </div>
-      )}
+      {/* ─── Recording mode (legacy — kept for uploaded audio retry) ─── */}
 
       {/* ─── Upload mode ─── */}
       {flowStage === "uploading" && (
@@ -522,7 +512,7 @@ export default function QuestionnairePage() {
           stage={processingStage}
           error={processingError}
           onRetry={() => {
-            setFlowStage(mode === "record" ? "recording" : "uploading");
+            setFlowStage("uploading");
           }}
           onSwitchToManual={() => {
             setMode("manual");
@@ -539,23 +529,31 @@ export default function QuestionnairePage() {
           extractedData={extractedData}
           onApprove={(finalAnswers) => handleSubmit(finalAnswers)}
           onRecordMore={() => {
-            setFlowStage(
-              mode === "record" ? "recording" : "uploading",
-            );
+            setFlowStage("uploading");
           }}
         />
       )}
 
-      {/* ─── Manual mode — question-by-question ─── */}
+      {/* ─── Manual / Record mode — question-by-question ─── */}
       {flowStage === "manual" && currentQuestion && (
         <>
-          <QuestionCard
-            key={currentQuestion.id}
-            question={currentQuestion}
-            value={currentAnswer}
-            onChange={handleAnswerChange}
-            error={error}
-          />
+          {mode === "record" ? (
+            <QuestionRecordCard
+              key={currentQuestion.id}
+              question={currentQuestion}
+              value={currentAnswer}
+              onChange={handleAnswerChange}
+              error={error}
+            />
+          ) : (
+            <QuestionCard
+              key={currentQuestion.id}
+              question={currentQuestion}
+              value={currentAnswer}
+              onChange={handleAnswerChange}
+              error={error}
+            />
+          )}
 
           <div className="flex items-center justify-between mt-6">
             <button

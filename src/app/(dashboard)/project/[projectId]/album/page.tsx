@@ -498,7 +498,7 @@ export default function AlbumPage() {
             {/* Start new project button */}
             <button
               type="button"
-              onClick={() => router.push("/questionnaire")}
+              onClick={() => router.push("/questionnaire?new=true")}
               className="w-full mt-4 btn-outline !py-4 text-base border-2 border-dashed"
             >
               🔄 התחל פרויקט חדש
