@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -83,6 +83,20 @@ export default function DashboardPage() {
   const [pipelineMap, setPipelineMap] = useState<Record<string, PipelineInfo>>({});
   const [loading, setLoading] = useState(true);
 
+  // Re-fetch profile name whenever component mounts or window regains focus
+  const fetchName = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("full_name")
+      .eq("user_id", user.id)
+      .single();
+    if (profile?.full_name) {
+      setDisplayName(profile.full_name);
+    }
+  }, []);
+
   useEffect(() => {
     async function load() {
       const {
@@ -119,7 +133,11 @@ export default function DashboardPage() {
       setLoading(false);
     }
     load();
-  }, []);
+
+    // Also re-fetch name when user navigates back to this page
+    window.addEventListener("focus", fetchName);
+    return () => window.removeEventListener("focus", fetchName);
+  }, [fetchName]);
 
   // Update greeting when name is changed in settings
   useEffect(() => {

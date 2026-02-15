@@ -42,6 +42,7 @@ export default function SettingsPage() {
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     async function loadProfile() {
@@ -65,29 +66,58 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
+    setError("");
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Save full name
-      await supabase.from("user_profiles").upsert({
+      // Save full name - try upsert, fallback to update then insert
+      const trimmedName = fullName.trim();
+      const { error: upsertError } = await supabase.from("user_profiles").upsert({
         user_id: user.id,
-        full_name: fullName.trim(),
+        full_name: trimmedName,
       });
+
+      if (upsertError) {
+        // Fallback: try update existing row
+        const { error: updateError } = await supabase
+          .from("user_profiles")
+          .update({ full_name: trimmedName })
+          .eq("user_id", user.id);
+
+        if (updateError) {
+          // Last resort: try insert
+          const { error: insertError } = await supabase
+            .from("user_profiles")
+            .insert({ user_id: user.id, full_name: trimmedName });
+
+          if (insertError) {
+            setError("שגיאה בשמירת השם. נסה שוב.");
+            return;
+          }
+        }
+      }
 
       // Update password if provided
       if (password.trim()) {
-        await supabase.auth.updateUser({ password: password.trim() });
+        const { error: pwError } = await supabase.auth.updateUser({ password: password.trim() });
+        if (pwError) {
+          setError("השם נשמר, אך שגיאה בעדכון הסיסמה.");
+        }
         setPassword("");
       }
 
       // Notify layout & dashboard to update the displayed name
       window.dispatchEvent(
-        new CustomEvent("profile-name-changed", { detail: fullName.trim() }),
+        new CustomEvent("profile-name-changed", { detail: trimmedName }),
       );
 
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      if (!error) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      }
+    } catch {
+      setError("אירעה שגיאה. נסה שוב.");
     } finally {
       setSaving(false);
     }
@@ -166,6 +196,11 @@ export default function SettingsPage() {
               {saved && (
                 <span className="text-sm text-[var(--success)] font-medium animate-in">
                   נשמר בהצלחה
+                </span>
+              )}
+              {error && (
+                <span className="text-sm text-red-500 font-medium animate-in">
+                  {error}
                 </span>
               )}
             </div>
