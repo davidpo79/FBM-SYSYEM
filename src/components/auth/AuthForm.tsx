@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import FBMLogo from "@/components/FBMLogo";
+import Image from "next/image";
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -105,8 +105,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-800">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-3 text-blue-600">
-            <FBMLogo size={48} />
+          <div className="flex justify-center mb-3">
+            <Image src="/logo-fbm.png" alt="FBM Studio" width={48} height={48} className="rounded" />
           </div>
           <h1 className="text-3xl font-bold mb-2">FBM Studio</h1>
           <p className="text-gray-500 dark:text-gray-400">

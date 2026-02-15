@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import FBMLogo from "@/components/FBMLogo";
+import Image from "next/image";
 
 interface SidebarProps {
   userEmail: string;
@@ -73,9 +73,7 @@ export default function Sidebar({
     >
       {/* Logo header — Rule 6: gradient separator */}
       <div className="px-5 pt-5 pb-4 flex items-center gap-3 mb-1">
-        <div style={{ color: "#D4A843", filter: "drop-shadow(0 2px 8px rgba(212, 168, 67, 0.3))" }}>
-          <FBMLogo size={36} />
-        </div>
+        <Image src="/logo-fbm.png" alt="FBM" width={36} height={36} className="rounded" />
         <div className="flex items-center gap-2">
           <span className="text-white font-bold text-lg">FBM Studio</span>
           <span

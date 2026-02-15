@@ -164,11 +164,12 @@ function WelcomeContent() {
           {/* FBM Studio Logo */}
           <div className="flex flex-col items-center gap-3 mb-6">
             <Image
-              src="/fbm-logo-gold.svg"
+              src="/logo-fbm.png"
               alt="FBM Studio Logo"
               width={80}
               height={80}
               priority
+              className="rounded"
             />
             <span className="text-2xl font-bold text-[var(--text-primary)]">
               FBM Studio

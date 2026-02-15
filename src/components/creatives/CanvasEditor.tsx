@@ -12,7 +12,7 @@ import DraggableText from "./DraggableText";
 import DraggableCTA from "./DraggableCTA";
 import DraggableProfile from "./DraggableProfile";
 import { exportCanvasToPng, renderCanvasToBase64 } from "./CanvasExport";
-import FBMLogo from "@/components/FBMLogo";
+import NextImage from "next/image";
 
 /* ──────────────── Types ──────────────── */
 
@@ -241,7 +241,7 @@ export default function CanvasEditor({
       {/* Header */}
       <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mb-4">
         <span className="font-semibold text-[var(--gold)] inline-flex items-center gap-1">
-          <FBMLogo size={18} />
+          <NextImage src="/logo-fbm.png" alt="FBM" width={18} height={18} className="rounded" />
           FBM Studio
         </span>
         <span>\u05DE\u05E6\u05D9\u05E2:</span>
