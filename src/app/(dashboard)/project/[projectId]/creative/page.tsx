@@ -162,8 +162,13 @@ export default function CreativePage() {
         const next = exists
           ? prev.map((img) => img.scriptIdx === scriptIdx ? { ...img, base64, url: "" } : img)
           : [...prev, { url: "", base64, scriptIdx }];
-        localStorage.setItem(albumStorageKey, JSON.stringify(next));
-        window.dispatchEvent(new StorageEvent("storage", { key: albumStorageKey }));
+        try {
+          localStorage.setItem(albumStorageKey, JSON.stringify(next));
+          window.dispatchEvent(new StorageEvent("storage", { key: albumStorageKey }));
+        } catch (e) {
+          console.error("localStorage save failed:", e);
+          setCreativeError("שגיאה בשמירה לאלבום — נפח האחסון מלא. נסה להוריד PNG ישירות.");
+        }
         return next;
       });
     },

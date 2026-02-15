@@ -32,12 +32,13 @@ export async function exportCanvasToPng(
 }
 
 /**
- * Render a DOM element to a base64 PNG (no download, for saving to album).
+ * Render a DOM element to a base64 image (no download, for saving to album).
+ * Uses JPEG at reduced quality to keep file size under localStorage limits.
  */
 export async function renderCanvasToBase64(
   element: HTMLDivElement,
 ): Promise<string> {
-  const targetWidth = 1080;
+  const targetWidth = 720;
   const scale = targetWidth / element.offsetWidth;
 
   const canvas = await html2canvas(element, {
@@ -48,5 +49,5 @@ export async function renderCanvasToBase64(
     backgroundColor: null,
   });
 
-  return canvas.toDataURL("image/png");
+  return canvas.toDataURL("image/jpeg", 0.75);
 }

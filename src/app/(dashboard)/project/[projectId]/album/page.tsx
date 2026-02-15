@@ -454,7 +454,7 @@ export default function AlbumPage() {
             </div>
 
             {/* Clickable summary cards */}
-            {strategyApproved && (
+            {strategyApproved && strategy && (
               <SummaryCard title="אסטרטגיה" href={`/project/${projectId}/strategy`}>
                 <p className="text-xs text-[var(--text-muted)] line-clamp-2 pr-8">
                   {strategy.slice(0, 150)}...
