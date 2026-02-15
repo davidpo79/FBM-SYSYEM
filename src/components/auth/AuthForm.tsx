@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 
@@ -12,6 +11,7 @@ interface AuthFormProps {
 
 export default function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"login" | "signup">(mode);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +19,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState(false);
 
-  const isLogin = mode === "login";
+  const isLogin = activeTab === "login";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +76,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
     }
   };
 
+  const switchTab = (tab: "login" | "signup") => {
+    setActiveTab(tab);
+    setError("");
+  };
+
   if (confirmEmail) {
     return (
       <div className="w-full max-w-md mx-auto">
@@ -89,12 +94,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
             <br />
             לחץ על הקישור כדי להפעיל את החשבון.
           </p>
-          <Link
-            href="/login"
+          <button
+            onClick={() => { setConfirmEmail(false); switchTab("login"); }}
             className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
           >
             חזור לדף ההתחברות
-          </Link>
+          </button>
         </div>
       </div>
     );
@@ -104,15 +109,45 @@ export default function AuthForm({ mode }: AuthFormProps) {
     <div className="w-full max-w-md mx-auto">
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-800">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="flex justify-center mb-3">
             <Image src="/logo-fbm.png" alt="FBM Studio" width={48} height={48} className="rounded" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">FBM Studio</h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            {isLogin ? "התחבר לחשבון שלך" : "התחבר למערכת"}
-          </p>
+          <h1 className="text-3xl font-bold mb-1">FBM Studio</h1>
         </div>
+
+        {/* Tabs */}
+        <div className="flex rounded-xl bg-gray-100 dark:bg-gray-800 p-1 mb-6">
+          <button
+            type="button"
+            onClick={() => switchTab("signup")}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all cursor-pointer ${
+              !isLogin
+                ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            }`}
+          >
+            הרשמה חינם
+          </button>
+          <button
+            type="button"
+            onClick={() => switchTab("login")}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all cursor-pointer ${
+              isLogin
+                ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            }`}
+          >
+            התחברות
+          </button>
+        </div>
+
+        {/* Subtitle */}
+        <p className="text-center text-gray-500 dark:text-gray-400 text-sm mb-5">
+          {isLogin
+            ? "התחבר לחשבון הקיים שלך"
+            : "צור חשבון חדש ב-FBM Studio — בחינם!"}
+        </p>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -191,19 +226,20 @@ export default function AuthForm({ mode }: AuthFormProps) {
               ? "..."
               : isLogin
                 ? "התחבר"
-                : "התחבר"}
+                : "הירשם חינם"}
           </button>
         </form>
 
-        {/* Toggle link */}
+        {/* Bottom toggle */}
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
           {isLogin ? "עדיין אין לך חשבון?" : "כבר יש לך חשבון?"}{" "}
-          <Link
-            href={isLogin ? "/signup" : "/login"}
-            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+          <button
+            type="button"
+            onClick={() => switchTab(isLogin ? "signup" : "login")}
+            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium cursor-pointer"
           >
-            {isLogin ? "הירשם" : "התחבר"}
-          </Link>
+            {isLogin ? "הרשמה חינם" : "התחבר"}
+          </button>
         </p>
       </div>
     </div>
