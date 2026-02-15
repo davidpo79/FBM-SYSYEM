@@ -25,7 +25,6 @@ export async function POST(req: NextRequest) {
         student_email: studentEmail,
         student_phone: studentPhone || null,
         expires_at: expiresAt.toISOString(),
-        used: false,
       })
       .select()
       .single();

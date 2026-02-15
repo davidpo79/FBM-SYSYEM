@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     // Fetch all API logs for the period
     const { data: logs, error: logsError } = await supabaseAdmin
       .from("api_logs")
-      .select("endpoint, success, created_at, duration_ms, user_id, error_message")
+      .select("endpoint, status, created_at, duration_ms, user_id, error_message")
       .gte("created_at", startDate.toISOString())
       .order("created_at", { ascending: true });
 
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
         dailyCounts[date] = { date, calls: 0, errors: 0 };
       }
       dailyCounts[date].calls++;
-      if (!log.success) {
+      if (log.status === "error") {
         dailyCounts[date].errors++;
       }
     }
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
         endpointMap[ep] = { endpoint: ep, calls: 0, errors: 0, totalDuration: 0 };
       }
       endpointMap[ep].calls++;
-      if (!log.success) {
+      if (log.status === "error") {
         endpointMap[ep].errors++;
       }
       endpointMap[ep].totalDuration += log.duration_ms || 0;
@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
 
     // Recent errors (last 20)
     const recentErrors = allLogs
-      .filter((l) => !l.success)
+      .filter((l) => l.status === "error")
       .sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
       topUsers: topUsersEnriched,
       recentErrors,
       totalCalls: allLogs.length,
-      totalErrors: allLogs.filter((l) => !l.success).length,
+      totalErrors: allLogs.filter((l) => l.status === "error").length,
     });
   } catch (e) {
     console.error("admin/analytics exception:", e);

@@ -6,15 +6,20 @@ import { isAdmin } from "@/lib/admin";
 
 type SuggestionStatus = "new" | "in_review" | "done" | "rejected";
 
+interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 interface Suggestion {
   id: string;
   userId: string;
   userEmail: string | null;
   userName: string | null;
-  suggestion: string;
-  category: string | null;
+  title: string;
+  conversation: ConversationMessage[];
   status: SuggestionStatus;
-  adminNotes?: string;
+  adminNotes?: string | null;
   createdAt: string;
 }
 
@@ -159,7 +164,7 @@ export default function AdminSuggestionsPage() {
       <div className="mb-8 animate-in">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-            הצעות לשיפור
+            הצעות לייעול
           </h1>
           {newCount > 0 && (
             <span
@@ -199,7 +204,10 @@ export default function AdminSuggestionsPage() {
                 {/* Header Row */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1 text-xs text-[var(--text-muted)]">
+                    <h3 className="font-semibold text-[var(--text-primary)] text-sm mb-1">
+                      {suggestion.title}
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
                       <span className="font-medium text-[var(--text-secondary)]">
                         {suggestion.userName || suggestion.userEmail || "משתמש"}
                       </span>
@@ -209,20 +217,6 @@ export default function AdminSuggestionsPage() {
                           "he-IL",
                         )}
                       </span>
-                      {suggestion.category && (
-                        <>
-                          <span>&middot;</span>
-                          <span
-                            className="px-2 py-0.5 rounded-full"
-                            style={{
-                              backgroundColor: "var(--gold-soft)",
-                              color: "var(--gold)",
-                            }}
-                          >
-                            {suggestion.category}
-                          </span>
-                        </>
-                      )}
                     </div>
                   </div>
 
@@ -238,33 +232,47 @@ export default function AdminSuggestionsPage() {
                   </span>
                 </div>
 
-                {/* Suggestion preview / full text */}
+                {/* Conversation preview / full */}
                 <div className="mb-4">
-                  <p
-                    className={`text-sm text-[var(--text-primary)] leading-relaxed ${
-                      !isExpanded ? "line-clamp-2" : ""
-                    }`}
-                  >
-                    {suggestion.suggestion}
-                  </p>
-                  {suggestion.suggestion.length > 150 && (
-                    <button
-                      onClick={() => toggleExpanded(suggestion.id)}
-                      className="text-sm text-[var(--gold)] hover:underline cursor-pointer mt-1 flex items-center gap-1"
-                    >
-                      <span
-                        className="transition-transform inline-block"
-                        style={{
-                          transform: isExpanded
-                            ? "rotate(90deg)"
-                            : "rotate(0deg)",
-                        }}
-                      >
-                        &#9654;
-                      </span>
-                      {isExpanded ? "הצג פחות" : "הצג עוד"}
-                    </button>
+                  {!isExpanded ? (
+                    <p className="text-sm text-[var(--text-primary)] leading-relaxed line-clamp-2">
+                      {suggestion.conversation
+                        ?.filter((m) => m.role === "user")
+                        .map((m) => m.content)
+                        .join(" | ") || suggestion.title}
+                    </p>
+                  ) : (
+                    <div className="space-y-2 p-3 rounded-xl" style={{ backgroundColor: "var(--content-bg)", border: "1px solid var(--card-border)" }}>
+                      {suggestion.conversation?.map((msg, mi) => (
+                        <div key={mi} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
+                          <div
+                            className="max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed"
+                            style={
+                              msg.role === "user"
+                                ? { backgroundColor: "var(--gold-soft)", color: "var(--text-primary)" }
+                                : { backgroundColor: "var(--card-bg)", color: "var(--text-secondary)", border: "1px solid var(--card-border)" }
+                            }
+                          >
+                            {msg.content}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
+                  <button
+                    onClick={() => toggleExpanded(suggestion.id)}
+                    className="text-sm text-[var(--gold)] hover:underline cursor-pointer mt-2 flex items-center gap-1"
+                  >
+                    <span
+                      className="transition-transform inline-block"
+                      style={{
+                        transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                      }}
+                    >
+                      &#9654;
+                    </span>
+                    {isExpanded ? "הצג פחות" : "הצג שיחה מלאה"}
+                  </button>
                 </div>
 
                 {/* Admin Notes (visible when expanded) */}
