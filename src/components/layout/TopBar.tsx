@@ -8,7 +8,16 @@ interface TopBarProps {
 
 export default function TopBar({ breadcrumbs, actions, onMenuToggle }: TopBarProps) {
   return (
-    <header className="h-[60px] bg-white border-b border-[var(--card-border)] flex items-center justify-between px-6 sticky top-0 z-30" dir="rtl">
+    <header
+      className="h-[64px] flex items-center justify-between px-6 sticky top-0 z-30"
+      style={{
+        background: "rgba(255,255,255,0.8)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        borderBottom: "1px solid rgba(232, 234, 240, 0.6)",
+      }}
+      dir="rtl"
+    >
       <div className="flex items-center gap-3">
         {/* Mobile hamburger */}
         {onMenuToggle && (

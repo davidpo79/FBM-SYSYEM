@@ -66,7 +66,7 @@ export default function SettingsPage() {
 
       {/* General tab */}
       {tab === "general" && (
-        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-6 max-w-lg">
+        <div className="card-static p-6 max-w-lg">
           <h2 className="font-bold text-[var(--text-primary)] mb-4">פרטים אישיים</h2>
           <div className="space-y-4">
             <div>
@@ -154,7 +154,7 @@ export default function SettingsPage() {
 
       {/* Invoices tab */}
       {tab === "invoices" && (
-        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] overflow-hidden">
+        <div className="card-static overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--card-border)]">

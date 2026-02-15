@@ -139,7 +139,7 @@ export default function ScriptsPage() {
           return (
             <div
               key={idx}
-              className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] overflow-hidden"
+              className="card-static overflow-hidden"
             >
               <div className="p-5 flex items-center justify-between border-b border-[var(--card-border)]">
                 <h3 className="font-bold text-[var(--text-primary)]">תסריט {idx + 1}</h3>

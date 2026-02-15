@@ -53,28 +53,178 @@
   --color-text-muted: var(--text-muted);
 }
 
+/* ──────────────── Rule 2: Gradient Background ──────────────── */
 body {
-  background: var(--content-bg);
+  background: linear-gradient(135deg, #F8F9FC 0%, #F0F2F8 50%, #F8F9FC 100%);
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 }
 
-/* Scrollbar styling for sidebar */
-.sidebar-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-.sidebar-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-.sidebar-scroll::-webkit-scrollbar-thumb {
-  background: var(--sidebar-border);
-  border-radius: 2px;
-}
+/* ──────────────── Rule 12: Global Scrollbar ──────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+/* Sidebar scrollbar override */
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: var(--sidebar-border); border-radius: 2px; }
 
 /* Gold glow effect */
 .gold-glow {
   box-shadow: 0 0 20px var(--gold-glow), 0 0 40px rgba(212, 168, 67, 0.1);
+}
+
+/* ──────────────── Rule 1: Glass Cards ──────────────── */
+.card-elevated {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(232, 234, 240, 0.6);
+  border-radius: 20px;
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.04),
+    0 4px 12px rgba(0,0,0,0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-elevated:hover {
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.08),
+    0 8px 32px rgba(0,0,0,0.04);
+  transform: translateY(-2px);
+  border-color: rgba(212, 168, 67, 0.3);
+}
+
+.card-static {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(232, 234, 240, 0.6);
+  border-radius: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* ──────────────── Rule 3: Unified Buttons ──────────────── */
+.btn-gold {
+  background: linear-gradient(135deg, #D4A843 0%, #C49A38 100%);
+  color: #0F1117;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 12px 24px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(212, 168, 67, 0.3);
+}
+.btn-gold:hover {
+  box-shadow: 0 4px 16px rgba(212, 168, 67, 0.5);
+  transform: translateY(-1px);
+}
+.btn-gold:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 12px 24px;
+  border: 1.5px solid var(--card-border);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.btn-outline:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
+  color: white;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 12px 24px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+.btn-success:hover {
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.5);
+  transform: translateY(-1px);
+}
+.btn-success:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ──────────────── Rule 4: Entry Animations ──────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-in {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.delay-1 { animation-delay: 0.05s; }
+.delay-2 { animation-delay: 0.1s; }
+.delay-3 { animation-delay: 0.15s; }
+.delay-4 { animation-delay: 0.2s; }
+.delay-5 { animation-delay: 0.25s; }
+.delay-6 { animation-delay: 0.3s; }
+.delay-7 { animation-delay: 0.35s; }
+.delay-8 { animation-delay: 0.4s; }
+
+/* ──────────────── Rule 5: Stepper Animations ──────────────── */
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(212, 168, 67, 0.2), 0 2px 8px rgba(212, 168, 67, 0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(212, 168, 67, 0.1), 0 2px 12px rgba(212, 168, 67, 0.4); }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ──────────────── Rule 7: Status Dot Blink ──────────────── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.status-dot { animation: blink 2s infinite; }
+
+/* ──────────────── Rule 11: TopBar Gold Glow Animation ──────────────── */
+@keyframes goldGlow {
+  from { box-shadow: 0 2px 8px rgba(212, 168, 67, 0.3); }
+  to { box-shadow: 0 4px 20px rgba(212, 168, 67, 0.6); }
+}
+
+/* ──────────────── Rule 13: Skeleton Loading ──────────────── */
+@keyframes shimmerBg {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: shimmerBg 1.5s infinite;
+  border-radius: 8px;
 }
 
 /* ──────────────── Markdown Content ──────────────── */
@@ -200,7 +350,7 @@ body {
   vertical-align: top;
 }
 
-/* Blockquotes */
+/* Blockquotes — Rule 9: shadow */
 .markdown-content blockquote {
   border-right: 4px solid var(--gold);
   padding: 0.5rem 1rem;
@@ -209,6 +359,7 @@ body {
   border-radius: 0 8px 8px 0;
   color: var(--text-secondary);
   font-style: italic;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
 .markdown-content blockquote p {

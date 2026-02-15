@@ -141,22 +141,24 @@ export default function StrategyPage() {
   return (
     <div>
       <div className={`flex flex-col lg:flex-row gap-6${!strategyApproved ? " pb-4" : ""}`}>
-        {/* Main content - strategy document */}
+        {/* Main content - strategy document — Rule 9: max-width, more padding */}
         <div className="flex-1">
-          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] overflow-hidden">
-            <div className="p-6 border-b border-[var(--card-border)]">
+          <div className="card-static overflow-hidden animate-in">
+            <div className="p-8 border-b border-[var(--card-border)]">
               <h2 className="text-xl font-bold text-[var(--text-primary)]">
                 מסמך אסטרטגיה {strategyApproved && <span className="text-[var(--success)] text-base font-medium mr-2">(אושר)</span>}
               </h2>
             </div>
-            <div className="p-6">
-              <MarkdownContent content={strategy} />
+            <div className="p-8">
+              <div style={{ maxWidth: "800px" }}>
+                <MarkdownContent content={strategy} />
+              </div>
             </div>
           </div>
 
           {/* Download after approval */}
           {strategyApproved && (
-            <div className="mt-4 flex items-center gap-3 bg-green-50 border border-green-200 rounded-[16px] p-4">
+            <div className="mt-4 flex items-center gap-3 bg-green-50 border border-green-200 rounded-[20px] p-4 animate-in delay-1">
               <p className="text-sm font-medium text-[var(--success)]">
                 המסמך אושר - עכשיו ניתן להוריד
               </p>
@@ -174,7 +176,7 @@ export default function StrategyPage() {
         {/* Sidebar info */}
         <div className="lg:w-[340px] flex-shrink-0 space-y-4">
           {/* Status card */}
-          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5">
+          <div className="card-static p-5 animate-in delay-2">
             <h3 className="font-bold text-[var(--text-primary)] mb-3 text-sm">סטטוס התהליך</h3>
             <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
               <div
@@ -188,7 +190,7 @@ export default function StrategyPage() {
           </div>
 
           {/* Project info card */}
-          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5">
+          <div className="card-static p-5 animate-in delay-3">
             <h3 className="font-bold text-[var(--text-primary)] mb-3 text-sm">פרטי הפרויקט</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">

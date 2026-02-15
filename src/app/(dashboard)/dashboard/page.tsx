@@ -68,6 +68,14 @@ function getActiveLink(projectId: string, info: PipelineInfo, isCompleted: boole
   return `/project/${projectId}/strategy`;
 }
 
+/* ─────────── Stat Icon Gradients ─────────── */
+const STAT_GRADIENTS = [
+  "linear-gradient(135deg, #818CF8, #6366F1)", // purple-blue
+  "linear-gradient(135deg, #34D399, #10B981)", // green
+  "linear-gradient(135deg, #FB923C, #F97316)", // orange
+  "linear-gradient(135deg, #D4A843, #C49A38)", // gold
+];
+
 export default function DashboardPage() {
   const [email, setEmail] = useState("");
   const [projects, setProjects] = useState<ProjectData[]>([]);
@@ -156,38 +164,52 @@ export default function DashboardPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 animate-in">
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">
           שלום{email ? `, ${email.split("@")[0]}` : ""}
         </h1>
         <p className="text-[var(--text-secondary)] mt-1">ברוך הבא ל-FBM Studio</p>
       </div>
 
-      {/* Stats */}
+      {/* Stats — Rule 7: gradient icons, big numbers, animate-in */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((stat, i) => (
           <div
             key={i}
-            className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5"
+            className={`card-elevated p-6 animate-in delay-${i + 1}`}
+            style={{ cursor: "default" }}
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[var(--text-muted)]">{stat.icon}</span>
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 text-white"
+              style={{ background: STAT_GRADIENTS[i] }}
+            >
+              {stat.icon}
             </div>
-            <div className="text-2xl font-bold text-[var(--text-primary)]">{stat.value}</div>
-            <div className="text-sm text-[var(--text-muted)] mt-1">
+            <div className="text-3xl font-black text-[var(--text-primary)]">{stat.value}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1 uppercase tracking-wider">
               {stat.label}
-              {stat.sub && <span className="text-xs mr-1">({stat.sub})</span>}
+              {stat.sub && <span className="normal-case tracking-normal mr-1">({stat.sub})</span>}
             </div>
           </div>
         ))}
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-[var(--text-muted)]">טוען פרויקטים...</div>
+        /* Rule 13: Skeleton loading */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="card-static p-5 space-y-3">
+              <div className="skeleton h-5 w-2/3" />
+              <div className="skeleton h-4 w-1/2" />
+              <div className="skeleton h-3 w-full" />
+              <div className="skeleton h-3 w-4/5" />
+            </div>
+          ))}
+        </div>
       ) : (
         <>
           {/* ── In Progress Section ── */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 animate-in delay-5">
             <h2 className="text-lg font-bold text-[var(--text-primary)]">
               פרויקטים בתהליך
               {inProgress.length > 0 && (
@@ -208,7 +230,7 @@ export default function DashboardPage() {
             {/* New project card */}
             <Link
               href="/questionnaire"
-              className="bg-[var(--card-bg)] border-2 border-dashed border-[var(--card-border)] rounded-[16px] p-6 flex flex-col items-center justify-center gap-3 hover:border-[var(--gold)] hover:bg-[var(--gold-soft)] transition-all group cursor-pointer min-h-[220px]"
+              className="card-elevated border-2 border-dashed !border-[var(--card-border)] p-6 flex flex-col items-center justify-center gap-3 hover:!border-[var(--gold)] hover:bg-[var(--gold-soft)] group cursor-pointer min-h-[220px] animate-in delay-6"
             >
               <div className="w-12 h-12 rounded-full bg-[var(--gold-soft)] flex items-center justify-center text-[var(--gold)] group-hover:scale-110 transition-transform">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -218,12 +240,13 @@ export default function DashboardPage() {
               <span className="font-semibold text-[var(--text-primary)]">פרויקט חדש</span>
             </Link>
 
-            {inProgress.map((project) => (
+            {inProgress.map((project, i) => (
               <ProjectCard
                 key={project.id}
                 project={project}
                 info={pipelineMap[project.id]}
                 isCompleted={false}
+                animDelay={i + 7}
               />
             ))}
           </div>
@@ -241,12 +264,13 @@ export default function DashboardPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {completed.map((project) => (
+                {completed.map((project, i) => (
                   <ProjectCard
                     key={project.id}
                     project={project}
                     info={pipelineMap[project.id]}
                     isCompleted
+                    animDelay={i + 1}
                   />
                 ))}
               </div>
@@ -264,10 +288,12 @@ function ProjectCard({
   project,
   info,
   isCompleted,
+  animDelay = 1,
 }: {
   project: ProjectData;
   info?: PipelineInfo;
   isCompleted: boolean;
+  animDelay?: number;
 }) {
   const date = new Date(project.created_at).toLocaleDateString("he-IL", {
     day: "numeric",
@@ -279,17 +305,16 @@ function ProjectCard({
     ? getActiveLink(project.id, info, isCompleted)
     : `/project/${project.id}/strategy`;
 
-  const displaySteps = isCompleted
-    ? ALL_STEPS
-    : ALL_STEPS;
+  const completedCount = info ? info.completedSteps.length + (isCompleted ? 1 : 0) : 0;
+  const progressPercent = (completedCount / ALL_STEPS.length) * 100;
 
   return (
     <Link
       href={link}
-      className={`bg-[var(--card-bg)] border rounded-[16px] p-5 hover:shadow-md transition-all cursor-pointer group relative ${
+      className={`card-elevated p-5 cursor-pointer group relative overflow-hidden animate-in delay-${Math.min(animDelay, 8)} ${
         isCompleted
-          ? "border-[var(--success)]/30 border-r-[3px] border-r-[var(--success)] hover:border-[var(--success)]/50"
-          : "border-[var(--card-border)] hover:border-[var(--gold)]"
+          ? "!border-[var(--success)]/30 border-r-[3px] !border-r-[var(--success)]"
+          : ""
       }`}
     >
       {/* Header: status badge + name */}
@@ -298,12 +323,15 @@ function ProjectCard({
           {project.user_name || project.name}
         </h3>
         <span
-          className={`text-[10px] font-medium px-2 py-1 rounded-full flex-shrink-0 ${
+          className={`text-[10px] font-medium px-2 py-1 rounded-full flex-shrink-0 flex items-center gap-1 ${
             isCompleted
               ? "bg-green-50 text-[var(--success)]"
               : "bg-[var(--gold-soft)] text-[var(--gold)]"
           }`}
         >
+          {!isCompleted && (
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--gold)] status-dot" />
+          )}
           {isCompleted ? "הושלם" : "בתהליך"}
         </span>
       </div>
@@ -318,7 +346,7 @@ function ProjectCard({
       {/* Pipeline steps */}
       {info && (
         <div className="flex flex-wrap gap-1 mb-3">
-          {displaySteps.map((step) => {
+          {ALL_STEPS.map((step) => {
             const done = info.completedSteps.includes(step) || (step === "album" && isCompleted);
             return (
               <span
@@ -350,6 +378,19 @@ function ProjectCard({
         <span className="text-xs font-medium text-[var(--gold)] group-hover:underline">
           {isCompleted ? "צפה בסיכום \u2190" : "פתח פרויקט \u2190"}
         </span>
+      </div>
+
+      {/* Rule 7: Progress bar at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gray-100">
+        <div
+          className="h-full transition-all duration-500"
+          style={{
+            width: `${progressPercent}%`,
+            background: isCompleted
+              ? "linear-gradient(90deg, #22C55E, #16A34A)"
+              : "linear-gradient(90deg, #D4A843, #C49A38)",
+          }}
+        />
       </div>
     </Link>
   );

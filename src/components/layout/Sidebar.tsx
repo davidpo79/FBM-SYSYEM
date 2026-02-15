@@ -56,8 +56,8 @@ export default function Sidebar({
       className="fixed top-0 right-0 h-screen w-[260px] border-l flex-col hidden lg:flex z-50"
       dir="rtl"
     >
-      {/* Logo header */}
-      <div className="px-5 py-5 flex items-center gap-3" style={{ borderBottom: "1px solid #2A2D3A" }}>
+      {/* Logo header — Rule 6: gradient separator */}
+      <div className="px-5 pt-5 pb-4 flex items-center gap-3 mb-1">
         <div style={{ color: "#D4A843", filter: "drop-shadow(0 2px 8px rgba(212, 168, 67, 0.3))" }}>
           <FBMLogo size={36} />
         </div>
@@ -71,6 +71,8 @@ export default function Sidebar({
           </span>
         </div>
       </div>
+      {/* Gradient separator line */}
+      <div className="mx-4 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
 
       {/* Project selector (if on project page) */}
       {projectId && (
@@ -99,23 +101,30 @@ export default function Sidebar({
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all relative"
-                style={
-                  isActive(item.href)
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm relative"
+                style={{
+                  transition: "all 0.2s ease",
+                  ...(isActive(item.href)
                     ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 }
-                    : { color: "#9DA3B4" }
-                }
+                    : { color: "#9DA3B4" }),
+                }}
                 onMouseEnter={(e) => {
-                  if (!isActive(item.href)) e.currentTarget.style.backgroundColor = "#1A1D2A";
+                  if (!isActive(item.href)) {
+                    e.currentTarget.style.backgroundColor = "#1A1D2A";
+                    e.currentTarget.style.transform = "scale(1.01)";
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  if (!isActive(item.href)) e.currentTarget.style.backgroundColor = "transparent";
+                  if (!isActive(item.href)) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.transform = "scale(1)";
+                  }
                 }}
               >
                 {isActive(item.href) && (
                   <span
                     className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-l"
-                    style={{ backgroundColor: "#D4A843" }}
+                    style={{ backgroundColor: "#D4A843", boxShadow: "0 0 8px rgba(212, 168, 67, 0.4)" }}
                   />
                 )}
                 <span className="text-base">{item.emoji}</span>
@@ -134,7 +143,9 @@ export default function Sidebar({
         </div>
 
         {/* Divider */}
-        {fbmNav.length > 0 && <hr style={{ borderColor: "#2A2D3A" }} />}
+        {fbmNav.length > 0 && (
+          <div className="mx-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
+        )}
 
         {/* FBM Process section */}
         {fbmNav.length > 0 && (
@@ -147,23 +158,30 @@ export default function Sidebar({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all relative"
-                  style={
-                    isActive(item.href)
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm relative"
+                  style={{
+                    transition: "all 0.2s ease",
+                    ...(isActive(item.href)
                       ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 }
-                      : { color: "#9DA3B4" }
-                  }
+                      : { color: "#9DA3B4" }),
+                  }}
                   onMouseEnter={(e) => {
-                    if (!isActive(item.href)) e.currentTarget.style.backgroundColor = "#1A1D2A";
+                    if (!isActive(item.href)) {
+                      e.currentTarget.style.backgroundColor = "#1A1D2A";
+                      e.currentTarget.style.transform = "scale(1.01)";
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    if (!isActive(item.href)) e.currentTarget.style.backgroundColor = "transparent";
+                    if (!isActive(item.href)) {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                      e.currentTarget.style.transform = "scale(1)";
+                    }
                   }}
                 >
                   {isActive(item.href) && (
                     <span
                       className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-l"
-                      style={{ backgroundColor: "#D4A843" }}
+                      style={{ backgroundColor: "#D4A843", boxShadow: "0 0 8px rgba(212, 168, 67, 0.4)" }}
                     />
                   )}
                   <span className="text-base">{item.emoji}</span>
@@ -183,7 +201,7 @@ export default function Sidebar({
         )}
 
         {/* Divider */}
-        <hr style={{ borderColor: "#2A2D3A" }} />
+        <div className="mx-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
 
         {/* Tools section */}
         <div>
@@ -213,23 +231,30 @@ export default function Sidebar({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all relative"
-                  style={
-                    isActive(item.href)
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm relative"
+                  style={{
+                    transition: "all 0.2s ease",
+                    ...(isActive(item.href)
                       ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 }
-                      : { color: "#9DA3B4" }
-                  }
+                      : { color: "#9DA3B4" }),
+                  }}
                   onMouseEnter={(e) => {
-                    if (!isActive(item.href)) e.currentTarget.style.backgroundColor = "#1A1D2A";
+                    if (!isActive(item.href)) {
+                      e.currentTarget.style.backgroundColor = "#1A1D2A";
+                      e.currentTarget.style.transform = "scale(1.01)";
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    if (!isActive(item.href)) e.currentTarget.style.backgroundColor = "transparent";
+                    if (!isActive(item.href)) {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                      e.currentTarget.style.transform = "scale(1)";
+                    }
                   }}
                 >
                   {isActive(item.href) && (
                     <span
                       className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-l"
-                      style={{ backgroundColor: "#D4A843" }}
+                      style={{ backgroundColor: "#D4A843", boxShadow: "0 0 8px rgba(212, 168, 67, 0.4)" }}
                     />
                   )}
                   <span className="text-base">{item.emoji}</span>
@@ -241,8 +266,9 @@ export default function Sidebar({
         </div>
       </nav>
 
-      {/* User profile at bottom */}
-      <div className="px-3 py-4" style={{ borderTop: "1px solid #2A2D3A" }}>
+      {/* User profile at bottom — Rule 6: gradient border-top */}
+      <div className="px-3 py-4">
+        <div className="h-px mb-3 mx-1" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
         <div className="flex items-center gap-3 px-3 py-2">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
@@ -258,8 +284,8 @@ export default function Sidebar({
           </div>
           <button
             onClick={onLogout}
-            className="transition-colors cursor-pointer"
-            style={{ color: "#9DA3B4" }}
+            className="cursor-pointer"
+            style={{ color: "#9DA3B4", transition: "all 0.2s ease" }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "#FFFFFF"; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = "#9DA3B4"; }}
             title="יציאה"

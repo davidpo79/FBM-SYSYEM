@@ -179,9 +179,18 @@ export default function ProjectsPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-[var(--text-muted)]">טוען פרויקטים...</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="card-static p-5 space-y-3">
+              <div className="skeleton h-5 w-2/3" />
+              <div className="skeleton h-4 w-1/2" />
+              <div className="skeleton h-3 w-full" />
+              <div className="skeleton h-3 w-4/5" />
+            </div>
+          ))}
+        </div>
       ) : projects.length === 0 ? (
-        <div className="bg-[var(--card-bg)] border-2 border-dashed border-[var(--card-border)] rounded-[16px] p-12 text-center">
+        <div className="card-static border-2 border-dashed !border-[var(--card-border)] p-12 text-center">
           <p className="text-[var(--text-muted)] mb-4">עדיין אין לך פרויקטים</p>
           <Link
             href="/questionnaire"
@@ -206,7 +215,7 @@ export default function ProjectsPage() {
             return (
               <div
                 key={project.id}
-                className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5 hover:shadow-md hover:border-[var(--gold)] transition-all group relative"
+                className="card-elevated p-5 group relative"
               >
                 {/* Action menu (3 dots) */}
                 <div className="absolute top-3 left-3" ref={isMenuOpen ? menuRef : undefined}>

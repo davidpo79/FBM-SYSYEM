@@ -145,10 +145,10 @@ export default function NichesPage() {
             <button
               key={i}
               onClick={() => handleSelectNiche(niche)}
-              className={`text-right p-6 bg-[var(--card-bg)] border rounded-[16px] transition-all cursor-pointer ${
+              className={`text-right p-6 card-elevated cursor-pointer animate-in delay-${Math.min(i + 1, 8)} ${
                 isSelected
-                  ? "border-[var(--gold)] bg-[var(--gold-soft)] shadow-md"
-                  : "border-[var(--card-border)] hover:border-[var(--gold)] hover:shadow-md"
+                  ? "!border-[var(--gold)] !bg-[var(--gold-soft)]"
+                  : ""
               }`}
             >
               <div className="flex items-start justify-between mb-3">

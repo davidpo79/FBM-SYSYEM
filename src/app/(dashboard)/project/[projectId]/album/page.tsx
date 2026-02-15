@@ -227,7 +227,7 @@ export default function AlbumPage() {
     <button
       type="button"
       onClick={() => router.push(href)}
-      className="w-full text-right bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-4 cursor-pointer transition-all hover:bg-[var(--gold-soft,rgba(212,168,67,0.06))] hover:border-[var(--gold)] group"
+      className="w-full text-right card-elevated p-4 cursor-pointer"
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2 mb-2">
@@ -248,9 +248,16 @@ export default function AlbumPage() {
 
   return (
     <div dir="rtl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      {/* Header — Rule 8: celebration background */}
+      <div className="flex items-center justify-between mb-6 relative card-static p-6 animate-in overflow-hidden">
+        {/* Celebration glow */}
+        {isCompleted && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[20px]">
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-[var(--gold)] opacity-[0.04] rounded-full blur-3xl" />
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-[var(--success)] opacity-[0.04] rounded-full blur-3xl" />
+          </div>
+        )}
+        <div className="relative z-10">
           <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
             <FBMLogo size={24} />
             אלבום הקריאטיבים
@@ -268,7 +275,7 @@ export default function AlbumPage() {
         {/* Left - Image gallery */}
         <div className="lg:w-[60%]">
           {displayImages.length === 0 ? (
-            <div className="bg-[var(--card-bg)] border-2 border-dashed border-[var(--card-border)] rounded-[16px] p-12 text-center">
+            <div className="card-static border-2 border-dashed !border-[var(--card-border)] p-12 text-center animate-in delay-1">
               <p className="text-lg font-semibold text-[var(--text-secondary)] mb-2">
                 עדיין לא הוספת תמונות לאלבום
               </p>
@@ -278,7 +285,7 @@ export default function AlbumPage() {
               <button
                 type="button"
                 onClick={() => router.push(`/project/${projectId}/creative`)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--gold)] text-white font-semibold rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
+                className="btn-gold text-sm"
               >
                 חזור לקריאייטיב
               </button>
@@ -286,7 +293,7 @@ export default function AlbumPage() {
           ) : (
             <>
               {/* Select all / actions bar */}
-              <div className="flex items-center justify-between mb-4 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[10px] px-4 py-2.5">
+              <div className="flex items-center justify-between mb-4 card-static !rounded-xl px-4 py-2.5 animate-in delay-1">
                 <button
                   type="button"
                   onClick={selectAll}
@@ -302,17 +309,18 @@ export default function AlbumPage() {
               </div>
 
               {/* Image grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {/* Rule 8: grid-cols-2 for bigger images */}
+              <div className="grid grid-cols-2 gap-4">
                 {displayImages.map((img, idx) => {
                   const src = img.base64 || img.url;
                   const isSelected = selectedIds.has(idx);
                   return (
                     <div
                       key={idx}
-                      className={`relative group rounded-[12px] overflow-hidden border-2 transition-all cursor-pointer ${
+                      className={`relative group rounded-[16px] overflow-hidden border-2 transition-all cursor-pointer animate-in delay-${Math.min(idx + 2, 8)} ${
                         isSelected
-                          ? "border-[var(--gold)] shadow-lg"
-                          : "border-[var(--card-border)] hover:border-[var(--gold)]/50"
+                          ? "border-[var(--gold)] shadow-lg scale-[0.98]"
+                          : "border-[var(--card-border)] hover:border-[var(--gold)]/50 hover:shadow-lg hover:scale-[1.03]"
                       }`}
                       onClick={() => toggleSelect(idx)}
                     >
@@ -335,7 +343,8 @@ export default function AlbumPage() {
                         <img
                           src={src}
                           alt={`קריאטיב ${idx + 1}`}
-                          className="w-full aspect-square object-cover"
+                          className="w-full object-cover"
+                          style={{ aspectRatio: "9/16" }}
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = "none";
                             const parent = (e.target as HTMLImageElement).parentElement;
@@ -348,7 +357,7 @@ export default function AlbumPage() {
                           }}
                         />
                       ) : (
-                        <div className="w-full aspect-square bg-[var(--content-bg)] flex items-center justify-center text-[var(--text-muted)]">
+                        <div className="w-full bg-[var(--content-bg)] flex items-center justify-center text-[var(--text-muted)]" style={{ aspectRatio: "9/16" }}>
                           <span className="text-xs text-center px-2">תמונה לא זמינה — צור מחדש</span>
                         </div>
                       )}
@@ -382,7 +391,7 @@ export default function AlbumPage() {
                     handleDownloadZip();
                   }}
                   disabled={downloading}
-                  className="flex-1 py-3.5 text-base font-bold rounded-[10px] transition-all disabled:opacity-50 cursor-pointer bg-green-700 hover:bg-green-800 text-white"
+                  className="flex-1 btn-success !py-3.5 text-base"
                 >
                   {downloading
                     ? "מכין ZIP..."
@@ -393,7 +402,7 @@ export default function AlbumPage() {
                 <button
                   onClick={handleExportSummaryPdf}
                   disabled={downloading}
-                  className="py-3.5 px-5 text-sm font-bold border-2 border-[var(--card-border)] text-[var(--text-secondary)] rounded-[10px] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-all disabled:opacity-50 cursor-pointer"
+                  className="btn-outline !py-3.5 px-5 text-sm"
                 >
                   {downloading ? "..." : "PDF"}
                 </button>
@@ -406,7 +415,7 @@ export default function AlbumPage() {
         <div className="lg:w-[40%]">
           <div className="sticky top-4 space-y-3">
             {/* Summary header + complete button */}
-            <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-5">
+            <div className="card-static p-5 animate-in delay-1">
               <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">
                 סיכום הפרויקט
               </h3>
@@ -424,7 +433,7 @@ export default function AlbumPage() {
                 <button
                   type="button"
                   onClick={handleMarkComplete}
-                  className="mt-3 w-full py-3 text-base font-bold bg-[var(--success)] text-white rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2"
+                  className="mt-3 w-full btn-success !py-3 text-base flex items-center justify-center gap-2"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
@@ -463,13 +472,19 @@ export default function AlbumPage() {
 
             {scriptParts.length > 0 && (
               <SummaryCard title="תסריטים" href={`/project/${projectId}/scripts`}>
-                <p className="text-sm text-[var(--text-secondary)] pr-8">{scriptParts.length} תסריטי וידאו נוצרו</p>
+                <div className="flex items-baseline gap-2 pr-8">
+                  <span className="text-2xl font-black text-[var(--text-primary)]">{scriptParts.length}</span>
+                  <span className="text-sm text-[var(--text-secondary)]">תסריטים נוצרו</span>
+                </div>
               </SummaryCard>
             )}
 
             {displayImages.length > 0 && (
               <SummaryCard title="קריאטיבים" href={`/project/${projectId}/creative`}>
-                <p className="text-sm text-[var(--text-secondary)] pr-8">{displayImages.length} תמונות נוצרו</p>
+                <div className="flex items-baseline gap-2 pr-8">
+                  <span className="text-2xl font-black text-[var(--text-primary)]">{displayImages.length}</span>
+                  <span className="text-sm text-[var(--text-secondary)]">תמונות נוצרו</span>
+                </div>
               </SummaryCard>
             )}
 
@@ -477,7 +492,7 @@ export default function AlbumPage() {
             <button
               type="button"
               onClick={() => router.push("/questionnaire")}
-              className="w-full mt-4 py-4 text-base font-bold bg-[var(--card-bg)] border-2 border-dashed border-[var(--card-border)] text-[var(--text-secondary)] rounded-[16px] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-all cursor-pointer"
+              className="w-full mt-4 btn-outline !py-4 text-base border-2 border-dashed"
             >
               🔄 התחל פרויקט חדש
             </button>

@@ -182,9 +182,17 @@ export default function CreativePage() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-[var(--text-primary)] mb-6">
-        קריאייטיב - תמונות לפרסום
-      </h2>
+      <div className="flex items-center justify-between mb-6 animate-in">
+        <h2 className="text-xl font-bold text-[var(--text-primary)]">
+          קריאייטיב - תמונות לפרסום
+        </h2>
+        {/* Rule 10: Album counter */}
+        {albumImages.length > 0 && (
+          <span className="text-sm font-medium text-[var(--gold)] bg-[var(--gold-soft)] px-3 py-1.5 rounded-full">
+            {albumImages.length}/{scriptParts.length} נוספו לאלבום
+          </span>
+        )}
+      </div>
 
       <div className="space-y-6">
         {scriptParts.map((scriptText, idx) => {
@@ -194,7 +202,7 @@ export default function CreativePage() {
           return (
             <div
               key={idx}
-              className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] overflow-hidden"
+              className={`card-static overflow-hidden animate-in delay-${Math.min(idx + 1, 8)}`}
             >
               <div className="p-5 border-b border-[var(--card-border)] flex items-center justify-between">
                 <h3 className="font-bold text-[var(--text-primary)]">תסריט {idx + 1}</h3>
@@ -245,18 +253,21 @@ export default function CreativePage() {
                         הורד תמונה
                       </a>
                     )}
-                    {/* Add/Remove from Album button */}
+                    {/* Add/Remove from Album — Rule 10: pill shape with heart */}
                     {(imageForScript.url || imageForScript.base64) && (
                       <button
                         type="button"
                         onClick={() => toggleAlbumImage(imageForScript)}
-                        className={`px-4 py-2 text-sm font-semibold rounded-[10px] cursor-pointer transition-all ${
+                        className={`px-5 py-2 text-sm font-semibold rounded-full cursor-pointer transition-all flex items-center gap-1.5 ${
                           isInAlbum(idx)
                             ? "bg-green-50 text-[var(--success)] border border-[var(--success)]"
                             : "bg-transparent text-[var(--gold)] border border-[var(--gold)] hover:bg-[var(--gold-soft)]"
                         }`}
                       >
-                        {isInAlbum(idx) ? "✅ נוסף לאלבום" : "📸 הוסף לאלבום"}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill={isInAlbum(idx) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                        </svg>
+                        {isInAlbum(idx) ? "נוסף לאלבום" : "הוסף לאלבום"}
                       </button>
                     )}
                   </div>
@@ -293,11 +304,7 @@ export default function CreativePage() {
                   )}
                   <button
                     onClick={() => handleSuggestCreative(idx)}
-                    className={`px-5 py-2.5 font-semibold rounded-[10px] transition-all cursor-pointer ${
-                      hasImage
-                        ? "bg-orange-500 hover:bg-orange-600 text-white"
-                        : "bg-[var(--gold)] hover:opacity-90 text-white"
-                    }`}
+                    className={hasImage ? "btn-outline !py-2.5 !px-5 text-sm" : "btn-gold !py-2.5 !px-5 text-sm"}
                   >
                     {hasImage ? "ערוך ויצור מחדש" : "צור קריאייטיב לתסריט"}
                   </button>
@@ -335,7 +342,7 @@ export default function CreativePage() {
 
       {/* All done */}
       {allDone && (
-        <div className="text-center py-8 bg-green-50 border border-green-200 rounded-[16px] mt-6">
+        <div className="text-center py-8 bg-green-50 border border-green-200 rounded-[20px] mt-6 animate-in">
           <h2 className="text-2xl font-bold text-[var(--success)]">הכל מוכן!</h2>
           <p className="text-[var(--text-secondary)] mt-2">
             כל התסריטים והקריאטיבים נוצרו בהצלחה
@@ -347,7 +354,7 @@ export default function CreativePage() {
           )}
           <button
             onClick={() => router.push(`/project/${projectId}/album`)}
-            className="mt-4 px-8 py-3 text-lg font-bold bg-[var(--gold)] text-white rounded-[12px] hover:opacity-90 transition-opacity cursor-pointer"
+            className="mt-4 btn-gold text-lg !px-8 !py-3"
           >
             עבור לאלבום הקריאטיבים
           </button>

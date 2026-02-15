@@ -112,7 +112,7 @@ export default function PainsPage() {
 
   return (
     <div>
-      <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] overflow-hidden">
+      <div className="card-static overflow-hidden">
         <div className="p-6 border-b border-[var(--card-border)] flex items-center justify-between">
           <h2 className="text-xl font-bold text-[var(--text-primary)]">
             ניתוח כאבים - {selectedNiche?.name}
