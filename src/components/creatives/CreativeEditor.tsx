@@ -249,7 +249,7 @@ export default function CreativeEditor({
       {/* Header */}
       <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mb-4">
         <span className="font-semibold text-[var(--gold)] inline-flex items-center gap-1">
-          <NextImage src="/logo-fbm.png" alt="FBM" width={18} height={18} className="rounded" />
+          <NextImage src="/logo-fbm.png" alt="FBM" width={28} height={28} className="rounded" />
           FBM Studio
         </span>
         <span>מציע:</span>

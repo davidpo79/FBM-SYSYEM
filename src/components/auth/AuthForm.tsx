@@ -111,7 +111,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         {/* Logo */}
         <div className="text-center mb-6">
           <div className="flex justify-center mb-3">
-            <Image src="/logo-fbm.png" alt="FBM Studio" width={48} height={48} className="rounded" />
+            <Image src="/logo-fbm.png" alt="FBM Studio" width={80} height={80} className="rounded" />
           </div>
           <h1 className="text-3xl font-bold mb-1">FBM Studio</h1>
         </div>

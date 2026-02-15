@@ -73,9 +73,9 @@ export default function Sidebar({
     >
       {/* Logo header — Rule 6: gradient separator */}
       <div className="px-5 pt-5 pb-4 flex items-center gap-3 mb-1">
-        <Image src="/logo-fbm.png" alt="FBM" width={36} height={36} className="rounded" />
+        <Image src="/logo-fbm.png" alt="FBM" width={56} height={56} className="rounded" />
         <div className="flex items-center gap-2">
-          <span className="text-white font-bold text-lg">FBM Studio</span>
+          <span className="text-white font-bold text-xl">FBM Studio</span>
           <span
             className="text-[10px] px-1.5 py-0.5 rounded font-medium"
             style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}

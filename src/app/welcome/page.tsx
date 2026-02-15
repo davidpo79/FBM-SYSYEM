@@ -166,8 +166,8 @@ function WelcomeContent() {
             <Image
               src="/logo-fbm.png"
               alt="FBM Studio Logo"
-              width={80}
-              height={80}
+              width={120}
+              height={120}
               priority
               className="rounded"
             />
