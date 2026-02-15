@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
 import { supabase } from "@/lib/supabase";
 import { getQuestions, type QuestionnaireAnswers } from "@/lib/questions";
 import StepIndicator from "@/components/questionnaire/StepIndicator";
@@ -22,7 +23,8 @@ type FlowStage =
   | "uploading"
   | "processing"
   | "review"
-  | "manual";
+  | "manual"
+  | "booking";
 
 export default function QuestionnairePage() {
   const router = useRouter();
@@ -33,6 +35,11 @@ export default function QuestionnairePage() {
   const [answers, setAnswers] = useState<QuestionnaireAnswers>({});
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Booking state (token users only)
+  const [isTokenUser, setIsTokenUser] = useState(false);
+  const [savedProjectId, setSavedProjectId] = useState<string | null>(null);
+  const [bookingConfirmed, setBookingConfirmed] = useState(false);
 
   // Flow state
   const [flowStage, setFlowStage] = useState<FlowStage>("name");
@@ -53,6 +60,22 @@ export default function QuestionnairePage() {
 
   const questions = getQuestions(ownerNiche);
 
+  // Listen for GHL booking confirmation from iframe
+  useEffect(() => {
+    if (flowStage !== "booking") return;
+    function handleMessage(event: MessageEvent) {
+      if (
+        event.data &&
+        (event.data.type === "booking_confirmed" ||
+          event.data === "booking_confirmed")
+      ) {
+        setBookingConfirmed(true);
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [flowStage]);
+
   // Compute step indicator progress
   const getProgress = (): { current: number; total: number; label?: string } => {
     const total = questions.length + 3;
@@ -70,6 +93,8 @@ export default function QuestionnairePage() {
         return { current: 5, total, label: "מעבד..." };
       case "review":
         return { current: questions.length + 2, total, label: "סקירת תשובות" };
+      case "booking":
+        return { current: total, total, label: "קביעת פגישה" };
       case "manual": {
         const q = questions[manualStep];
         return {
@@ -85,6 +110,11 @@ export default function QuestionnairePage() {
 
   // Load saved progress (or clear if ?new=true)
   useEffect(() => {
+    // Check if user came via welcome token
+    if (localStorage.getItem("fbm_is_token_user") === "true") {
+      setIsTokenUser(true);
+    }
+
     const params = new URLSearchParams(window.location.search);
     if (params.get("new") === "true") {
       localStorage.removeItem(STORAGE_KEY);
@@ -99,7 +129,7 @@ export default function QuestionnairePage() {
         setOwnerName(data.ownerName ?? "");
         setOwnerNiche(data.ownerNiche ?? "");
         setAnswers(data.answers ?? {});
-        if (data.flowStage) setFlowStage(data.flowStage);
+        if (data.flowStage && data.flowStage !== "booking") setFlowStage(data.flowStage);
         if (data.manualStep !== undefined) setManualStep(data.manualStep);
         if (data.mode) setMode(data.mode);
       } catch {
@@ -244,6 +274,15 @@ export default function QuestionnairePage() {
       if (dbError) throw dbError;
 
       localStorage.removeItem(STORAGE_KEY);
+
+      // Token users see booking after questionnaire
+      if (isTokenUser) {
+        setSavedProjectId(data.id);
+        setFlowStage("booking");
+        setSubmitting(false);
+        return;
+      }
+
       router.push(`/project/${data.id}/strategy`);
     } catch (err) {
       console.error("Submit error:", err);
@@ -588,6 +627,77 @@ export default function QuestionnairePage() {
             </button>
           </div>
         </>
+      )}
+
+      {/* ─── Booking stage (token users only) ─── */}
+      {flowStage === "booking" && savedProjectId && (
+        <div className="animate-in" dir="rtl">
+          <Script src="https://link.msgsndr.com/js/form_embed.js" strategy="lazyOnload" />
+          <div className="card-elevated p-6 text-center mb-6">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"
+              style={{ backgroundColor: "rgba(34, 197, 94, 0.1)" }}>
+              {"\u2705"}
+            </div>
+            <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+              השאלון נשמר בהצלחה!
+            </h2>
+            <p className="text-[var(--text-secondary)] text-sm">
+              עכשיו בוא נקבע פגישת היכרות 1 על 1
+            </p>
+          </div>
+
+          <div className="card-elevated p-6 mb-6">
+            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">
+              קבע פגישת היכרות
+            </h3>
+            <p className="text-sm text-[var(--text-secondary)] mb-4">
+              בחר תאריך ושעה שנוחים לך
+            </p>
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{ border: "1px solid var(--card-border)" }}
+            >
+              <iframe
+                src="https://api.leadconnectorhq.com/widget/booking/I9YTJwxQRHHZbW0E07EA"
+                style={{
+                  width: "100%",
+                  height: "700px",
+                  border: "none",
+                  overflow: "hidden",
+                }}
+                scrolling="no"
+                title="קביעת פגישה"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-3">
+            {bookingConfirmed && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
+                style={{ backgroundColor: "rgba(34, 197, 94, 0.1)", color: "#22C55E" }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                הפגישה נקבעה בהצלחה!
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem("fbm_is_token_user");
+                router.push(`/project/${savedProjectId}/strategy`);
+              }}
+              className={`px-8 py-3 rounded-xl font-bold text-white transition-all cursor-pointer ${
+                bookingConfirmed
+                  ? "bg-green-600 hover:bg-green-700 text-lg"
+                  : "bg-[var(--gold)] hover:opacity-90 text-sm"
+              }`}
+            >
+              {bookingConfirmed ? "המשך לבניית האסטרטגיה" : "דלג והמשך לאסטרטגיה"}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Global error */}

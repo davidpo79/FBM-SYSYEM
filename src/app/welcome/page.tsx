@@ -57,7 +57,6 @@ function WelcomeContent() {
 
   const [loading, setLoading] = useState(true);
   const [tokenData, setTokenData] = useState<TokenData | null>(null);
-  const [booked, setBooked] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -87,6 +86,8 @@ function WelcomeContent() {
             studentName: data.studentName,
             studentEmail: data.studentEmail,
           });
+          // Flag this user as token-based so questionnaire shows booking
+          localStorage.setItem("fbm_is_token_user", "true");
         }
       } catch {
         setTokenData({ valid: false, reason: "שגיאה באימות הטוקן" });
@@ -97,22 +98,6 @@ function WelcomeContent() {
 
     validateToken();
   }, [token]);
-
-  // Listen for calendar booking events from the iframe
-  useEffect(() => {
-    function handleMessage(event: MessageEvent) {
-      if (
-        event.data &&
-        (event.data.type === "booking_confirmed" ||
-          event.data === "booking_confirmed")
-      ) {
-        setBooked(true);
-      }
-    }
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
 
   if (loading) {
     return (
@@ -253,78 +238,17 @@ function WelcomeContent() {
             ))}
           </div>
 
-          {/* Calendar Section */}
-          <div className="mb-6">
-            <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">
-              קבע פגישת היכרות
-            </h2>
-            <p className="text-sm text-[var(--text-secondary)] mb-4">
-              בחר תאריך ושעה שנוחים לך לפגישת היכרות קצרה
-            </p>
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{ border: "1px solid var(--card-border)" }}
-            >
-              <iframe
-                src="https://api.leadconnectorhq.com/widget/booking/YOUR_CALENDAR_ID"
-                style={{
-                  width: "100%",
-                  height: "600px",
-                  border: "none",
-                }}
-                scrolling="no"
-                title="Schedule Booking"
-              />
-            </div>
-          </div>
-
           {/* CTA Button */}
           <div className="text-center pt-4">
-            {booked ? (
-              <div className="animate-in">
-                <div
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-4"
-                  style={{
-                    backgroundColor: "rgba(34, 197, 94, 0.1)",
-                    color: "#22C55E",
-                  }}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  הפגישה נקבעה בהצלחה!
-                </div>
-                <br />
-                <Link
-                  href="/signup"
-                  className="btn-gold inline-block text-lg !py-3.5 !px-10"
-                >
-                  התחבר למערכת
-                </Link>
-              </div>
-            ) : (
-              <div>
-                <p className="text-sm text-[var(--text-muted)] mb-3">
-                  קבע פגישה למעלה, או התחבר ישירות למערכת
-                </p>
-                <Link
-                  href="/signup"
-                  className="btn-outline inline-block text-sm"
-                >
-                  התחבר למערכת
-                </Link>
-              </div>
-            )}
+            <p className="text-sm text-[var(--text-secondary)] mb-4">
+              מלא את שאלון התדר וקבע פגישת היכרות אישית
+            </p>
+            <Link
+              href="/signup"
+              className="btn-gold inline-block text-lg !py-3.5 !px-10"
+            >
+              בואו נתחיל!
+            </Link>
           </div>
         </div>
 
