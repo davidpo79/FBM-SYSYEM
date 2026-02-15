@@ -107,6 +107,8 @@ export default function AdminSuggestionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: newStatus }),
       });
+      // Notify sidebar to refresh the badge count
+      window.dispatchEvent(new CustomEvent("suggestions-count-changed"));
     } catch {
       fetchSuggestions();
     }

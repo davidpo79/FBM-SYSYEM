@@ -139,6 +139,19 @@ export default function DashboardLayout({
     return () => window.removeEventListener("toggle-suggest-improvement", toggleSuggest);
   }, [toggleSuggest]);
 
+  // Refresh suggestions badge when admin changes a suggestion status
+  const refreshSuggestionsCount = useCallback(() => {
+    if (!isAdmin) return;
+    fetch("/api/admin/suggestions/count")
+      .then((r) => r.json())
+      .then((d) => setNewSuggestionsCount(d.count ?? 0))
+      .catch(() => {});
+  }, [isAdmin]);
+  useEffect(() => {
+    window.addEventListener("suggestions-count-changed", refreshSuggestionsCount);
+    return () => window.removeEventListener("suggestions-count-changed", refreshSuggestionsCount);
+  }, [refreshSuggestionsCount]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.replace("/login");
