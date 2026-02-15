@@ -21,53 +21,46 @@ export default function PipelineStepper({
 }: PipelineStepperProps) {
   return (
     <div className="mb-8" dir="rtl">
-      {/* Steps with connecting lines */}
-      <div className="flex items-center justify-between mb-3 relative">
+      {/* Steps row */}
+      <div className="relative flex items-start justify-between mb-3">
+        {/* Connecting lines layer — rendered behind circles */}
+        <div className="absolute top-[18px] right-0 left-0 flex z-0 px-[calc(100%/12)]">
+          {steps.slice(0, -1).map((_, i) => {
+            const segDone = completedSteps.includes(steps[i].key);
+            const nextDone = completedSteps.includes(steps[i + 1].key);
+            return (
+              <div key={i} className="flex-1 h-[2px] mx-0.5">
+                <div className="w-full h-full bg-gray-200 rounded-full overflow-hidden">
+                  {segDone && (
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: nextDone ? "100%" : "50%",
+                        background: "linear-gradient(90deg, #22C55E 0%, #D4A843 100%)",
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Step circles + labels */}
         {steps.map((step, i) => {
           const isCompleted = completedSteps.includes(step.key);
           const isActive = step.key === currentStep;
           const isPending = !isCompleted && !isActive;
 
-          // Connecting line between circles
-          const showLine = i < steps.length - 1;
-          const nextCompleted = i < steps.length - 1 && completedSteps.includes(steps[i + 1].key);
-          const lineDone = isCompleted;
-
           return (
             <Link
               key={step.key}
               href={step.href}
-              className={`flex-1 group cursor-pointer flex flex-col items-center relative ${isPending ? "opacity-50" : ""}`}
+              className={`flex-1 flex flex-col items-center relative z-10 ${isPending ? "opacity-50" : ""}`}
             >
-              {/* Connecting line */}
-              {showLine && (
-                <div
-                  className="absolute top-[18px] h-[2px] z-0"
-                  style={{
-                    right: "50%",
-                    left: "-50%",
-                    transform: "translateX(-50%)",
-                    width: "calc(100% - 36px)",
-                    marginRight: "18px",
-                  }}
-                >
-                  <div className="w-full h-full bg-gray-200 rounded-full">
-                    {lineDone && (
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: nextCompleted ? "100%" : "50%",
-                          background: "linear-gradient(90deg, #22C55E 0%, #D4A843 100%)",
-                        }}
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Circle */}
               <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold relative z-10"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
                 style={
                   isCompleted
                     ? {

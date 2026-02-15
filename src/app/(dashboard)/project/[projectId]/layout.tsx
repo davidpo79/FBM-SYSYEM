@@ -324,10 +324,10 @@ function FbmExpertButton() {
         onBlur={() => setTimeout(() => setShowTooltip(false), 150)}
         className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[10px] cursor-pointer transition-all hover:opacity-90"
         style={{
-          backgroundColor: "#D4A843",
-          color: "#1a1a1a",
-          boxShadow: "0 0 12px rgba(212, 168, 67, 0.4)",
-          animation: "fbm-glow 2s ease-in-out infinite alternate",
+          background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
+          color: "#0F1117",
+          boxShadow: "0 2px 8px rgba(212, 168, 67, 0.3)",
+          animation: "goldGlow 2s ease-in-out infinite alternate",
         }}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
