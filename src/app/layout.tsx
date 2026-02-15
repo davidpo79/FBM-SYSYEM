@@ -3,9 +3,24 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "FBM Studio",
-  description: "Frequency-Based Marketing Strategy Builder",
+  description: "שיווק מבוסס תדר — Frequency Based Marketing",
+  openGraph: {
+    title: "FBM Studio",
+    description:
+      "מערכת שיווק מבוסס תדר — בניית אסטרטגיה, תסריטים וקריאייטיבים",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    siteName: "FBM Studio",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FBM Studio",
+    description: "מערכת שיווק מבוסס תדר",
+    images: ["/og-image.png"],
+  },
   icons: {
-    icon: "/favicon.svg",
+    icon: "/logo-fbm.png",
+    apple: "/logo-fbm.png",
   },
 };
 
