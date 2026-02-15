@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { generateImage } from "@/lib/gemini";
 import { supabase } from "@/lib/supabase";
+import { logApiCall } from "@/lib/api-log";
 import type { CreativeConfig, CreativeResponse } from "@/types";
 
 /**
@@ -108,6 +109,7 @@ const backgroundDescriptions: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
   try {
     const body = await req.json();
     const { mainText, subtitle, cta, background, color, userInfo, showProfile, profileImage, displayName, displayRole, fontSize, textPosition, format } =
@@ -242,6 +244,14 @@ ${includeProfile ? "- For the person section use ONLY a simple flat circular sil
           background_type: background,
         },
       };
+
+      logApiCall({
+        endpoint: "/api/generate-creatives",
+        projectId: body.projectId,
+        status: "success",
+        durationMs: Date.now() - startTime,
+      });
+
       return NextResponse.json(response);
     }
 
@@ -259,10 +269,25 @@ ${includeProfile ? "- For the person section use ONLY a simple flat circular sil
       },
     };
 
+    logApiCall({
+      endpoint: "/api/generate-creatives",
+      projectId: body.projectId,
+      status: "success",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json(response);
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error("generate-creatives error:", errMsg, error);
+
+    logApiCall({
+      endpoint: "/api/generate-creatives",
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json(
       { error: `Failed to generate creative: ${errMsg}` },
       { status: 500 },

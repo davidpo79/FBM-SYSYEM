@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { logApiCall } from "@/lib/api-log";
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
   try {
     const { projectId } = await req.json();
 
@@ -50,9 +52,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    logApiCall({
+      endpoint: "/api/duplicate-project",
+      projectId,
+      status: "success",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json({ project: inserted });
   } catch (e) {
     console.error("duplicate-project exception:", e);
+
+    logApiCall({
+      endpoint: "/api/duplicate-project",
+      status: "error",
+      errorMessage: e instanceof Error ? e.message : "Unknown error",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }

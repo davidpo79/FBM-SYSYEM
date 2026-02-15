@@ -1,9 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { getFBMExpertSystemPrompt } from "@/lib/fbm-expert-prompt";
+import { logApiCall } from "@/lib/api-log";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! });
 
 export async function POST(req: Request) {
+  const startTime = Date.now();
   try {
     const { message, history, context } = await req.json();
 
@@ -65,6 +67,12 @@ export async function POST(req: Request) {
             suggestions = [];
           }
 
+          logApiCall({
+            endpoint: "/api/fbm-expert",
+            status: "success",
+            durationMs: Date.now() - startTime,
+          });
+
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({ done: true, suggestedQuestions: suggestions })}\n\n`,
@@ -72,6 +80,13 @@ export async function POST(req: Request) {
           );
           controller.close();
         } catch {
+          logApiCall({
+            endpoint: "/api/fbm-expert",
+            status: "error",
+            errorMessage: "Stream error",
+            durationMs: Date.now() - startTime,
+          });
+
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({ error: "שגיאה בתשובה" })}\n\n`,
@@ -91,6 +106,14 @@ export async function POST(req: Request) {
     });
   } catch (error: unknown) {
     console.error("FBM Expert error:", error);
+
+    logApiCall({
+      endpoint: "/api/fbm-expert",
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+      durationMs: Date.now() - startTime,
+    });
+
     return Response.json(
       {
         error:

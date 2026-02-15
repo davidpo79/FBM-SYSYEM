@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
+import { logApiCall } from "@/lib/api-log";
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
   try {
     const { currentStrategy, feedback } = await req.json();
 
@@ -37,10 +39,24 @@ ${currentStrategy}
 
     const refinedStrategy = await callAI("", prompt);
 
+    logApiCall({
+      endpoint: "/api/refine-strategy",
+      status: "success",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json({ strategy: refinedStrategy });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("refine-strategy error:", message);
+
+    logApiCall({
+      endpoint: "/api/refine-strategy",
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json(
       { error: `Failed to refine strategy: ${message}` },
       { status: 500 },

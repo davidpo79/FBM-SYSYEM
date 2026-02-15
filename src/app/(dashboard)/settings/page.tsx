@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
 type Tab = "general" | "plan" | "invoices";
 
@@ -36,6 +37,56 @@ const invoices = [
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("general");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    async function loadProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setEmail(user.email ?? "");
+
+      const { data } = await supabase
+        .from("user_profiles")
+        .select("full_name")
+        .eq("user_id", user.id)
+        .single();
+
+      if (data?.full_name) {
+        setFullName(data.full_name);
+      }
+    }
+    loadProfile();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Save full name
+      await supabase.from("user_profiles").upsert({
+        user_id: user.id,
+        full_name: fullName.trim(),
+      });
+
+      // Update password if provided
+      if (password.trim()) {
+        await supabase.auth.updateUser({ password: password.trim() });
+        setPassword("");
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "general", label: "כללי" },
@@ -73,8 +124,9 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">שם מלא</label>
               <input
                 type="text"
-                defaultValue=""
-                placeholder="השם שלך"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="ישראל ישראלי"
                 className="w-full px-4 py-2.5 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] transition-colors text-sm"
               />
             </div>
@@ -82,23 +134,36 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">אימייל</label>
               <input
                 type="email"
-                defaultValue=""
-                placeholder="your@email.com"
-                className="w-full px-4 py-2.5 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] transition-colors text-sm"
+                value={email}
+                readOnly
+                className="w-full px-4 py-2.5 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-muted)] text-right text-sm cursor-not-allowed"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">סיסמה</label>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">סיסמה חדשה</label>
               <input
                 type="password"
-                defaultValue=""
-                placeholder="סיסמה חדשה"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="השאר ריק אם אין שינוי"
+                dir="ltr"
                 className="w-full px-4 py-2.5 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] transition-colors text-sm"
               />
             </div>
-            <button className="px-5 py-2.5 bg-[var(--gold)] text-white font-semibold rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer">
-              שמור שינויים
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-5 py-2.5 bg-[var(--gold)] text-white font-semibold rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+              >
+                {saving ? "שומר..." : "שמור שינויים"}
+              </button>
+              {saved && (
+                <span className="text-sm text-[var(--success)] font-medium animate-in">
+                  נשמר בהצלחה
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )}

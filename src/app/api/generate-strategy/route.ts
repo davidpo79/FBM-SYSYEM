@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
 import { buildStrategyPrompt } from "@/lib/prompts";
+import { logApiCall } from "@/lib/api-log";
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
   try {
     const { userName, answers } = await req.json();
 
@@ -23,10 +25,24 @@ export async function POST(req: NextRequest) {
     const prompt = buildStrategyPrompt({ userName, answers });
     const strategy = await callAI("", prompt);
 
+    logApiCall({
+      endpoint: "/api/generate-strategy",
+      status: "success",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json({ strategy });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("generate-strategy error:", message);
+
+    logApiCall({
+      endpoint: "/api/generate-strategy",
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json(
       { error: `Failed to generate strategy: ${message}` },
       { status: 500 },

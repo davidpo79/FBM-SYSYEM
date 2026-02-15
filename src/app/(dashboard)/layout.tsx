@@ -5,6 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Sidebar from "@/components/layout/Sidebar";
 import FBMExpertPanel from "@/components/chat/FBMExpertPanel";
+import NotificationBell from "@/components/NotificationBell";
+import SuggestImprovementPanel from "@/components/SuggestImprovementPanel";
 import type { User } from "@supabase/supabase-js";
 
 export default function DashboardLayout({
@@ -21,6 +23,9 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [albumCount, setAlbumCount] = useState(0);
   const [showExpert, setShowExpert] = useState(false);
+  const [showSuggest, setShowSuggest] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Extract projectId from URL if on a project page
   const projectIdMatch = pathname.match(/\/project\/([^/]+)/);
@@ -43,6 +48,26 @@ export default function DashboardLayout({
           .select("id", { count: "exact", head: true })
           .then(({ count }) => {
             setProjectCount(count ?? 0);
+          });
+
+        // Fetch user profile name
+        supabase
+          .from("user_profiles")
+          .select("full_name")
+          .eq("user_id", user.id)
+          .single()
+          .then(({ data }) => {
+            if (data?.full_name) setUserName(data.full_name);
+          });
+
+        // Check admin status
+        supabase
+          .from("admin_users")
+          .select("user_id")
+          .eq("user_id", user.id)
+          .single()
+          .then(({ data }) => {
+            setIsAdmin(!!data);
           });
       }
     });
@@ -99,6 +124,13 @@ export default function DashboardLayout({
     return () => window.removeEventListener("toggle-fbm-expert", toggleExpert);
   }, [toggleExpert]);
 
+  // Listen for Suggest Improvement toggle events
+  const toggleSuggest = useCallback(() => setShowSuggest((v) => !v), []);
+  useEffect(() => {
+    window.addEventListener("toggle-suggest-improvement", toggleSuggest);
+    return () => window.removeEventListener("toggle-suggest-improvement", toggleSuggest);
+  }, [toggleSuggest]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -126,10 +158,12 @@ export default function DashboardLayout({
       {/* Desktop sidebar */}
       <Sidebar
         userEmail={user?.email ?? ""}
+        userName={userName}
         projectId={activeProjectId}
         projectName={projectName}
         projectCount={projectCount}
         albumCount={albumCount}
+        isAdmin={isAdmin}
         onLogout={handleLogout}
       />
 
@@ -171,6 +205,11 @@ export default function DashboardLayout({
 
       {/* Main content area */}
       <div className="lg:mr-[260px]">
+        {/* Top bar with notification bell */}
+        <div className="flex items-center justify-between px-6 lg:px-8 pt-4 pb-0">
+          <div />
+          <NotificationBell />
+        </div>
         <main className="p-6 lg:p-8 min-h-screen">
           {children}
         </main>
@@ -193,6 +232,12 @@ export default function DashboardLayout({
         onClose={() => setShowExpert(false)}
         projectId={activeProjectId}
         currentPage={pathname.split("/").pop() || undefined}
+      />
+
+      {/* Suggest Improvement Panel */}
+      <SuggestImprovementPanel
+        isOpen={showSuggest}
+        onClose={() => setShowSuggest(false)}
       />
     </div>
   );

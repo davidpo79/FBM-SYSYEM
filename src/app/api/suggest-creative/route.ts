@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
+import { logApiCall } from "@/lib/api-log";
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
   try {
     const { scriptText } = await req.json();
 
@@ -70,9 +72,23 @@ export async function POST(req: NextRequest) {
 
     const suggestion = JSON.parse(jsonMatch[0]);
 
+    logApiCall({
+      endpoint: "/api/suggest-creative",
+      status: "success",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json({ success: true, suggestion });
   } catch (error) {
     console.error("suggest-creative error:", error);
+
+    logApiCall({
+      endpoint: "/api/suggest-creative",
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json(
       { error: "Failed to generate suggestion" },
       { status: 500 },

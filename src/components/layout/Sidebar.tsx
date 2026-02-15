@@ -11,6 +11,7 @@ interface SidebarProps {
   projectName?: string;
   projectCount?: number;
   albumCount?: number;
+  isAdmin?: boolean;
   onLogout: () => void;
 }
 
@@ -21,6 +22,7 @@ export default function Sidebar({
   projectName,
   projectCount = 0,
   albumCount = 0,
+  isAdmin = false,
   onLogout,
 }: SidebarProps) {
   const pathname = usePathname();
@@ -45,8 +47,19 @@ export default function Sidebar({
 
   const toolsNav = [
     { href: "#expert", label: "מומחה FBM", emoji: "\u{1F916}", badge: "●", disabled: false, isExpert: true },
+    { href: "#suggest", label: "הצעה לשיפור", emoji: "\u{1F4A1}", disabled: false, isSuggest: true },
     { href: "/settings", label: "הגדרות", emoji: "\u2699\uFE0F", disabled: false },
   ];
+
+  const adminNav = isAdmin
+    ? [
+        { href: "/admin", label: "דשבורד אדמין", emoji: "\u{1F6E1}\uFE0F" },
+        { href: "/admin/students", label: "ניהול תלמידים", emoji: "\u{1F393}" },
+        { href: "/admin/analytics", label: "אנליטיקס", emoji: "\u{1F4CA}" },
+        { href: "/admin/suggestions", label: "הצעות שיפור", emoji: "\u{1F4AC}" },
+        { href: "/admin/settings", label: "הגדרות מערכת", emoji: "\u{1F527}" },
+      ]
+    : [];
 
   const displayName = userName || userEmail?.split("@")[0] || "";
 
@@ -230,6 +243,25 @@ export default function Sidebar({
                   <span className="flex-1 text-right">{item.label}</span>
                   <span className="text-[10px]" style={{ color: "#22C55E" }}>●</span>
                 </button>
+              ) : ("isSuggest" in item && item.isSuggest) ? (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent("toggle-suggest-improvement"))}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer"
+                  style={{ color: "#9DA3B4", transition: "all 0.2s ease" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#1A1D2A";
+                    e.currentTarget.style.transform = "scale(1.01)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.transform = "scale(1)";
+                  }}
+                >
+                  <span className="text-base">{item.emoji}</span>
+                  <span className="flex-1 text-right">{item.label}</span>
+                </button>
               ) : (
                 <Link
                   key={item.href}
@@ -267,6 +299,54 @@ export default function Sidebar({
             )}
           </div>
         </div>
+
+        {/* Admin section */}
+        {adminNav.length > 0 && (
+          <>
+            <div className="mx-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
+            <div>
+              <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#D4A843" }}>
+                אדמין
+              </p>
+              <div className="space-y-1">
+                {adminNav.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm relative"
+                    style={{
+                      transition: "all 0.2s ease",
+                      ...(isActive(item.href)
+                        ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 }
+                        : { color: "#9DA3B4" }),
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive(item.href)) {
+                        e.currentTarget.style.backgroundColor = "#1A1D2A";
+                        e.currentTarget.style.transform = "scale(1.01)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive(item.href)) {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                        e.currentTarget.style.transform = "scale(1)";
+                      }
+                    }}
+                  >
+                    {isActive(item.href) && (
+                      <span
+                        className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-l"
+                        style={{ backgroundColor: "#D4A843", boxShadow: "0 0 8px rgba(212, 168, 67, 0.4)" }}
+                      />
+                    )}
+                    <span className="text-base">{item.emoji}</span>
+                    <span className="flex-1">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </nav>
 
       {/* User profile at bottom — Rule 6: gradient border-top */}

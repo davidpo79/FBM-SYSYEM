@@ -1,0 +1,338 @@
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+
+interface TokenData {
+  valid: boolean;
+  studentName?: string;
+  studentEmail?: string;
+  reason?: string;
+}
+
+const CHECKLIST_ITEMS = [
+  {
+    icon: "\uD83C\uDFAF",
+    title: "אסטרטגיית FBM מותאמת אישית",
+    description: "בניית אסטרטגיה מלאה לפרסום ממומן על בסיס מתודולוגיית FBM",
+  },
+  {
+    icon: "\uD83D\uDD0D",
+    title: "מחקר נישות ו ניתוח כאבים",
+    description: "זיהוי קהלי יעד מדויקים וניתוח נקודות הכאב שלהם",
+  },
+  {
+    icon: "\uD83D\uDCDD",
+    title: "תסריטים וקריאייטיב",
+    description: "יצירת תסריטים מקצועיים וקריאייטיבים מנצחים בעזרת AI",
+  },
+  {
+    icon: "\uD83E\uDD16",
+    title: "מומחה FBM אישי",
+    description: "גישה למומחה AI שמבין את המתודולוגיה ועוזר לך בכל שלב",
+  },
+];
+
+export default function WelcomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--content-bg)" }} dir="rtl">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 rounded-full animate-spin" style={{ border: "3px solid rgba(212, 168, 67, 0.3)", borderTopColor: "#D4A843" }} />
+            <span className="text-sm" style={{ color: "var(--text-muted)" }}>טוען...</span>
+          </div>
+        </div>
+      }
+    >
+      <WelcomeContent />
+    </Suspense>
+  );
+}
+
+function WelcomeContent() {
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+
+  const [loading, setLoading] = useState(true);
+  const [tokenData, setTokenData] = useState<TokenData | null>(null);
+  const [booked, setBooked] = useState(false);
+
+  useEffect(() => {
+    if (!token) {
+      setTokenData({ valid: false, reason: "לא סופק טוקן הזמנה" });
+      setLoading(false);
+      return;
+    }
+
+    async function validateToken() {
+      try {
+        const res = await fetch("/api/admin/welcome/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setTokenData({
+            valid: false,
+            reason: data.error || "טוקן לא תקין",
+          });
+        } else {
+          setTokenData({
+            valid: true,
+            studentName: data.studentName,
+            studentEmail: data.studentEmail,
+          });
+        }
+      } catch {
+        setTokenData({ valid: false, reason: "שגיאה באימות הטוקן" });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    validateToken();
+  }, [token]);
+
+  // Listen for calendar booking events from the iframe
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (
+        event.data &&
+        (event.data.type === "booking_confirmed" ||
+          event.data === "booking_confirmed")
+      ) {
+        setBooked(true);
+      }
+    }
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  if (loading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "var(--content-bg)" }}
+        dir="rtl"
+      >
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-full animate-spin"
+            style={{
+              border: "3px solid rgba(212, 168, 67, 0.3)",
+              borderTopColor: "#D4A843",
+            }}
+          />
+          <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+            מאמת טוקן...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Invalid / expired token
+  if (!tokenData?.valid) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center px-4"
+        style={{ backgroundColor: "var(--content-bg)" }}
+        dir="rtl"
+      >
+        <div className="card-elevated p-8 max-w-md w-full text-center animate-in">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"
+            style={{ backgroundColor: "rgba(239, 68, 68, 0.1)" }}
+          >
+            {"\u274C"}
+          </div>
+          <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+            קישור לא תקין
+          </h1>
+          <p className="text-[var(--text-secondary)] mb-6">
+            {tokenData?.reason || "הקישור אינו תקף או שפג תוקפו."}
+          </p>
+          <Link href="/login" className="btn-outline inline-block text-sm">
+            עבור לדף ההתחברות
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="min-h-screen py-12 px-4"
+      style={{ backgroundColor: "var(--content-bg)" }}
+      dir="rtl"
+    >
+      <div className="max-w-2xl mx-auto">
+        {/* Logo + Welcome Header */}
+        <div className="text-center mb-8 animate-in">
+          {/* FBM Studio Logo */}
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black"
+              style={{
+                background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
+                color: "#0F1117",
+              }}
+            >
+              F
+            </div>
+            <span className="text-2xl font-bold text-[var(--text-primary)]">
+              FBM Studio
+            </span>
+          </div>
+
+          <h1 className="text-3xl font-black text-[var(--text-primary)] mb-2">
+            !{tokenData.studentName && (
+              <span style={{ color: "var(--gold)" }}>
+                {tokenData.studentName}
+              </span>
+            )}{" "}
+            ברוך הבא ל-FBM Studio
+          </h1>
+          <p className="text-[var(--text-secondary)] text-lg">
+            המערכת שתבנה לך אסטרטגיית פרסום מנצחת
+          </p>
+        </div>
+
+        {/* Main Card */}
+        <div className="card-elevated p-8 mb-6 animate-in delay-1">
+          {/* Checklist */}
+          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-5">
+            מה מחכה לך במערכת?
+          </h2>
+          <div className="space-y-4 mb-8">
+            {CHECKLIST_ITEMS.map((item, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-4 p-4 rounded-xl transition-all animate-in delay-${i + 2}`}
+                style={{
+                  backgroundColor: "var(--content-bg)",
+                  border: "1px solid var(--card-border)",
+                }}
+              >
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+                  style={{ backgroundColor: "var(--gold-soft)" }}
+                >
+                  {item.icon}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)] text-sm">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                    {item.description}
+                  </p>
+                </div>
+                <div className="flex-shrink-0 mt-1">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--success)"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Calendar Section */}
+          <div className="mb-6">
+            <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">
+              קבע פגישת היכרות
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)] mb-4">
+              בחר תאריך ושעה שנוחים לך לפגישת היכרות קצרה
+            </p>
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{ border: "1px solid var(--card-border)" }}
+            >
+              <iframe
+                src="https://api.leadconnectorhq.com/widget/booking/YOUR_CALENDAR_ID"
+                style={{
+                  width: "100%",
+                  height: "600px",
+                  border: "none",
+                }}
+                scrolling="no"
+                title="Schedule Booking"
+              />
+            </div>
+          </div>
+
+          {/* CTA Button */}
+          <div className="text-center pt-4">
+            {booked ? (
+              <div className="animate-in">
+                <div
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-4"
+                  style={{
+                    backgroundColor: "rgba(34, 197, 94, 0.1)",
+                    color: "#22C55E",
+                  }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  הפגישה נקבעה בהצלחה!
+                </div>
+                <br />
+                <Link
+                  href="/signup"
+                  className="btn-gold inline-block text-lg !py-3.5 !px-10"
+                >
+                  התחבר למערכת
+                </Link>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm text-[var(--text-muted)] mb-3">
+                  קבע פגישה למעלה, או התחבר ישירות למערכת
+                </p>
+                <Link
+                  href="/signup"
+                  className="btn-outline inline-block text-sm"
+                >
+                  התחבר למערכת
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-[var(--text-muted)] animate-in delay-8">
+          FBM Studio &mdash; Frequency Based Marketing
+        </p>
+      </div>
+    </div>
+  );
+}

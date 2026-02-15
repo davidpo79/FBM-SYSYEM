@@ -78,6 +78,7 @@ const STAT_GRADIENTS = [
 
 export default function DashboardPage() {
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [pipelineMap, setPipelineMap] = useState<Record<string, PipelineInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -89,6 +90,16 @@ export default function DashboardPage() {
       } = await supabase.auth.getUser();
       if (user) {
         setEmail(user.email ?? "");
+
+        // Fetch full name from profile
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("full_name")
+          .eq("user_id", user.id)
+          .single();
+        if (profile?.full_name) {
+          setDisplayName(profile.full_name);
+        }
       }
 
       const { data } = await supabase
@@ -166,7 +177,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="mb-8 animate-in">
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-          שלום{email ? `, ${email.split("@")[0]}` : ""}
+          שלום{displayName ? `, ${displayName}` : email ? `, ${email.split("@")[0]}` : ""}
         </h1>
         <p className="text-[var(--text-secondary)] mt-1">ברוך הבא ל-FBM Studio</p>
       </div>

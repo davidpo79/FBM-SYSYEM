@@ -1,0 +1,337 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { isAdmin } from "@/lib/admin";
+import InviteStudentModal from "@/components/admin/InviteStudentModal";
+import SendMessageModal from "@/components/admin/SendMessageModal";
+
+interface Student {
+  id: string;
+  email: string;
+  fullName: string;
+  niche: string;
+  currentStep: string;
+  totalSteps: number;
+  stepNumber: number;
+  lastLogin: string;
+  status: "active" | "at_risk" | "inactive";
+}
+
+function getStatusInfo(lastLogin: string): {
+  status: "active" | "at_risk" | "inactive";
+  label: string;
+  icon: string;
+  color: string;
+  bgColor: string;
+} {
+  const daysSinceLogin = Math.floor(
+    (Date.now() - new Date(lastLogin).getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (daysSinceLogin < 7) {
+    return {
+      status: "active",
+      label: "פעיל",
+      icon: "\uD83D\uDFE2",
+      color: "#22C55E",
+      bgColor: "rgba(34, 197, 94, 0.1)",
+    };
+  } else if (daysSinceLogin < 14) {
+    return {
+      status: "at_risk",
+      label: "בסיכון",
+      icon: "\uD83D\uDFE1",
+      color: "#F59E0B",
+      bgColor: "rgba(245, 158, 11, 0.1)",
+    };
+  } else {
+    return {
+      status: "inactive",
+      label: "לא פעיל",
+      icon: "\uD83D\uDD34",
+      color: "#EF4444",
+      bgColor: "rgba(239, 68, 68, 0.1)",
+    };
+  }
+}
+
+export default function StudentsPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [nicheFilter, setNicheFilter] = useState("all");
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [messageModal, setMessageModal] = useState<{
+    open: boolean;
+    studentName: string;
+    userId: string;
+  }>({ open: false, studentName: "", userId: "" });
+
+  useEffect(() => {
+    async function init() {
+      const admin = await isAdmin();
+      if (!admin) {
+        router.replace("/dashboard");
+        return;
+      }
+      fetchStudents();
+    }
+    init();
+  }, [router]);
+
+  async function fetchStudents() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (nicheFilter !== "all") params.set("niche", nicheFilter);
+
+      const res = await fetch(`/api/admin/students?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch students");
+      const data = await res.json();
+      setStudents(data.students || []);
+    } catch {
+      setStudents([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchStudents();
+    }, 300);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, statusFilter, nicheFilter]);
+
+  const uniqueNiches = Array.from(
+    new Set(students.map((s) => s.niche).filter(Boolean))
+  );
+
+  return (
+    <div dir="rtl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 animate-in">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+            ניהול תלמידים
+          </h1>
+          <p className="text-[var(--text-secondary)] mt-1">
+            {students.length} תלמידים במערכת
+          </p>
+        </div>
+        <button
+          onClick={() => setShowInviteModal(true)}
+          className="btn-gold text-sm !py-2.5 !px-5"
+        >
+          + הזמן תלמיד חדש
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="card-elevated p-4 mb-6 animate-in delay-1">
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Search */}
+          <div className="flex-1">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="חיפוש לפי שם או אימייל..."
+              className="w-full px-4 py-2.5 rounded-xl text-sm text-[var(--text-primary)] outline-none transition-colors"
+              style={{
+                border: "1.5px solid var(--card-border)",
+                backgroundColor: "var(--content-bg)",
+              }}
+            />
+          </div>
+
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2.5 rounded-xl text-sm text-[var(--text-primary)] outline-none cursor-pointer"
+            style={{
+              border: "1.5px solid var(--card-border)",
+              backgroundColor: "var(--content-bg)",
+            }}
+          >
+            <option value="all">כל הסטטוסים</option>
+            <option value="active">פעילים</option>
+            <option value="at_risk">בסיכון</option>
+            <option value="inactive">לא פעילים</option>
+          </select>
+
+          {/* Niche Filter */}
+          <select
+            value={nicheFilter}
+            onChange={(e) => setNicheFilter(e.target.value)}
+            className="px-4 py-2.5 rounded-xl text-sm text-[var(--text-primary)] outline-none cursor-pointer"
+            style={{
+              border: "1.5px solid var(--card-border)",
+              backgroundColor: "var(--content-bg)",
+            }}
+          >
+            <option value="all">כל הנישות</option>
+            {uniqueNiches.map((niche) => (
+              <option key={niche} value={niche}>
+                {niche}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Students Table */}
+      <div className="card-elevated p-6 animate-in delay-2">
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <div key={n} className="flex gap-4 items-center">
+                <div className="skeleton h-10 w-10 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <div className="skeleton h-4 w-1/3" />
+                  <div className="skeleton h-3 w-1/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : students.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-[var(--text-muted)] text-lg mb-2">
+              לא נמצאו תלמידים
+            </p>
+            <p className="text-[var(--text-muted)] text-sm">
+              נסה לשנות את הפילטרים או להזמין תלמיד חדש
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr
+                  className="text-right"
+                  style={{ borderBottom: "2px solid var(--card-border)" }}
+                >
+                  <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
+                    שם
+                  </th>
+                  <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
+                    אימייל
+                  </th>
+                  <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
+                    נישה
+                  </th>
+                  <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
+                    שלב
+                  </th>
+                  <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
+                    סטטוס
+                  </th>
+                  <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
+                    התחברות אחרונה
+                  </th>
+                  <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
+                    פעולות
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((student) => {
+                  const statusInfo = getStatusInfo(student.lastLogin);
+                  return (
+                    <tr
+                      key={student.id}
+                      style={{
+                        borderBottom: "1px solid var(--card-border)",
+                      }}
+                      className="hover:bg-[var(--gold-soft)] transition-colors"
+                    >
+                      <td className="py-3 pr-2 text-[var(--text-primary)] font-medium">
+                        {student.fullName}
+                      </td>
+                      <td className="py-3 pr-2 text-[var(--text-secondary)]">
+                        {student.email}
+                      </td>
+                      <td className="py-3 pr-2 text-[var(--text-secondary)]">
+                        {student.niche || "—"}
+                      </td>
+                      <td className="py-3 pr-2 text-[var(--text-secondary)]">
+                        {student.stepNumber}/{student.totalSteps}{" "}
+                        {student.currentStep}
+                      </td>
+                      <td className="py-3 pr-2">
+                        <span
+                          className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full"
+                          style={{
+                            backgroundColor: statusInfo.bgColor,
+                            color: statusInfo.color,
+                          }}
+                        >
+                          {statusInfo.icon} {statusInfo.label}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-2 text-[var(--text-muted)] text-xs">
+                        {new Date(student.lastLogin).toLocaleDateString(
+                          "he-IL"
+                        )}
+                      </td>
+                      <td className="py-3 pr-2">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/admin/students/${student.id}`}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-[var(--gold-soft)]"
+                            title="צפה בפרופיל"
+                          >
+                            <span role="img" aria-label="view">
+                              {"\uD83D\uDC41"}
+                            </span>
+                          </Link>
+                          <button
+                            onClick={() =>
+                              setMessageModal({
+                                open: true,
+                                studentName: student.fullName,
+                                userId: student.id,
+                              })
+                            }
+                            className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-[var(--gold-soft)]"
+                            title="שלח הודעה"
+                          >
+                            <span role="img" aria-label="message">
+                              {"\u2709"}
+                            </span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Modals */}
+      <InviteStudentModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+      />
+      <SendMessageModal
+        isOpen={messageModal.open}
+        onClose={() =>
+          setMessageModal({ open: false, studentName: "", userId: "" })
+        }
+        studentName={messageModal.studentName}
+        userId={messageModal.userId}
+      />
+    </div>
+  );
+}

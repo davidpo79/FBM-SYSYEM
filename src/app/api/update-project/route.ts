@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { logApiCall } from "@/lib/api-log";
 
 const ALLOWED_FIELDS = ["user_name", "status", "pipeline_data", "share_token"];
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
   try {
     const { projectId, updates } = await req.json();
 
@@ -56,9 +58,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    logApiCall({
+      endpoint: "/api/update-project",
+      projectId,
+      status: "success",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json({ project: data[0] });
   } catch (e) {
     console.error("update-project exception:", e);
+
+    logApiCall({
+      endpoint: "/api/update-project",
+      status: "error",
+      errorMessage: e instanceof Error ? e.message : "Unknown error",
+      durationMs: Date.now() - startTime,
+    });
+
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }

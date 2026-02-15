@@ -12,6 +12,7 @@ interface AuthFormProps {
 
 export default function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -23,6 +24,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!isLogin && fullName.trim().length < 2) {
+      setError("נא להזין שם מלא");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -45,6 +52,15 @@ export default function AuthForm({ mode }: AuthFormProps) {
           setError(authError.message);
           return;
         }
+
+        // Save full name to user_profiles
+        if (data.user) {
+          await supabase.from("user_profiles").upsert({
+            user_id: data.user.id,
+            full_name: fullName.trim(),
+          });
+        }
+
         // If session exists, user is immediately logged in (no email confirmation needed)
         if (data.session) {
           router.push("/dashboard");
@@ -100,6 +116,26 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
+          {!isLogin && (
+            <div>
+              <label
+                htmlFor="fullName"
+                className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300"
+              >
+                שם מלא
+              </label>
+              <input
+                id="fullName"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+                placeholder="ישראל ישראלי"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
+              />
+            </div>
+          )}
+
           <div>
             <label
               htmlFor="email"

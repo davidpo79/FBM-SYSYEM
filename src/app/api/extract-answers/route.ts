@@ -1,9 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { getQuestions } from "@/lib/questions";
+import { logApiCall } from "@/lib/api-log";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! });
 
 export async function POST(req: Request) {
+  const startTime = Date.now();
   try {
     const { transcript, ownerName, ownerNiche } = await req.json();
 
@@ -62,9 +64,23 @@ ${transcript}
       .trim();
     const parsed = JSON.parse(clean);
 
+    logApiCall({
+      endpoint: "/api/extract-answers",
+      status: "success",
+      durationMs: Date.now() - startTime,
+    });
+
     return Response.json(parsed);
   } catch (error: unknown) {
     console.error("Extract error:", error);
+
+    logApiCall({
+      endpoint: "/api/extract-answers",
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+      durationMs: Date.now() - startTime,
+    });
+
     return Response.json(
       {
         error:
