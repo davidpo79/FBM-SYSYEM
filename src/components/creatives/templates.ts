@@ -52,8 +52,8 @@ export const TEMPLATES: CreativeTemplate[] = [
   // 1. Dark + Gold — Classic FBM
   {
     id: "dark-gold",
-    name: "FBM \u05E7\u05DC\u05D0\u05E1\u05D9",
-    preview: "\uD83D\uDDA4",
+    name: "FBM קלאסי",
+    preview: "🖤",
     background: "linear-gradient(160deg, #08080f 0%, #111827 30%, #1f2937 60%, #111827 100%)",
     overlay: "none",
     headline: {
@@ -82,8 +82,8 @@ export const TEMPLATES: CreativeTemplate[] = [
   // 2. Premium Black — Minimalist
   {
     id: "premium-black",
-    name: "\u05E4\u05E8\u05D9\u05DE\u05D9\u05D5\u05DD",
-    preview: "\uD83D\uDC8E",
+    name: "פרימיום",
+    preview: "💎",
     background: "linear-gradient(180deg, #000000 0%, #0a0a0a 40%, #141414 100%)",
     overlay: "none",
     headline: {
@@ -110,8 +110,8 @@ export const TEMPLATES: CreativeTemplate[] = [
   // 3. Warm Sunset
   {
     id: "sunset",
-    name: "\u05E9\u05E7\u05D9\u05E2\u05D4",
-    preview: "\uD83C\uDF05",
+    name: "שקיעה",
+    preview: "🌅",
     background: "linear-gradient(135deg, #1a0a00 0%, #4a1500 20%, #c2501a 50%, #f5a623 80%, #ffd93d 100%)",
     overlay: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.1) 55%, rgba(0,0,0,0.5) 100%)",
     headline: {
@@ -138,8 +138,8 @@ export const TEMPLATES: CreativeTemplate[] = [
   // 4. Ocean — Professional Blue
   {
     id: "ocean",
-    name: "\u05D0\u05D5\u05E9\u05DF",
-    preview: "\uD83C\uDF0A",
+    name: "אושן",
+    preview: "🌊",
     background: "linear-gradient(135deg, #0a192f 0%, #0d2847 30%, #1a4a7a 60%, #0d2847 100%)",
     overlay: "none",
     headline: {
@@ -166,8 +166,8 @@ export const TEMPLATES: CreativeTemplate[] = [
   // 5. Purple Energy
   {
     id: "purple",
-    name: "\u05D0\u05E0\u05E8\u05D2\u05D9\u05D4",
-    preview: "\u26A1",
+    name: "אנרגיה",
+    preview: "⚡",
     background: "linear-gradient(135deg, #0f0020 0%, #2d0b55 25%, #5b21b6 55%, #7c3aed 80%, #5b21b6 100%)",
     overlay: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 35%, transparent 60%, rgba(0,0,0,0.4) 100%)",
     headline: {
@@ -195,8 +195,8 @@ export const TEMPLATES: CreativeTemplate[] = [
   // 6. Nature Green
   {
     id: "nature",
-    name: "\u05D8\u05D1\u05E2",
-    preview: "\uD83C\uDF3F",
+    name: "טבע",
+    preview: "🌿",
     background: "linear-gradient(135deg, #021a02 0%, #0d3b0d 25%, #1b5e20 50%, #2e7d32 75%, #1b5e20 100%)",
     overlay: "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 35%, transparent 65%, rgba(0,0,0,0.4) 100%)",
     headline: {
@@ -221,8 +221,8 @@ export const TEMPLATES: CreativeTemplate[] = [
   // 7. Dark Studio — Dramatic
   {
     id: "studio",
-    name: "\u05E1\u05D8\u05D5\u05D3\u05D9\u05D5",
-    preview: "\uD83C\uDFAC",
+    name: "סטודיו",
+    preview: "🎬",
     background: "linear-gradient(145deg, #0d0d0d 0%, #1a1a2e 30%, #16213e 60%, #0d0d0d 100%)",
     overlay: "radial-gradient(ellipse at 30% 50%, rgba(212,168,67,0.05) 0%, transparent 70%)",
     headline: {
@@ -250,8 +250,8 @@ export const TEMPLATES: CreativeTemplate[] = [
   // 8. Fire Red — Bold
   {
     id: "fire",
-    name: "\u05D0\u05E9",
-    preview: "\uD83D\uDD25",
+    name: "אש",
+    preview: "🔥",
     background: "linear-gradient(135deg, #1a0000 0%, #4a0000 25%, #8b0000 50%, #c62828 80%, #4a0000 100%)",
     overlay: "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.5) 100%)",
     headline: {

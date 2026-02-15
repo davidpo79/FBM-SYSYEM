@@ -223,7 +223,7 @@ export default function TemplatePreview({
           disabled={isExporting}
           className="flex-1 px-4 py-2.5 text-sm font-semibold bg-[var(--gold)] text-white rounded-[10px] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
         >
-          {isExporting ? "\u05DE\u05D9\u05D9\u05E6\u05D0..." : "\u{1F4E5} \u05D4\u05D5\u05E8\u05D3 PNG"}
+          {isExporting ? "מייצא..." : "📥 הורד PNG"}
         </button>
         {onSaveToAlbum && (
           <button
@@ -231,7 +231,7 @@ export default function TemplatePreview({
             disabled={isExporting}
             className="flex-1 px-4 py-2.5 text-sm font-semibold bg-[var(--success)] text-white rounded-[10px] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
           >
-            {"\u{1F4F8} \u05D4\u05D5\u05E1\u05E3 \u05DC\u05D0\u05DC\u05D1\u05D5\u05DD"}
+            📸 הוסף לאלבום
           </button>
         )}
       </div>

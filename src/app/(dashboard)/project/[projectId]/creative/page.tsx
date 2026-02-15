@@ -30,7 +30,7 @@ function CountdownTimer({ seconds }: { seconds: number }) {
         {remaining > 0 ? remaining : "..."}
       </div>
       <span className="text-sm text-[var(--text-muted)] mt-1">
-        {remaining > 0 ? "\u05E9\u05E0\u05D9\u05D5\u05EA \u05DC\u05E1\u05D9\u05D5\u05DD \u05D4\u05DE\u05E9\u05D5\u05E2\u05E8" : "\u05E2\u05D5\u05D3 \u05E8\u05D2\u05E2..."}
+        {remaining > 0 ? "שניות לסיום המשוער" : "עוד רגע..."}
       </span>
     </div>
   );
@@ -88,7 +88,7 @@ export default function CreativePage() {
   }, [scripts, router, projectId]);
 
   const splitScripts = (raw: string): string[] => {
-    const parts = raw.split(/(?=## \u05EA\u05E1\u05E8\u05D9\u05D8 \d)/);
+    const parts = raw.split(/(?=## תסריט \d)/);
     return parts.filter((p) => p.trim().length > 0);
   };
 
@@ -143,8 +143,8 @@ export default function CreativePage() {
             suggestion,
             templateId,
             headline: suggestion.main_text,
-            subtitle: `\u05E9\u05D9\u05D5\u05D5\u05E7 \u05DE\u05D1\u05D5\u05E1\u05E1 \u05EA\u05D3\u05E8 \u2014 \u05DC\u05D9\u05D3\u05D9\u05DD \u05DE\u05D3\u05D5\u05D9\u05E7\u05D9\u05DD \u05DC${selectedNiche?.name || ""}`.slice(0, 80),
-            cta: suggestion.cta || "\u05E9\u05DC\u05D7\u05D5 \u05D4\u05D5\u05D3\u05E2\u05D4",
+            subtitle: `שיווק מבוסס תדר — לידים מדויקים ל${selectedNiche?.name || ""}`.slice(0, 80),
+            cta: suggestion.cta || "שלחו הודעה",
             format: "story",
           },
         }));
@@ -154,7 +154,7 @@ export default function CreativePage() {
           ...prev,
           [scriptIdx]: { ...getCreative(scriptIdx), state: "idle" },
         }));
-        setCreativeError("\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05D9\u05E6\u05D9\u05E8\u05EA \u05D4\u05E6\u05E2\u05EA \u05E7\u05E8\u05D9\u05D0\u05D8\u05D9\u05D1. \u05E0\u05E1\u05D4 \u05E9\u05D5\u05D1.");
+        setCreativeError("שגיאה ביצירת הצעת קריאטיב. נסה שוב.");
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -190,7 +190,7 @@ export default function CreativePage() {
         const text = await res.text();
         let json;
         try { json = JSON.parse(text); } catch {
-          throw new Error(`\u05E9\u05D2\u05D9\u05D0\u05EA \u05E9\u05E8\u05EA (${res.status})`);
+          throw new Error(`שגיאת שרת (${res.status})`);
         }
         if (!res.ok || !json.success) throw new Error(json.error || "Generation failed");
 
@@ -210,7 +210,7 @@ export default function CreativePage() {
         });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        setCreativeError(`\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05D9\u05E6\u05D9\u05E8\u05EA \u05D4\u05E8\u05E7\u05E2: ${msg}`);
+        setCreativeError(`שגיאה ביצירת הרקע: ${msg}`);
       }
     },
     [setGeneratedImages],
@@ -241,7 +241,7 @@ export default function CreativePage() {
           window.dispatchEvent(new StorageEvent("storage", { key: albumStorageKey }));
         } catch (e) {
           console.error("localStorage save failed:", e);
-          setCreativeError("\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05E9\u05DE\u05D9\u05E8\u05D4 \u05DC\u05D0\u05DC\u05D1\u05D5\u05DD \u2014 \u05E0\u05E4\u05D7 \u05D4\u05D0\u05D7\u05E1\u05D5\u05DF \u05DE\u05DC\u05D0. \u05E0\u05E1\u05D4 \u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 PNG \u05D9\u05E9\u05D9\u05E8\u05D5\u05EA.");
+          setCreativeError("שגיאה בשמירה לאלבום — נפח האחסון מלא. נסה להוריד PNG ישירות.");
         }
         return next;
       });
@@ -259,11 +259,11 @@ export default function CreativePage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 animate-in">
         <h2 className="text-xl font-bold text-[var(--text-primary)]">
-          {"\uD83C\uDFA8"} \u05E7\u05E8\u05D9\u05D0\u05D9\u05D9\u05D8\u05D9\u05D1
+          🎨 קריאייטיב
         </h2>
         {albumImages.length > 0 && (
           <span className="text-sm font-medium text-[var(--gold)] bg-[var(--gold-soft)] px-3 py-1.5 rounded-full">
-            {"\uD83D\uDCF8"} {albumImages.length}/{scriptParts.length} \u05D1\u05D0\u05DC\u05D1\u05D5\u05DD
+            📸 {albumImages.length}/{scriptParts.length} באלבום
           </span>
         )}
       </div>
@@ -288,17 +288,17 @@ export default function CreativePage() {
               {/* Script header */}
               <div className="p-5 border-b border-[var(--card-border)] flex items-center justify-between">
                 <h3 className="font-bold text-[var(--text-primary)]">
-                  \u05EA\u05E1\u05E8\u05D9\u05D8 {idx + 1}
+                  תסריט {idx + 1}
                 </h3>
                 <div className="flex items-center gap-2">
                   {creative.state === "ready" && (
                     <span className="text-xs font-medium text-[var(--success)] bg-green-50 px-2 py-1 rounded-full">
-                      {"\u2713"} \u05DE\u05D5\u05DB\u05DF
+                      ✓ מוכן
                     </span>
                   )}
                   {isInAlbum(idx) && (
                     <span className="text-xs font-medium text-[var(--gold)] bg-[var(--gold-soft)] px-2 py-1 rounded-full">
-                      {"\uD83D\uDCF8"} \u05D1\u05D0\u05DC\u05D1\u05D5\u05DD
+                      📸 באלבום
                     </span>
                   )}
                 </div>
@@ -311,7 +311,7 @@ export default function CreativePage() {
                     onClick={() => handleCreateCreative(idx)}
                     className="btn-gold !py-3 !px-8 text-base"
                   >
-                    {"\u2728"} \u05E6\u05D5\u05E8 \u05E7\u05E8\u05D9\u05D0\u05D9\u05D9\u05D8\u05D9\u05D1
+                    ✨ צור קריאייטיב
                   </button>
                 </div>
               )}
@@ -321,7 +321,7 @@ export default function CreativePage() {
                 <div className="p-8 text-center">
                   <CountdownTimer seconds={5} />
                   <p className="text-sm text-[var(--text-muted)] mt-3">
-                    FBM Studio \u05DE\u05E0\u05EA\u05D7 \u05D0\u05EA \u05D4\u05EA\u05E1\u05E8\u05D9\u05D8 \u05D5\u05DE\u05E6\u05D9\u05E2 \u05E7\u05E8\u05D9\u05D0\u05D8\u05D9\u05D1...
+                    FBM Studio מנתח את התסריט ומציע קריאטיב...
                   </p>
                 </div>
               )}
@@ -350,7 +350,7 @@ export default function CreativePage() {
                       {/* Headline */}
                       <div>
                         <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-                          \u05DB\u05D5\u05EA\u05E8\u05EA
+                          כותרת
                         </label>
                         <textarea
                           value={creative.headline}
@@ -364,7 +364,7 @@ export default function CreativePage() {
                       {/* Subtitle */}
                       <div>
                         <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-                          \u05EA\u05EA-\u05DB\u05D5\u05EA\u05E8\u05EA
+                          תת-כותרת
                         </label>
                         <input
                           type="text"
@@ -392,7 +392,7 @@ export default function CreativePage() {
                       {/* Format */}
                       <div>
                         <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-                          \u05E4\u05D5\u05E8\u05DE\u05D8
+                          פורמט
                         </label>
                         <div className="flex gap-2">
                           {(["story", "feed"] as FormatType[]).map((f) => (
@@ -406,7 +406,7 @@ export default function CreativePage() {
                                   : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
                               }`}
                             >
-                              {f === "feed" ? "\u05E4\u05D9\u05D3 1:1" : "\u05E1\u05D8\u05D5\u05E8\u05D9 9:16"}
+                              {f === "feed" ? "פיד 1:1" : "סטורי 9:16"}
                             </button>
                           ))}
                         </div>
@@ -415,7 +415,7 @@ export default function CreativePage() {
                       {/* Template strip */}
                       <div>
                         <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-                          \u05EA\u05D1\u05E0\u05D9\u05EA
+                          תבנית
                         </label>
                         <div className="flex gap-2 overflow-x-auto pb-1">
                           {TEMPLATES.map((t) => (
@@ -444,7 +444,7 @@ export default function CreativePage() {
                           onClick={() => setAdvancedOpenIdx(advancedOpenIdx === idx ? null : idx)}
                           className="text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
                         >
-                          {advancedOpenIdx === idx ? "\u25BC" : "\u25B6"} \u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05DE\u05EA\u05E7\u05D3\u05DE\u05D5\u05EA
+                          {advancedOpenIdx === idx ? "▼" : "▶"} אפשרויות מתקדמות
                         </button>
 
                         {advancedOpenIdx === idx && creative.suggestion && project && (
@@ -483,26 +483,26 @@ export default function CreativePage() {
         <div className="text-center py-8 bg-green-50 border border-green-200 rounded-[20px] mt-6 animate-in">
           {readyCount >= scriptParts.length ? (
             <>
-              <h2 className="text-2xl font-bold text-[var(--success)]">\u05D4\u05DB\u05DC \u05DE\u05D5\u05DB\u05DF!</h2>
+              <h2 className="text-2xl font-bold text-[var(--success)]">הכל מוכן!</h2>
               <p className="text-[var(--text-secondary)] mt-2">
-                \u05DB\u05DC \u05D4\u05EA\u05E1\u05E8\u05D9\u05D8\u05D9\u05DD \u05D5\u05D4\u05E7\u05E8\u05D9\u05D0\u05D8\u05D9\u05D1\u05D9\u05DD \u05E0\u05D5\u05E6\u05E8\u05D5 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4
+                כל התסריטים והקריאטיבים נוצרו בהצלחה
               </p>
             </>
           ) : (
             <p className="text-[var(--text-secondary)]">
-              {readyCount}/{scriptParts.length} \u05E7\u05E8\u05D9\u05D0\u05D8\u05D9\u05D1\u05D9\u05DD \u05DE\u05D5\u05DB\u05E0\u05D9\u05DD
+              {readyCount}/{scriptParts.length} קריאטיבים מוכנים
             </p>
           )}
           {albumImages.length > 0 && (
             <p className="text-sm text-[var(--gold)] font-medium mt-1">
-              {albumImages.length} \u05EA\u05DE\u05D5\u05E0\u05D5\u05EA \u05E0\u05D1\u05D7\u05E8\u05D5 \u05DC\u05D0\u05DC\u05D1\u05D5\u05DD
+              {albumImages.length} תמונות נבחרו לאלבום
             </p>
           )}
           <button
             onClick={() => router.push(`/project/${projectId}/album`)}
             className="mt-4 btn-gold text-lg !px-8 !py-3"
           >
-            \u05E2\u05D1\u05D5\u05E8 \u05DC\u05D0\u05DC\u05D1\u05D5\u05DD \u05D4\u05E7\u05E8\u05D9\u05D0\u05D8\u05D9\u05D1\u05D9\u05DD
+            עבור לאלבום הקריאטיבים
           </button>
         </div>
       )}
