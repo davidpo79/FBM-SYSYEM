@@ -32,7 +32,7 @@ export default function ChatMessage({
     let html = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
     // Lists
     html = html.replace(/^- (.+)$/gm, "<li>$1</li>");
-    html = html.replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>");
+    html = html.replace(/(<li>[\s\S]*<\/li>)/, "<ul>$1</ul>");
     // Newlines to <br>
     html = html.replace(/\n/g, "<br />");
     return html;
