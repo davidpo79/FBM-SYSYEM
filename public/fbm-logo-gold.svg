@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8C547"/>
+      <stop offset="50%" style="stop-color:#D4A843"/>
+      <stop offset="100%" style="stop-color:#B8912E"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer broadcast arcs - left -->
+  <path d="M20 60a40 40 0 0 1 40-40" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.35" filter="url(#glow)"/>
+  <path d="M30 60a30 30 0 0 1 30-30" stroke="url(#goldGrad)" stroke-width="4.5" stroke-linecap="round" fill="none" opacity="0.55" filter="url(#glow)"/>
+  <path d="M38 60a22 22 0 0 1 22-22" stroke="url(#goldGrad)" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.75" filter="url(#glow)"/>
+
+  <!-- Outer broadcast arcs - right -->
+  <path d="M100 60a40 40 0 0 0-40-40" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.35" filter="url(#glow)"/>
+  <path d="M90 60a30 30 0 0 0-30-30" stroke="url(#goldGrad)" stroke-width="4.5" stroke-linecap="round" fill="none" opacity="0.55" filter="url(#glow)"/>
+  <path d="M82 60a22 22 0 0 0-22-22" stroke="url(#goldGrad)" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.75" filter="url(#glow)"/>
+
+  <!-- Center dot with glow -->
+  <circle cx="60" cy="60" r="8" fill="url(#goldGrad)" filter="url(#glow)"/>
+
+  <!-- Bottom frequency wave -->
+  <path d="M22 90c10-14 18 14 38 0s24-14 38 0" stroke="url(#goldGrad)" stroke-width="5" stroke-linecap="round" fill="none" filter="url(#glow)"/>
+</svg>

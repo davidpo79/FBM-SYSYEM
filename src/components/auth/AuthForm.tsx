@@ -110,7 +110,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           </div>
           <h1 className="text-3xl font-bold mb-2">FBM Studio</h1>
           <p className="text-gray-500 dark:text-gray-400">
-            {isLogin ? "התחבר לחשבון שלך" : "צור חשבון חדש"}
+            {isLogin ? "התחבר לחשבון שלך" : "התחבר למערכת"}
           </p>
         </div>
 
@@ -191,7 +191,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               ? "..."
               : isLogin
                 ? "התחבר"
-                : "הירשם"}
+                : "התחבר"}
           </button>
         </form>
 

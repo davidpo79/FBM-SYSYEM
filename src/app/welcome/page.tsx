@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 interface TokenData {
   valid: boolean;
@@ -161,16 +162,14 @@ function WelcomeContent() {
         {/* Logo + Welcome Header */}
         <div className="text-center mb-8 animate-in">
           {/* FBM Studio Logo */}
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black"
-              style={{
-                background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
-                color: "#0F1117",
-              }}
-            >
-              F
-            </div>
+          <div className="flex flex-col items-center gap-3 mb-6">
+            <Image
+              src="/fbm-logo-gold.svg"
+              alt="FBM Studio Logo"
+              width={80}
+              height={80}
+              priority
+            />
             <span className="text-2xl font-bold text-[var(--text-primary)]">
               FBM Studio
             </span>
@@ -185,7 +184,9 @@ function WelcomeContent() {
             ברוך הבא ל-FBM Studio
           </h1>
           <p className="text-[var(--text-secondary)] text-lg">
-            המערכת שתבנה לך אסטרטגיית פרסום מנצחת
+            המערכת שתלווה אותך לאורך הקמת העסק שלך
+            <br />
+            <span style={{ color: "var(--gold)" }}>ויצירת הכנסה בתוך 30 ימים!</span>
           </p>
         </div>
 
@@ -252,9 +253,16 @@ function WelcomeContent() {
           </div>
         </div>
 
+        {/* Developer credits */}
+        <p className="text-center text-sm text-[var(--text-secondary)] animate-in delay-7 mt-2 mb-1">
+          המערכת פותחה על ידי דוד פופוביץ
+        </p>
+
         {/* Footer */}
         <p className="text-center text-xs text-[var(--text-muted)] animate-in delay-8">
           FBM Studio &mdash; Frequency Based Marketing
+          <br />
+          &copy; כל הזכויות שמורות | דוד פופוביץ
         </p>
       </div>
     </div>
