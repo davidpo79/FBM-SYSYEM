@@ -44,7 +44,7 @@ export default function Sidebar({
     : [];
 
   const toolsNav = [
-    { href: "#", label: "AI יועץ", emoji: "\u{1F916}", badge: "בקרוב", disabled: true },
+    { href: "#expert", label: "מומחה FBM", emoji: "\u{1F916}", badge: "●", disabled: false, isExpert: true },
     { href: "/settings", label: "הגדרות", emoji: "\u2699\uFE0F", disabled: false },
   ];
 
@@ -210,23 +210,26 @@ export default function Sidebar({
           </p>
           <div className="space-y-1">
             {toolsNav.map((item) =>
-              item.disabled ? (
-                <div
+              item.isExpert ? (
+                <button
                   key={item.label}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm opacity-40 cursor-not-allowed"
-                  style={{ color: "#9DA3B4" }}
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent("toggle-fbm-expert"))}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer"
+                  style={{ color: "#9DA3B4", transition: "all 0.2s ease" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#1A1D2A";
+                    e.currentTarget.style.transform = "scale(1.01)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.transform = "scale(1)";
+                  }}
                 >
                   <span className="text-base">{item.emoji}</span>
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge && (
-                    <span
-                      className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                      style={{ backgroundColor: "rgba(59, 130, 246, 0.2)", color: "#60A5FA" }}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
+                  <span className="flex-1 text-right">{item.label}</span>
+                  <span className="text-[10px]" style={{ color: "#22C55E" }}>●</span>
+                </button>
               ) : (
                 <Link
                   key={item.href}

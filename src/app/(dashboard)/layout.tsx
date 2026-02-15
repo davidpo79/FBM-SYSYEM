@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Sidebar from "@/components/layout/Sidebar";
+import FBMExpertPanel from "@/components/chat/FBMExpertPanel";
 import type { User } from "@supabase/supabase-js";
 
 export default function DashboardLayout({
@@ -19,6 +20,7 @@ export default function DashboardLayout({
   const [projectName, setProjectName] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [albumCount, setAlbumCount] = useState(0);
+  const [showExpert, setShowExpert] = useState(false);
 
   // Extract projectId from URL if on a project page
   const projectIdMatch = pathname.match(/\/project\/([^/]+)/);
@@ -89,6 +91,13 @@ export default function DashboardLayout({
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  // Listen for FBM Expert toggle events from TopBar/Sidebar
+  const toggleExpert = useCallback(() => setShowExpert((v) => !v), []);
+  useEffect(() => {
+    window.addEventListener("toggle-fbm-expert", toggleExpert);
+    return () => window.removeEventListener("toggle-fbm-expert", toggleExpert);
+  }, [toggleExpert]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -177,6 +186,14 @@ export default function DashboardLayout({
           <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" />
         </svg>
       </button>
+
+      {/* FBM Expert Panel */}
+      <FBMExpertPanel
+        isOpen={showExpert}
+        onClose={() => setShowExpert(false)}
+        projectId={activeProjectId}
+        currentPage={pathname.split("/").pop() || undefined}
+      />
     </div>
   );
 }
@@ -218,7 +235,7 @@ function MobileSidebarContent({
     : [];
 
   const toolsNav = [
-    { href: "#", label: "AI יועץ", emoji: "\u{1F916}", badge: "בקרוב", disabled: true },
+    { href: "#expert", label: "מומחה FBM", emoji: "\u{1F916}", badge: "●", disabled: false, isExpert: true },
     { href: "/settings", label: "הגדרות", emoji: "\u2699\uFE0F", disabled: false },
   ];
 
@@ -304,16 +321,18 @@ function MobileSidebarContent({
           <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>כלים</p>
           <div className="space-y-1">
             {toolsNav.map((item) =>
-              item.disabled ? (
-                <div key={item.label} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm opacity-40" style={{ color: "#9DA3B4" }}>
+              item.isExpert ? (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent("toggle-fbm-expert"))}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer"
+                  style={{ color: "#9DA3B4" }}
+                >
                   <span className="text-base">{item.emoji}</span>
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: "rgba(59, 130, 246, 0.2)", color: "#60A5FA" }}>
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
+                  <span className="flex-1 text-right">{item.label}</span>
+                  <span className="text-[10px]" style={{ color: "#22C55E" }}>●</span>
+                </button>
               ) : (
                 <a key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm" style={isActive(item.href) ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 } : { color: "#9DA3B4" }}>
                   <span className="text-base">{item.emoji}</span>

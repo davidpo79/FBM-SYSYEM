@@ -314,48 +314,30 @@ export default function ProjectLayout({
 /* ─── FBM Expert Button (top bar) ─── */
 
 function FbmExpertButton() {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const handleClick = () => {
-    setShowTooltip(true);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setShowTooltip(false), 3000);
+    // Dispatch custom event to toggle expert panel (handled by dashboard layout)
+    window.dispatchEvent(new CustomEvent("toggle-fbm-expert"));
   };
 
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={handleClick}
-        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[10px] cursor-pointer transition-all hover:opacity-90"
-        style={{
-          background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
-          color: "#0F1117",
-          boxShadow: "0 2px 8px rgba(212, 168, 67, 0.3)",
-          animation: "goldGlow 2s ease-in-out infinite alternate",
-        }}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="11" width="18" height="10" rx="2" />
-          <circle cx="12" cy="5" r="4" />
-          <line x1="8" y1="16" x2="8" y2="16.01" />
-          <line x1="16" y1="16" x2="16" y2="16.01" />
-        </svg>
-        מומחה FBM אישי
-      </button>
-      {showTooltip && (
-        <div
-          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-4 py-2.5 text-xs font-medium text-white rounded-lg whitespace-nowrap z-50 animate-in"
-          style={{ backgroundColor: "#1a1a1a" }}
-        >
-          בקרוב — המומחה האישי שלך ✨
-          <div
-            className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45"
-            style={{ backgroundColor: "#1a1a1a" }}
-          />
-        </div>
-      )}
-    </div>
+    <button
+      type="button"
+      onClick={handleClick}
+      className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[10px] cursor-pointer transition-all hover:opacity-90"
+      style={{
+        background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
+        color: "#0F1117",
+        boxShadow: "0 2px 8px rgba(212, 168, 67, 0.3)",
+        animation: "goldGlow 2s ease-in-out infinite alternate",
+      }}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="10" rx="2" />
+        <circle cx="12" cy="5" r="4" />
+        <line x1="8" y1="16" x2="8" y2="16.01" />
+        <line x1="16" y1="16" x2="16" y2="16.01" />
+      </svg>
+      מומחה FBM אישי
+    </button>
   );
 }
