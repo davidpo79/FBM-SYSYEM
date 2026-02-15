@@ -73,13 +73,14 @@ CREATE POLICY "Service role can insert notifications" ON admin_notifications FOR
 -- 6. Improvement suggestions
 CREATE TABLE IF NOT EXISTS improvement_suggestions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  user_id UUID REFERENCES auth.users(id),
   title TEXT NOT NULL,
   conversation JSONB NOT NULL DEFAULT '[]',
-  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'reviewed', 'planned', 'done', 'declined')),
+  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'in_review', 'done', 'rejected')),
   admin_notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_suggestions_user ON improvement_suggestions(user_id);
 ALTER TABLE improvement_suggestions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage own suggestions" ON improvement_suggestions FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own suggestions" ON improvement_suggestions FOR ALL USING (true);
+CREATE POLICY "Service role full access suggestions" ON improvement_suggestions FOR ALL USING (true);

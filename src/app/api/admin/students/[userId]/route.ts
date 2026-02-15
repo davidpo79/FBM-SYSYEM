@@ -65,16 +65,16 @@ export async function GET(
 
     // Build project list matching the page's expected shape
     const projectInfos = allProjects.map((project) => {
-      const status = project.status || "active";
+      const pipeline = (project.pipeline_data || {}) as Record<string, unknown>;
       const completedSteps: string[] = [];
 
-      // Determine completed steps from project data
-      if (project.strategy) completedSteps.push("strategy");
-      if (project.niche) completedSteps.push("niches");
-      if (project.pains) completedSteps.push("pains");
-      if (project.scripts) completedSteps.push("scripts");
-      if (project.creative) completedSteps.push("creative");
-      if (status === "completed") completedSteps.push("album");
+      // Determine completed steps from pipeline_data
+      if (pipeline.strategy) completedSteps.push("strategy");
+      if (pipeline.niches) completedSteps.push("niches");
+      if (pipeline.pains) completedSteps.push("pains");
+      if (pipeline.scripts) completedSteps.push("scripts");
+      if (pipeline.creative || pipeline.generatedImages) completedSteps.push("creative");
+      if (project.status === "completed") completedSteps.push("album");
 
       const stepNumber = completedSteps.length;
       const lastStep = PIPELINE_STEPS[stepNumber - 1] || PIPELINE_STEPS[0];
@@ -115,18 +115,24 @@ export async function GET(
     };
 
     if (latestProject) {
-      if (latestProject.strategy) {
-        const strategyText = typeof latestProject.strategy === "string" ? latestProject.strategy : "";
+      const pipeline = (latestProject.pipeline_data || {}) as Record<string, unknown>;
+      if (pipeline.strategy) {
+        const strategyText = typeof pipeline.strategy === "string" ? pipeline.strategy : "";
         outputs.strategyWordCount = strategyText.split(/\s+/).filter(Boolean).length;
         outputs.strategyPreview = strategyText.slice(0, 500);
       }
-      if (latestProject.niche) {
-        outputs.niche = typeof latestProject.niche === "string" ? latestProject.niche : "";
+      if (latestProject.owner_niche || pipeline.niches) {
+        const nicheVal = latestProject.owner_niche || pipeline.niches;
+        outputs.niche = typeof nicheVal === "string" ? nicheVal : "";
       }
-      if (latestProject.scripts) {
-        const scriptsText = typeof latestProject.scripts === "string" ? latestProject.scripts : "";
+      if (pipeline.scripts) {
+        const scriptsText = typeof pipeline.scripts === "string" ? pipeline.scripts : "";
         outputs.scriptsCount = scriptsText.split(/(?=## תסריט \d)/).filter((p: string) => p.trim().length > 0).length;
         outputs.scriptsPreview = scriptsText.slice(0, 500);
+      }
+      if (pipeline.generatedImages) {
+        const images = Array.isArray(pipeline.generatedImages) ? pipeline.generatedImages : [];
+        outputs.creativesCount = images.length;
       }
     }
 
