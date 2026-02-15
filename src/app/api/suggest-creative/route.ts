@@ -52,6 +52,31 @@ export async function POST(req: NextRequest) {
    - תאר ב-1-2 משפטים קצרים איזה look & feel מתאים לתמונה
    - דוגמה: "אווירה חמה ומקצועית עם תאורה דרמטית, מרגיש כמו ייעוץ VIP"
 
+6. **Image Prompt** (הנחיה באנגלית ל-AI שייצר את תמונת הרקע):
+   - כתוב באנגלית prompt מפורט ומקצועי ל-text-to-image AI
+   - ה-PROMPT חייב להתבסס על תוכן התסריט עצמו:
+     * מי קהל היעד? (גיל, מקצוע, מגדר) → תאר דמות מתאימה בתמונה
+     * מה המסר המרכזי? → בנה סצנה ויזואלית שמבטאת את המסר
+     * מה הטון? (אמפתי, מעצים, דרמטי) → התאם תאורה ואווירה
+     * מה הנישה? → הוסף אלמנטים סימבוליים רלוונטיים
+   - המבנה של כל image_prompt:
+     1. SCENE: תיאור הסצנה — מה קורה, מי שם, איפה
+     2. SUBJECT: תיאור הדמות המרכזית — גיל, מראה, תנוחה, ביטוי
+     3. BACKGROUND: מה מאחורי הדמות — נוף, עיר, טבע
+     4. LIGHTING: סוג תאורה — golden hour, dramatic, rim light, god rays
+     5. ATMOSPHERE: אפקטים — ערפל, אבק, גשם, חלקיקי אור
+     6. COMPOSITION: TOP 30% darker for headline overlay, BOTTOM 20% darker for CTA overlay
+     7. QUALITY: Ultra-realistic, 8K, cinematic color grading, professional advertising
+     8. EXCLUDE: DO NOT include any text, typography, logos, UI elements
+   - דוגמאות לפי נישות:
+     * יועץ משכנתאות: "Young couple standing on hill overlooking modern city at golden hour, glowing holographic house outline floating before them. Warm golden god rays, construction cranes in background. Aspirational atmosphere."
+     * מאמן כושר: "Athlete silhouette at peak of stadium stairs at sunrise. Volumetric light through stadium structure. Sweat particles in golden backlight. Motivational atmosphere."
+     * עורך דין: "Confident professional standing at floor-to-ceiling office window, city skyline at night, dramatic rim lighting. Scales of justice subtle reflection in glass."
+     * שיפוצניק: "Craftsman standing on rooftop of renovated building, overlooking glowing city at sunset. Strong golden backlight, heroic rim light. He is calm and confident, not working."
+     * מעצבת פנים: "Stunning transformed living room with dramatic before/after lighting. One half dark and cluttered, other half bright luxurious modern design. Magical transformation."
+   - הPrompt חייב להיות לפחות 100 מילים באנגלית
+   - חייב לכלול: subject + scene + lighting + atmosphere + composition instructions + quality
+
 החזר JSON בלבד:
 {
   "main_text": "כותרת ראשית בלבד - שורה עד שתיים",
@@ -59,7 +84,8 @@ export async function POST(req: NextRequest) {
   "background": "lighthouse|mountain|path|office|city|sunset|forest|studio",
   "color": "gold|teal",
   "reasoning": "הסבר קצר למה זה מתאים (1-2 משפטים)",
-  "look_and_feel": "תיאור האווירה החזותית המומלצת"
+  "look_and_feel": "תיאור האווירה החזותית המומלצת",
+  "image_prompt": "Detailed English prompt for image generation AI (at least 100 words)..."
 }
 `;
 

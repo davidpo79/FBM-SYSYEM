@@ -11,6 +11,7 @@ export interface CreativeSuggestion {
   color: ColorType;
   reasoning: string;
   look_and_feel?: string;
+  image_prompt?: string;
 }
 
 export interface CreativeConfig {

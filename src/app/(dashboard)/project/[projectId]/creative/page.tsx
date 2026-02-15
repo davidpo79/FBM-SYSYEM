@@ -64,6 +64,7 @@ export default function CreativePage() {
   const [creativeError, setCreativeError] = useState("");
   const [scriptCreatives, setScriptCreatives] = useState<Record<number, ScriptCreative>>({});
   const [advancedOpenIdx, setAdvancedOpenIdx] = useState<number | null>(null);
+  const [isGeneratingBg, setIsGeneratingBg] = useState<Record<number, boolean>>({});
 
   // Album
   const albumStorageKey = `album_${projectId}`;
@@ -179,13 +180,17 @@ export default function CreativePage() {
 
   /* ── Generate AI background (advanced) ── */
   const handleGenerateBackground = useCallback(
-    async (config: { background: string; format?: string; designVision?: string }, scriptIdx: number) => {
+    async (config: { background: string; format?: string; designVision?: string; imagePrompt?: string }, scriptIdx: number) => {
       setCreativeError("");
       try {
+        const creative = getCreative(scriptIdx);
         const res = await fetch("/api/generate-creatives", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(config),
+          body: JSON.stringify({
+            ...config,
+            imagePrompt: config.imagePrompt || creative.suggestion?.image_prompt,
+          }),
         });
         const text = await res.text();
         let json;
@@ -435,6 +440,78 @@ export default function CreativePage() {
                             </button>
                           ))}
                         </div>
+                      </div>
+
+                      {/* AI Background Button — prominent */}
+                      <div>
+                        <button
+                          onClick={async () => {
+                            setIsGeneratingBg(prev => ({ ...prev, [idx]: true }));
+                            try {
+                              await handleGenerateBackground({
+                                background: creative.suggestion?.background || "lighthouse",
+                                format: creative.format,
+                                designVision: creative.suggestion?.look_and_feel || "",
+                                imagePrompt: creative.suggestion?.image_prompt || "",
+                              }, idx);
+                            } finally {
+                              setIsGeneratingBg(prev => ({ ...prev, [idx]: false }));
+                            }
+                          }}
+                          disabled={isGeneratingBg[idx]}
+                          style={{
+                            width: '100%',
+                            padding: '14px 0',
+                            borderRadius: 12,
+                            border: 'none',
+                            background: isGeneratingBg[idx] ? '#6B7084' : 'linear-gradient(135deg, #22C55E 0%, #16a34a 100%)',
+                            color: '#fff',
+                            fontWeight: 700,
+                            fontSize: 15,
+                            cursor: isGeneratingBg[idx] ? 'not-allowed' : 'pointer',
+                            boxShadow: isGeneratingBg[idx] ? 'none' : '0 4px 16px rgba(34,197,94,0.3)',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          {isGeneratingBg[idx] ? '⏳ יוצר רקע AI... (~15 שניות)' : '✨ צור רקע AI (1 credit)'}
+                        </button>
+                      </div>
+
+                      {/* Upload custom background */}
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            padding: '12px 0',
+                            borderRadius: 12,
+                            border: '2px dashed var(--card-border)',
+                            background: 'transparent',
+                            color: 'var(--text-secondary)',
+                            fontWeight: 600,
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          📁 העלה רקע מותאם (0 credits)
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const base64 = reader.result as string;
+                                handleUploadBackground(base64, idx);
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                        </label>
                       </div>
 
                       {/* Advanced options (collapsed) */}

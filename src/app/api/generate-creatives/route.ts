@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { background, format } = body as CreativeConfig;
     const designVision: string | undefined = body.designVision;
+    const imagePrompt: string | undefined = body.imagePrompt;
 
     if (!background) {
       return NextResponse.json(
@@ -36,33 +37,53 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const bgDescription =
-      backgroundDescriptions[background] || backgroundDescriptions.lighthouse;
     const fmt = format || "story";
     const dimensions = fmt === "story"
       ? "VERTICAL PORTRAIT 1080x1920px - MUST be taller than wide (9:16 phone/story format)"
       : "PERFECT SQUARE 1080x1080px - width must equal height exactly (1:1 feed format)";
 
-    const visionSection = designVision
-      ? `\nUSER'S CREATIVE VISION (HIGHEST PRIORITY):\nThe user described their vision: "${designVision}"\nAdapt the background scene to match this description as closely as possible.\n`
-      : "";
+    // Use AI-generated image_prompt if available, otherwise fall back to generic description
+    const sceneDescription = imagePrompt
+      || designVision
+      || backgroundDescriptions[background]
+      || backgroundDescriptions.lighthouse;
 
-    const prompt = `Create a professional background image for a social media ad (${dimensions}).
-${visionSection}
-BACKGROUND SCENE: ${designVision ? `Inspired by: ${bgDescription}` : bgDescription}. Professional cinematic lighting, high quality, photorealistic. Moody atmospheric feel with depth of field.
+    const prompt = `Create a HIGH-END professional advertising image for a social media ad.
 
-CRITICAL RULES:
-- DO NOT include ANY text, letters, words, headlines, or typography
-- DO NOT include ANY buttons, CTAs, or UI elements
-- DO NOT include ANY logos or watermarks
-- DO NOT include ANY person or profile photo
-- ONLY the background scene — clean, empty, ready for text overlay
-- Leave space for text: darker/blurred areas at top and bottom thirds
-- The image should have a natural vignette or gradient that makes text readable
-- Ultra high quality, photorealistic, dramatic cinematic lighting
-- Deep rich colors with professional color grading
+FORMAT: ${dimensions}
 
-This is ONLY a background. Text will be added separately as an overlay.`;
+SCENE DESCRIPTION: ${sceneDescription}
+
+STYLE REQUIREMENTS:
+- This is a PREMIUM advertising image — the quality should match top-tier Facebook/Instagram ads
+- Photorealistic, ultra high quality, 8K rendering
+- Dramatic cinematic lighting with depth — use volumetric light, god rays, lens flares where appropriate
+- Rich deep color grading — blacks should be deep, colors should be saturated but natural
+- Create DEPTH with foreground, midground, and background elements
+- Atmospheric effects: mist, rain, light particles, bokeh — add atmosphere!
+- The overall mood should feel POWERFUL, ASPIRATIONAL, and PROFESSIONAL
+
+TEXT OVERLAY ZONES — CRITICAL:
+- The TOP 30% of the image should have a darker/contrasted area suitable for large white or gold HEADLINE text overlay
+- The BOTTOM 20% should have a darker area suitable for a CTA button overlay
+- The MIDDLE area (30%-60%) can have the main visual interest
+- Do NOT include any actual text, letters, words, logos, or UI elements in the image
+- But DO design the composition knowing that text will be placed on top
+
+WHAT TO INCLUDE:
+- Rich environmental details and atmosphere
+- Human figures or silhouettes are ENCOURAGED (they add emotional connection)
+- Symbolic elements related to the scene
+- Cinematic lighting effects (rim light, backlight, volumetric rays, god rays)
+- Professional color grading (warm golds, deep shadows, cinematic feel)
+
+WHAT TO ABSOLUTELY EXCLUDE:
+- Do NOT include any text, typography, letters, or words — NONE AT ALL
+- Do NOT include any UI elements, buttons, or logos
+- Do NOT include any watermarks
+- No text means NO TEXT in any language
+
+This should look like it was shot by a professional photographer and color graded by a Hollywood colorist.`;
 
     // Gemini generates the background image (no text!)
     const geminiAspectRatio = fmt === "story" ? "9:16" : "1:1";
