@@ -71,31 +71,58 @@ export default function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Save full name - try upsert, fallback to update then insert
       const trimmedName = fullName.trim();
-      const { error: upsertError } = await supabase.from("user_profiles").upsert({
-        user_id: user.id,
-        full_name: trimmedName,
-      });
+      let saveSuccess = false;
 
-      if (upsertError) {
-        // Fallback: try update existing row
-        const { error: updateError } = await supabase
+      // Try 1: upsert with explicit onConflict
+      const { error: upsertError } = await supabase
+        .from("user_profiles")
+        .upsert(
+          { user_id: user.id, full_name: trimmedName },
+          { onConflict: "user_id" }
+        );
+
+      if (!upsertError) {
+        saveSuccess = true;
+      } else {
+        console.error("upsert failed:", upsertError.message);
+
+        // Try 2: check if row exists, then update or insert accordingly
+        const { data: existing } = await supabase
           .from("user_profiles")
-          .update({ full_name: trimmedName })
-          .eq("user_id", user.id);
+          .select("user_id")
+          .eq("user_id", user.id)
+          .single();
 
-        if (updateError) {
-          // Last resort: try insert
+        if (existing) {
+          // Row exists → update
+          const { error: updateError } = await supabase
+            .from("user_profiles")
+            .update({ full_name: trimmedName, updated_at: new Date().toISOString() })
+            .eq("user_id", user.id);
+
+          if (!updateError) {
+            saveSuccess = true;
+          } else {
+            console.error("update failed:", updateError.message);
+          }
+        } else {
+          // No row → insert
           const { error: insertError } = await supabase
             .from("user_profiles")
             .insert({ user_id: user.id, full_name: trimmedName });
 
-          if (insertError) {
-            setError("שגיאה בשמירת השם. נסה שוב.");
-            return;
+          if (!insertError) {
+            saveSuccess = true;
+          } else {
+            console.error("insert failed:", insertError.message);
           }
         }
+      }
+
+      if (!saveSuccess) {
+        setError("שגיאה בשמירת השם — בדוק שטבלת user_profiles קיימת ב-Supabase");
+        return;
       }
 
       // Update password if provided
@@ -112,10 +139,8 @@ export default function SettingsPage() {
         new CustomEvent("profile-name-changed", { detail: trimmedName }),
       );
 
-      if (!error) {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
-      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
     } catch {
       setError("אירעה שגיאה. נסה שוב.");
     } finally {
