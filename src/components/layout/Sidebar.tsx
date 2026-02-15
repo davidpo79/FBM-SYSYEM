@@ -71,9 +71,9 @@ export default function Sidebar({
       className="fixed top-0 right-0 h-screen w-[260px] border-l flex-col hidden lg:flex z-50"
       dir="rtl"
     >
-      {/* Logo header — Rule 6: gradient separator */}
-      <div className="px-5 pt-5 pb-4 flex items-center gap-3 mb-1">
-        <Image src="/logo-fbm.png" alt="FBM" width={56} height={56} className="rounded" />
+      {/* Logo header — vertical layout */}
+      <div className="px-5 pt-5 pb-4 flex flex-col items-center gap-2 mb-1">
+        <Image src="/logo-fbm.png" alt="FBM" width={80} height={80} className="rounded" />
         <div className="flex items-center gap-2">
           <span className="text-white font-bold text-lg">FBM Studio</span>
           <span
@@ -83,6 +83,11 @@ export default function Sidebar({
             Beta
           </span>
         </div>
+        <p className="text-[11px] tracking-wide" style={{ color: "#9DA3B4" }}>
+          <span className="font-bold" style={{ color: "#D4A843" }}>F</span>requency{" "}
+          <span className="font-bold" style={{ color: "#D4A843" }}>B</span>ased{" "}
+          <span className="font-bold" style={{ color: "#D4A843" }}>M</span>arketing
+        </p>
       </div>
       {/* Gradient separator line */}
       <div className="mx-4 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />

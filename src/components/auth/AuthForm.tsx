@@ -111,9 +111,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
         {/* Logo */}
         <div className="text-center mb-6">
           <div className="flex justify-center mb-3">
-            <Image src="/logo-fbm.png" alt="FBM Studio" width={80} height={80} className="rounded" />
+            <Image src="/logo-fbm.png" alt="FBM Studio" width={100} height={100} className="rounded" />
           </div>
           <h1 className="text-3xl font-bold mb-1">FBM Studio</h1>
+          <p className="text-xs tracking-wide text-gray-400">
+            <span className="font-bold text-yellow-600 dark:text-yellow-500">F</span>requency{" "}
+            <span className="font-bold text-yellow-600 dark:text-yellow-500">B</span>ased{" "}
+            <span className="font-bold text-yellow-600 dark:text-yellow-500">M</span>arketing
+          </p>
         </div>
 
         {/* Tabs */}
