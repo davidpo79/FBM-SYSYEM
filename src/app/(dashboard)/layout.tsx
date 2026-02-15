@@ -139,6 +139,16 @@ export default function DashboardLayout({
     return () => window.removeEventListener("toggle-suggest-improvement", toggleSuggest);
   }, [toggleSuggest]);
 
+  // Update sidebar name when user saves a new name in settings
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const name = (e as CustomEvent<string>).detail;
+      if (name) setUserName(name);
+    };
+    window.addEventListener("profile-name-changed", handler);
+    return () => window.removeEventListener("profile-name-changed", handler);
+  }, []);
+
   // Refresh suggestions badge when admin changes a suggestion status
   const refreshSuggestionsCount = useCallback(() => {
     if (!isAdmin) return;

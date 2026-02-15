@@ -121,6 +121,16 @@ export default function DashboardPage() {
     load();
   }, []);
 
+  // Update greeting when name is changed in settings
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const name = (e as CustomEvent<string>).detail;
+      if (name) setDisplayName(name);
+    };
+    window.addEventListener("profile-name-changed", handler);
+    return () => window.removeEventListener("profile-name-changed", handler);
+  }, []);
+
   // Split projects
   const inProgress = projects.filter((p) => p.status !== "completed");
   const completed = projects.filter((p) => p.status === "completed");

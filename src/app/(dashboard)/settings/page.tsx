@@ -81,6 +81,11 @@ export default function SettingsPage() {
         setPassword("");
       }
 
+      // Notify layout & dashboard to update the displayed name
+      window.dispatchEvent(
+        new CustomEvent("profile-name-changed", { detail: fullName.trim() }),
+      );
+
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } finally {
