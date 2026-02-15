@@ -41,37 +41,37 @@ interface CanvasEditorProps {
 /* ──────────────── Config ──────────────── */
 
 const backgrounds: { value: BackgroundType; icon: string; label: string; gradient: string }[] = [
-  { value: "lighthouse", icon: "\u{1F5FC}", label: "\u05DE\u05D2\u05D3\u05DC\u05D5\u05E8", gradient: "linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)" },
-  { value: "mountain", icon: "\u26F0\uFE0F", label: "\u05D4\u05E8", gradient: "linear-gradient(135deg, #2b1055 0%, #5b3a8c 40%, #d4a843 100%)" },
-  { value: "path", icon: "\u{1F6E4}\uFE0F", label: "\u05D3\u05E8\u05DA", gradient: "linear-gradient(135deg, #3e2723 0%, #8d6e63 50%, #d4a843 100%)" },
-  { value: "office", icon: "\u{1F3E2}", label: "\u05DE\u05E9\u05E8\u05D3", gradient: "linear-gradient(135deg, #e8eaf0 0%, #bdc3c7 50%, #8e99a4 100%)" },
-  { value: "city", icon: "\u{1F303}", label: "\u05E2\u05D9\u05E8", gradient: "linear-gradient(135deg, #141e30 0%, #243b55 50%, #4a6fa5 100%)" },
-  { value: "sunset", icon: "\u{1F305}", label: "\u05E9\u05E7\u05D9\u05E2\u05D4", gradient: "linear-gradient(135deg, #ee9ca7 0%, #ffdde1 30%, #f5af19 70%, #f12711 100%)" },
-  { value: "forest", icon: "\u{1F332}", label: "\u05D9\u05E2\u05E8", gradient: "linear-gradient(135deg, #0b3d0b 0%, #1b5e20 40%, #388e3c 80%, #1b5e20 100%)" },
-  { value: "studio", icon: "\u{1F3A5}", label: "\u05E1\u05D8\u05D5\u05D3\u05D9\u05D5", gradient: "linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 80%, #1a1a2e 100%)" },
+  { value: "lighthouse", icon: "🗼", label: "מגדלור", gradient: "linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)" },
+  { value: "mountain", icon: "⛰️", label: "הר", gradient: "linear-gradient(135deg, #2b1055 0%, #5b3a8c 40%, #d4a843 100%)" },
+  { value: "path", icon: "🛤️", label: "דרך", gradient: "linear-gradient(135deg, #3e2723 0%, #8d6e63 50%, #d4a843 100%)" },
+  { value: "office", icon: "🏢", label: "משרד", gradient: "linear-gradient(135deg, #e8eaf0 0%, #bdc3c7 50%, #8e99a4 100%)" },
+  { value: "city", icon: "🌃", label: "עיר", gradient: "linear-gradient(135deg, #141e30 0%, #243b55 50%, #4a6fa5 100%)" },
+  { value: "sunset", icon: "🌅", label: "שקיעה", gradient: "linear-gradient(135deg, #ee9ca7 0%, #ffdde1 30%, #f5af19 70%, #f12711 100%)" },
+  { value: "forest", icon: "🌲", label: "יער", gradient: "linear-gradient(135deg, #0b3d0b 0%, #1b5e20 40%, #388e3c 80%, #1b5e20 100%)" },
+  { value: "studio", icon: "🎥", label: "סטודיו", gradient: "linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 80%, #1a1a2e 100%)" },
 ];
 
 const colors: { value: ColorType; hex: string; label: string }[] = [
-  { value: "gold", hex: "#FFD700", label: "\u05D6\u05D4\u05D1" },
-  { value: "teal", hex: "#00A3E0", label: "\u05EA\u05DB\u05DC\u05EA" },
+  { value: "gold", hex: "#FFD700", label: "זהב" },
+  { value: "teal", hex: "#00A3E0", label: "תכלת" },
 ];
 
 const TEXT_COLORS = [
-  { value: "#ffffff", label: "\u05DC\u05D1\u05DF" },
-  { value: "#FFD700", label: "\u05D6\u05D4\u05D1" },
-  { value: "#1a1a1a", label: "\u05E9\u05D7\u05D5\u05E8" },
+  { value: "#ffffff", label: "לבן" },
+  { value: "#FFD700", label: "זהב" },
+  { value: "#1a1a1a", label: "שחור" },
 ];
 
 const fontSizes: { value: FontSizeType; label: string; px: number }[] = [
-  { value: "small", label: "\u05E7\u05D8\u05DF", px: 18 },
-  { value: "medium", label: "\u05D1\u05D9\u05E0\u05D5\u05E0\u05D9", px: 24 },
-  { value: "large", label: "\u05D2\u05D3\u05D5\u05DC", px: 32 },
+  { value: "small", label: "קטן", px: 18 },
+  { value: "medium", label: "בינוני", px: 24 },
+  { value: "large", label: "גדול", px: 32 },
 ];
 
 const CTA_SIZES = [
-  { label: "\u05E7\u05D8\u05DF", px: 12 },
-  { label: "\u05E8\u05D2\u05D9\u05DC", px: 14 },
-  { label: "\u05D2\u05D3\u05D5\u05DC", px: 18 },
+  { label: "קטן", px: 12 },
+  { label: "רגיל", px: 14 },
+  { label: "גדול", px: 18 },
 ];
 
 /* ──────────────── Component ──────────────── */
@@ -120,7 +120,7 @@ export default function CanvasEditor({
   });
 
   const [subtitleLayer, setSubtitleLayer] = useState<CanvasLayer>({
-    text: `\u05E9\u05D9\u05D5\u05D5\u05E7 \u05DE\u05D1\u05D5\u05E1\u05E1 \u05EA\u05D3\u05E8 - \u05DC\u05D9\u05D3\u05D9\u05DD \u05DE\u05D3\u05D5\u05D9\u05E7\u05D9\u05DD \u05DC${userInfo.niche}`.slice(0, 80),
+    text: `שיווק מבוסס תדר - לידים מדויקים ל${userInfo.niche}`.slice(0, 80),
     x: 5,
     y: 22,
     fontSize: 14,
@@ -129,7 +129,7 @@ export default function CanvasEditor({
   });
 
   const [ctaLayer, setCtaLayer] = useState({
-    text: suggestion.cta || "\u05E9\u05DC\u05D7\u05D5 \u05D4\u05D5\u05D3\u05E2\u05D4",
+    text: suggestion.cta || "שלחו הודעה",
     x: 25,
     y: 78,
     visible: true,
@@ -244,7 +244,7 @@ export default function CanvasEditor({
           <NextImage src="/logo-fbm.png" alt="FBM" width={18} height={18} className="rounded" />
           FBM Studio
         </span>
-        <span>\u05DE\u05E6\u05D9\u05E2:</span>
+        <span>מציע:</span>
         <span className="italic text-[var(--text-muted)]">{suggestion.reasoning}</span>
       </div>
 
@@ -256,7 +256,7 @@ export default function CanvasEditor({
 
       {/* Hint */}
       <div className="mb-4 p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-[10px] text-xs text-blue-700 dark:text-blue-300 text-center">
-        \u05D2\u05E8\u05D5\u05E8 \u05D0\u05DC\u05DE\u05E0\u05D8\u05D9\u05DD \u05E2\u05DC \u05D4\u05E7\u05E0\u05D1\u05E1 \u05DB\u05D3\u05D9 \u05DC\u05D4\u05D6\u05D9\u05D6 \u05D0\u05D5\u05EA\u05DD. \u05E9\u05E0\u05D4 \u05D8\u05E7\u05E1\u05D8 \u05D1\u05E4\u05D0\u05E0\u05DC \u05D1\u05E6\u05D3 \u2014 \u05D4\u05E9\u05D9\u05E0\u05D5\u05D9 \u05DE\u05D9\u05D9\u05D3\u05D9!
+        גרור אלמנטים על הקנבס כדי להזיז אותם. שנה טקסט בפאנל בצד — השינוי מיידי!
       </div>
 
       {/* Two-column layout: Canvas left, Controls right */}
@@ -267,11 +267,11 @@ export default function CanvasEditor({
             {/* The Canvas */}
             <div
               ref={canvasRef}
-              className="relative overflow-hidden rounded-2xl border-2 border-[var(--card-border)]"
+              className="relative overflow-hidden rounded-2xl border-2 border-[var(--card-border)] mx-auto"
               style={{
-                aspectRatio: format === "story" ? "9/16" : "1/1",
-                maxWidth: format === "story" ? "400px" : "500px",
+                aspectRatio: format === "story" ? "9 / 16" : "1 / 1",
                 width: "100%",
+                maxWidth: format === "story" ? "450px" : "500px",
               }}
             >
               {/* Layer 1: Background */}
@@ -280,7 +280,14 @@ export default function CanvasEditor({
                 <img
                   src={backgroundImage}
                   alt=""
-                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
                   crossOrigin="anonymous"
                 />
               ) : (
@@ -350,8 +357,8 @@ export default function CanvasEditor({
               {isGenerating && (
                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60">
                   <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                  <p className="text-white font-semibold mt-4 text-lg">\u05D9\u05D5\u05E6\u05E8 \u05E8\u05E7\u05E2 AI...</p>
-                  <p className="text-white/70 text-sm mt-1">~15 \u05E9\u05E0\u05D9\u05D5\u05EA</p>
+                  <p className="text-white font-semibold mt-4 text-lg">יוצר רקע AI...</p>
+                  <p className="text-white/70 text-sm mt-1">~15 שניות</p>
                 </div>
               )}
 
@@ -363,7 +370,7 @@ export default function CanvasEditor({
                   className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-transparent cursor-pointer group"
                 >
                   <span className="text-4xl mb-2 group-hover:scale-110 transition-transform">&#10024;</span>
-                  <span className="text-white/70 text-sm font-semibold">\u05E6\u05D5\u05E8 \u05E8\u05E7\u05E2 AI</span>
+                  <span className="text-white/70 text-sm font-semibold">צור רקע AI</span>
                 </button>
               )}
             </div>
@@ -375,7 +382,7 @@ export default function CanvasEditor({
                 disabled={isExporting}
                 className="flex-1 px-4 py-2.5 text-sm font-semibold bg-[var(--gold)] text-white rounded-[10px] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
               >
-                {isExporting ? "\u05DE\u05D9\u05D9\u05E6\u05D0..." : "\u05D4\u05D5\u05E8\u05D3 PNG"}
+                {isExporting ? "מייצא..." : "הורד PNG"}
               </button>
               {onSaveToAlbum && (
                 <button
@@ -383,7 +390,7 @@ export default function CanvasEditor({
                   disabled={isExporting}
                   className="flex-1 px-4 py-2.5 text-sm font-semibold bg-[var(--success)] text-white rounded-[10px] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
                 >
-                  \u05D4\u05D5\u05E1\u05E3 \u05DC\u05D0\u05DC\u05D1\u05D5\u05DD
+                  הוסף לאלבום
                 </button>
               )}
             </div>
@@ -395,7 +402,7 @@ export default function CanvasEditor({
           {/* Format */}
           <section>
             <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-              \u05E4\u05D5\u05E8\u05DE\u05D8 \u05EA\u05DE\u05D5\u05E0\u05D4
+              פורמט תמונה
             </label>
             <div className="flex gap-2">
               {(["feed", "story"] as FormatType[]).map((f) => (
@@ -409,7 +416,7 @@ export default function CanvasEditor({
                       : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
                   }`}
                 >
-                  {f === "feed" ? "\u05E4\u05D9\u05D3 1:1" : "\u05E1\u05D8\u05D5\u05E8\u05D9 9:16"}
+                  {f === "feed" ? "פיד 1:1" : "סטורי 9:16"}
                 </button>
               ))}
             </div>
@@ -418,12 +425,12 @@ export default function CanvasEditor({
           {/* Headline text */}
           <section>
             <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-              \u05DB\u05D5\u05EA\u05E8\u05EA \u05E8\u05D0\u05E9\u05D9\u05EA
+              כותרת ראשית
             </label>
             <textarea
               value={headline.text}
               onChange={(e) => setHeadline((prev) => ({ ...prev, text: e.target.value }))}
-              placeholder="\u05D4\u05D8\u05E7\u05E1\u05D8 \u05E9\u05D9\u05D5\u05E4\u05D9\u05E2 \u05E2\u05DC \u05D4\u05EA\u05DE\u05D5\u05E0\u05D4..."
+              placeholder="הטקסט שיופיע על התמונה..."
               maxLength={120}
               rows={2}
               className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
@@ -435,7 +442,7 @@ export default function CanvasEditor({
           <section>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-sm font-bold text-[var(--text-primary)]">
-                \u05EA\u05EA-\u05DB\u05D5\u05EA\u05E8\u05EA
+                תת-כותרת
               </label>
               <button
                 type="button"
@@ -456,7 +463,7 @@ export default function CanvasEditor({
                   value={subtitleLayer.text}
                   onChange={(e) => setSubtitleLayer((prev) => ({ ...prev, text: e.target.value }))}
                   maxLength={80}
-                  placeholder="\u05EA\u05EA-\u05DB\u05D5\u05EA\u05E8\u05EA..."
+                  placeholder="תת-כותרת..."
                   className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
                 />
                 <p className="text-xs text-[var(--text-muted)] mt-0.5">{subtitleLayer.text.length}/80</p>
@@ -468,7 +475,7 @@ export default function CanvasEditor({
           <section>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-sm font-bold text-[var(--text-primary)]">
-                \u05E7\u05E8\u05D9\u05D0\u05D4 \u05DC\u05E4\u05E2\u05D5\u05DC\u05D4 (CTA)
+                קריאה לפעולה (CTA)
               </label>
               <button
                 type="button"
@@ -489,7 +496,7 @@ export default function CanvasEditor({
                   value={ctaLayer.text}
                   onChange={(e) => setCtaLayer((prev) => ({ ...prev, text: e.target.value }))}
                   maxLength={30}
-                  placeholder="\u05E9\u05DC\u05D7\u05D5 \u05D4\u05D5\u05D3\u05E2\u05D4"
+                  placeholder="שלחו הודעה"
                   className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
                 />
                 <p className="text-xs text-[var(--text-muted)] mt-0.5">{ctaLayer.text.length}/30</p>
@@ -501,7 +508,7 @@ export default function CanvasEditor({
           {ctaLayer.visible && (
             <section>
               <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-                \u05D2\u05D5\u05D3\u05DC CTA
+                גודל CTA
               </label>
               <div className="flex gap-2">
                 {CTA_SIZES.map((s, i) => (
@@ -525,7 +532,7 @@ export default function CanvasEditor({
           {/* Overlay opacity */}
           <section>
             <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-              Overlay \u05E9\u05E7\u05D9\u05E4\u05D5\u05EA ({overlayOpacity}%)
+              Overlay שקיפות ({overlayOpacity}%)
             </label>
             <input
               type="range"
@@ -540,7 +547,7 @@ export default function CanvasEditor({
           {/* Text color */}
           <section>
             <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-              \u05E6\u05D1\u05E2 \u05D8\u05E7\u05E1\u05D8
+              צבע טקסט
             </label>
             <div className="flex gap-2">
               {TEXT_COLORS.map((tc) => (
@@ -567,7 +574,7 @@ export default function CanvasEditor({
           {/* Font Size */}
           <section>
             <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-              \u05D2\u05D5\u05D3\u05DC \u05D8\u05E7\u05E1\u05D8
+              גודל טקסט
             </label>
             <div className="flex gap-2">
               {fontSizes.map((fs) => (
@@ -590,7 +597,7 @@ export default function CanvasEditor({
           {/* Accent Color */}
           <section>
             <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-              \u05E6\u05D1\u05E2 \u05D0\u05E7\u05E1\u05E0\u05D8
+              צבע אקסנט
             </label>
             <div className="flex gap-2">
               {colors.map((c) => (
@@ -617,7 +624,7 @@ export default function CanvasEditor({
           {/* Background type */}
           <section>
             <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-              \u05E1\u05D5\u05D2 \u05E8\u05E7\u05E2
+              סוג רקע
             </label>
             <div className="grid grid-cols-2 gap-2">
               {backgrounds.map((bg) => (
@@ -641,12 +648,12 @@ export default function CanvasEditor({
           {/* Design Vision */}
           <section className="border border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-950/20 rounded-[10px] p-3">
             <label className="block text-sm font-bold text-purple-700 dark:text-purple-300 mb-1.5">
-              \u05D7\u05D6\u05D5\u05DF \u05E2\u05D9\u05E6\u05D5\u05D1 - \u05D4\u05E0\u05D7\u05D9\u05D5\u05EA \u05DC-AI
+              חזון עיצוב - הנחיות ל-AI
             </label>
             <textarea
               value={designVision}
               onChange={(e) => setDesignVision(e.target.value)}
-              placeholder="\u05DC\u05DE\u05E9\u05DC: \u05D0\u05D5\u05D5\u05D9\u05E8\u05D4 \u05D7\u05DE\u05D4 \u05E2\u05DD \u05EA\u05D0\u05D5\u05E8\u05D4 \u05D3\u05E8\u05DE\u05D8\u05D9\u05EA, \u05E6\u05D1\u05E2\u05D9\u05DD \u05DB\u05D4\u05D9\u05DD \u05E2\u05DD \u05D4\u05D3\u05D2\u05E9\u05D5\u05EA \u05D6\u05D4\u05D1..."
+              placeholder="למשל: אווירה חמה עם תאורה דרמטית, צבעים כהים עם הדגשות זהב..."
               rows={2}
               className="w-full px-3 py-2 rounded-[10px] border border-purple-200 dark:border-purple-700 bg-white dark:bg-purple-950/30 text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all text-sm"
             />
@@ -656,7 +663,7 @@ export default function CanvasEditor({
           <section className="border border-[var(--card-border)] rounded-[10px] p-3">
             <div className="flex items-center justify-between">
               <label className="text-sm font-bold text-[var(--text-primary)]">
-                \u05E4\u05E8\u05D5\u05E4\u05D9\u05DC \u05D0\u05D9\u05E9\u05D9
+                פרופיל אישי
               </label>
               <button
                 type="button"
@@ -679,7 +686,7 @@ export default function CanvasEditor({
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={profileImage}
-                        alt="\u05EA\u05DE\u05D5\u05E0\u05EA \u05E4\u05E8\u05D5\u05E4\u05D9\u05DC"
+                        alt="תמונת פרופיל"
                         className="w-14 h-14 rounded-full object-cover border-2 border-[var(--gold)]"
                       />
                       <button
@@ -710,12 +717,12 @@ export default function CanvasEditor({
                       htmlFor={`canvas-profile-upload-${scriptIdx}`}
                       className="inline-block px-3 py-1.5 text-xs font-medium text-[var(--gold)] bg-[var(--gold-soft)] rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                     >
-                      {profileImage ? "\u05D4\u05D7\u05DC\u05E3 \u05EA\u05DE\u05D5\u05E0\u05D4" : "\u05D4\u05E2\u05DC\u05D4 \u05EA\u05DE\u05D5\u05E0\u05D4"}
+                      {profileImage ? "החלף תמונה" : "העלה תמונה"}
                     </label>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">\u05E9\u05DD \u05DE\u05DC\u05D0</label>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">שם מלא</label>
                   <input
                     type="text"
                     value={displayName}
@@ -725,7 +732,7 @@ export default function CanvasEditor({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">\u05EA\u05E4\u05E7\u05D9\u05D3 / \u05EA\u05D9\u05D0\u05D5\u05E8</label>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">תפקיד / תיאור</label>
                   <input
                     type="text"
                     value={displayRole}
@@ -750,13 +757,13 @@ export default function CanvasEditor({
               }`}
             >
               {isGenerating
-                ? "\u05D9\u05D5\u05E6\u05E8 \u05E8\u05E7\u05E2 AI... (~15 \u05E9\u05E0\u05D9\u05D5\u05EA)"
+                ? "יוצר רקע AI... (~15 שניות)"
                 : backgroundImage
-                  ? "\u05E6\u05D5\u05E8 \u05E8\u05E7\u05E2 \u05DE\u05D7\u05D3\u05E9 (1 \u05E7\u05E8\u05D3\u05D9\u05D8)"
-                  : "\u05E6\u05D5\u05E8 \u05E8\u05E7\u05E2 AI (1 \u05E7\u05E8\u05D3\u05D9\u05D8)"}
+                  ? "צור רקע מחדש (1 קרדיט)"
+                  : "צור רקע AI (1 קרדיט)"}
             </button>
             <p className="text-xs text-[var(--text-muted)] text-center">
-              \u05E9\u05D9\u05E0\u05D5\u05D9 \u05D8\u05E7\u05E1\u05D8, \u05E6\u05D1\u05E2, \u05D2\u05D5\u05D3\u05DC, \u05DE\u05D9\u05E7\u05D5\u05DD \u2014 \u05DE\u05D9\u05D9\u05D3\u05D9, \u05D1\u05DC\u05D9 API. \u05E8\u05E7 &quot;\u05E6\u05D5\u05E8 \u05E8\u05E7\u05E2&quot; \u05E7\u05D5\u05E8\u05D0 \u05DC-AI.
+              שינוי טקסט, צבע, גודל, מיקום — מיידי, בלי API. רק &quot;צור רקע&quot; קורא ל-AI.
             </p>
           </div>
         </div>

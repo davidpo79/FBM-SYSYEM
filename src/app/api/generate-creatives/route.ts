@@ -63,7 +63,8 @@ CRITICAL RULES:
 This is ONLY a background. Text will be added separately as an overlay.`;
 
     // Gemini generates the background image (no text!)
-    const { base64: rawBase64, mimeType } = await generateImage(prompt);
+    const geminiAspectRatio = fmt === "story" ? "9:16" : "1:1";
+    const { base64: rawBase64, mimeType } = await generateImage(prompt, geminiAspectRatio);
 
     const imageBase64 = rawBase64;
 
