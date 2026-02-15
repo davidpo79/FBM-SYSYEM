@@ -12,6 +12,7 @@ interface SidebarProps {
   projectCount?: number;
   albumCount?: number;
   isAdmin?: boolean;
+  newSuggestionsCount?: number;
   onLogout: () => void;
 }
 
@@ -23,6 +24,7 @@ export default function Sidebar({
   projectCount = 0,
   albumCount = 0,
   isAdmin = false,
+  newSuggestionsCount = 0,
   onLogout,
 }: SidebarProps) {
   const pathname = usePathname();
@@ -56,7 +58,7 @@ export default function Sidebar({
         { href: "/admin", label: "דשבורד אדמין", emoji: "\u{1F6E1}\uFE0F" },
         { href: "/admin/students", label: "ניהול תלמידים", emoji: "\u{1F393}" },
         { href: "/admin/analytics", label: "אנליטיקס", emoji: "\u{1F4CA}" },
-        { href: "/admin/suggestions", label: "הצעות ייעול", emoji: "\u{1F4AC}" },
+        { href: "/admin/suggestions", label: "הצעות ייעול", emoji: "\u{1F4AC}", badge: newSuggestionsCount > 0 ? newSuggestionsCount : undefined },
         { href: "/admin/settings", label: "הגדרות מערכת", emoji: "\u{1F527}" },
       ]
     : [];
@@ -341,6 +343,14 @@ export default function Sidebar({
                     )}
                     <span className="text-base">{item.emoji}</span>
                     <span className="flex-1">{item.label}</span>
+                    {item.badge !== undefined && (
+                      <span
+                        className="text-[10px] min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-bold animate-pulse"
+                        style={{ backgroundColor: "rgba(239, 68, 68, 0.2)", color: "#EF4444" }}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
                 ))}
               </div>

@@ -26,6 +26,7 @@ export default function DashboardLayout({
   const [showSuggest, setShowSuggest] = useState(false);
   const [userName, setUserName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [newSuggestionsCount, setNewSuggestionsCount] = useState(0);
 
   // Extract projectId from URL if on a project page
   const projectIdMatch = pathname.match(/\/project\/([^/]+)/);
@@ -67,7 +68,14 @@ export default function DashboardLayout({
           .eq("user_id", user.id)
           .single()
           .then(({ data }) => {
-            setIsAdmin(!!data);
+            const admin = !!data;
+            setIsAdmin(admin);
+            if (admin) {
+              fetch("/api/admin/suggestions/count")
+                .then((r) => r.json())
+                .then((d) => setNewSuggestionsCount(d.count ?? 0))
+                .catch(() => {});
+            }
           });
       }
     });
@@ -164,6 +172,7 @@ export default function DashboardLayout({
         projectCount={projectCount}
         albumCount={albumCount}
         isAdmin={isAdmin}
+        newSuggestionsCount={newSuggestionsCount}
         onLogout={handleLogout}
       />
 
