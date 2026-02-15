@@ -54,28 +54,32 @@ export default function QuestionnairePage() {
   const questions = getQuestions(ownerNiche);
 
   // Compute step indicator progress
-  const getProgress = () => {
+  const getProgress = (): { current: number; total: number; label?: string } => {
+    const total = questions.length + 3;
     switch (flowStage) {
       case "name":
-        return { current: 1, total: questions.length + 3 };
+        return { current: 1, total, label: "שלב 1 מתוך 3" };
       case "niche":
-        return { current: 2, total: questions.length + 3 };
+        return { current: 2, total, label: "שלב 2 מתוך 3" };
       case "modeSelect":
-        return { current: 3, total: questions.length + 3 };
+        return { current: 3, total, label: "שלב 3 מתוך 3 — בחירת שיטה" };
       case "recording":
       case "uploading":
-        return { current: 4, total: questions.length + 3 };
+        return { current: 4, total };
       case "processing":
-        return { current: 5, total: questions.length + 3 };
+        return { current: 5, total, label: "מעבד..." };
       case "review":
-        return { current: questions.length + 2, total: questions.length + 3 };
-      case "manual":
+        return { current: questions.length + 2, total, label: "סקירת תשובות" };
+      case "manual": {
+        const q = questions[manualStep];
         return {
           current: manualStep + 4,
-          total: questions.length + 3,
+          total,
+          label: `שאלה ${manualStep + 1} מתוך ${questions.length} | ${q?.sectionTitle ?? ""}`,
         };
+      }
       default:
-        return { current: 1, total: questions.length + 3 };
+        return { current: 1, total };
     }
   };
 
@@ -207,10 +211,10 @@ export default function QuestionnairePage() {
         answersMap[q.id] = answersToUse[q.id] ?? "";
       });
 
-      // Build answers array
+      // Build answers array (use sectionTitle for human-readable section names in DB)
       const answersArray = questions.map((q) => ({
         question_id: q.id,
-        section: q.section,
+        section: q.sectionTitle,
         title: q.title,
         text: q.text,
         answer: answersToUse[q.id] ?? "",
@@ -293,7 +297,7 @@ export default function QuestionnairePage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <StepIndicator current={progress.current} total={progress.total} />
+      <StepIndicator current={progress.current} total={progress.total} label={progress.label} />
 
       {/* ─── Step: Name ─── */}
       {flowStage === "name" && (
@@ -371,7 +375,9 @@ export default function QuestionnairePage() {
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 flex items-center gap-1">
             <span>💡</span>
             <span>
-              אם אתה משווק FBM שממלא עבור עצמו — השאר ריק
+              {ownerNiche.trim()
+                ? `השאלון יותאם ל${ownerNiche.trim()} — מלא את התשובות כאילו בעל העסק מדבר`
+                : "השאלון יותאם למשווק FBM — ימולא בגוף ראשון"}
             </span>
           </p>
 

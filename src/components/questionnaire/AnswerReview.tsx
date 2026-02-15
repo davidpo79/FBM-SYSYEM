@@ -103,7 +103,7 @@ export default function AnswerReview({
             <div className="flex items-start justify-between mb-2">
               <div>
                 <span className="text-xs font-semibold text-[var(--gold)]">
-                  {q.section}
+                  {q.sectionTitle}
                 </span>
                 <h4 className="text-sm font-bold text-[var(--text-primary)] mt-0.5">
                   {idx + 1}. {q.title}

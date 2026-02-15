@@ -16,8 +16,8 @@ export default function QuestionCard({
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-md border border-gray-200 dark:border-gray-800 p-6 sm:p-8">
       {/* Section badge */}
-      <span className="inline-block text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-3 py-1 rounded-full mb-4">
-        {question.section}
+      <span className="inline-block text-xs font-semibold text-[var(--gold)] bg-[var(--gold-soft)] px-3 py-1 rounded-full mb-4">
+        {question.sectionTitle}
       </span>
 
       {/* Title */}

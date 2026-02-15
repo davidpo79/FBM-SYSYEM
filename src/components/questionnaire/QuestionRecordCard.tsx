@@ -118,8 +118,8 @@ export default function QuestionRecordCard({
       dir="rtl"
     >
       {/* Section badge */}
-      <span className="inline-block text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-3 py-1 rounded-full mb-4">
-        {question.section}
+      <span className="inline-block text-xs font-semibold text-[var(--gold)] bg-[var(--gold-soft)] px-3 py-1 rounded-full mb-4">
+        {question.sectionTitle}
       </span>
 
       {/* Title */}
