@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
-import CreativeEditor from "@/components/creatives/CreativeEditor";
-import type { CreativeSuggestion, CreativeResponse } from "@/types";
+import CanvasEditor from "@/components/creatives/CanvasEditor";
+import type { CreativeSuggestion } from "@/types";
 
 function CountdownTimer({ seconds }: { seconds: number }) {
   const [remaining, setRemaining] = useState(seconds);
@@ -46,13 +46,11 @@ export default function CreativePage() {
   const [activeScriptIdx, setActiveScriptIdx] = useState<number | null>(null);
   const [suggestion, setSuggestion] = useState<CreativeSuggestion | null>(null);
   const [creativeError, setCreativeError] = useState("");
-  const [modalImage, setModalImage] = useState<{
-    url: string;
-    base64?: string;
-    scriptIdx: number;
-  } | null>(null);
 
-  // Album selections — save full image objects (url + base64 + scriptIdx)
+  // Background images per script (separate from old generatedImages for backward compat)
+  const [bgImages, setBgImages] = useState<Record<number, string>>({});
+
+  // Album — save rendered canvas PNGs
   const albumStorageKey = `album_${projectId}`;
   type AlbumImage = { url: string; base64?: string; scriptIdx: number };
   const [albumImages, setAlbumImages] = useState<AlbumImage[]>(() => {
@@ -67,22 +65,6 @@ export default function CreativePage() {
     [albumImages],
   );
 
-  const toggleAlbumImage = useCallback(
-    (image: AlbumImage) => {
-      setAlbumImages((prev) => {
-        const exists = prev.some((img) => img.scriptIdx === image.scriptIdx);
-        const next = exists
-          ? prev.filter((img) => img.scriptIdx !== image.scriptIdx)
-          : [...prev, { url: image.url, base64: image.base64, scriptIdx: image.scriptIdx }];
-        localStorage.setItem(albumStorageKey, JSON.stringify(next));
-        // Dispatch storage event so sidebar badge updates in same tab
-        window.dispatchEvent(new StorageEvent("storage", { key: albumStorageKey }));
-        return next;
-      });
-    },
-    [albumStorageKey],
-  );
-
   // Redirect if no scripts
   useEffect(() => {
     if (!scripts) {
@@ -95,6 +77,7 @@ export default function CreativePage() {
     return parts.filter((p) => p.trim().length > 0);
   };
 
+  /* ── Suggest creative (AI analysis of script) ── */
   const handleSuggestCreative = useCallback(
     async (scriptIdx: number) => {
       const scriptParts = splitScripts(scripts);
@@ -121,20 +104,10 @@ export default function CreativePage() {
     [scripts],
   );
 
-  const handleGenerateCreative = useCallback(
+  /* ── Generate background only (AI image) ── */
+  const handleGenerateBackground = useCallback(
     async (config: {
-      mainText: string;
-      subtitle?: string;
-      cta: string;
       background: string;
-      color: string;
-      userInfo: { name: string; role: string; niche: string };
-      showProfile?: boolean;
-      profileImage?: string;
-      displayName?: string;
-      displayRole?: string;
-      fontSize?: string;
-      textPosition?: string;
       format?: string;
       designVision?: string;
     }) => {
@@ -156,23 +129,45 @@ export default function CreativePage() {
           throw new Error(json.error || "Generation failed");
         }
 
+        const bgSrc = json.imageBase64 || json.imageUrl || "";
+        const idx = activeScriptIdx ?? 0;
+
+        // Store background image
+        setBgImages((prev) => ({ ...prev, [idx]: bgSrc }));
+
+        // Also update generatedImages for pipeline compatibility
         const newImage = {
-          url: json.imageUrl,
-          base64: json.imageBase64,
-          scriptIdx: activeScriptIdx ?? 0,
+          url: json.imageUrl || "",
+          base64: json.imageBase64 || "",
+          scriptIdx: idx,
         };
         setGeneratedImages((prev) => {
-          const filtered = prev.filter((img) => img.scriptIdx !== (activeScriptIdx ?? 0));
+          const filtered = prev.filter((img) => img.scriptIdx !== idx);
           return [...filtered, newImage];
         });
-        setModalImage(newImage);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        console.error("Generate creative error:", msg, e);
-        setCreativeError(`שגיאה ביצירת התמונה: ${msg}`);
+        console.error("Generate background error:", msg, e);
+        setCreativeError(`שגיאה ביצירת הרקע: ${msg}`);
       }
     },
     [activeScriptIdx, setGeneratedImages],
+  );
+
+  /* ── Save rendered canvas to album ── */
+  const handleSaveToAlbum = useCallback(
+    (base64: string, scriptIdx: number) => {
+      setAlbumImages((prev) => {
+        const exists = prev.some((img) => img.scriptIdx === scriptIdx);
+        const next = exists
+          ? prev.map((img) => img.scriptIdx === scriptIdx ? { ...img, base64, url: "" } : img)
+          : [...prev, { url: "", base64, scriptIdx }];
+        localStorage.setItem(albumStorageKey, JSON.stringify(next));
+        window.dispatchEvent(new StorageEvent("storage", { key: albumStorageKey }));
+        return next;
+      });
+    },
+    [albumStorageKey],
   );
 
   if (!scripts) return null;
@@ -184,9 +179,8 @@ export default function CreativePage() {
     <div>
       <div className="flex items-center justify-between mb-6 animate-in">
         <h2 className="text-xl font-bold text-[var(--text-primary)]">
-          קריאייטיב - תמונות לפרסום
+          קריאייטיב - עורך Canvas
         </h2>
-        {/* Rule 10: Album counter */}
         {albumImages.length > 0 && (
           <span className="text-sm font-medium text-[var(--gold)] bg-[var(--gold-soft)] px-3 py-1.5 rounded-full">
             {albumImages.length}/{scriptParts.length} נוספו לאלבום
@@ -197,7 +191,7 @@ export default function CreativePage() {
       <div className="space-y-6">
         {scriptParts.map((scriptText, idx) => {
           const hasImage = generatedImages.some((img) => img.scriptIdx === idx);
-          const imageForScript = generatedImages.find((img) => img.scriptIdx === idx);
+          const bgForScript = bgImages[idx] || generatedImages.find((img) => img.scriptIdx === idx)?.base64 || generatedImages.find((img) => img.scriptIdx === idx)?.url || null;
 
           return (
             <div
@@ -206,75 +200,21 @@ export default function CreativePage() {
             >
               <div className="p-5 border-b border-[var(--card-border)] flex items-center justify-between">
                 <h3 className="font-bold text-[var(--text-primary)]">תסריט {idx + 1}</h3>
-                {hasImage && (
-                  <span className="text-xs font-medium text-[var(--success)] bg-green-50 px-2 py-1 rounded-full">
-                    קריאטיב נוצר
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {hasImage && (
+                    <span className="text-xs font-medium text-[var(--success)] bg-green-50 px-2 py-1 rounded-full">
+                      רקע נוצר
+                    </span>
+                  )}
+                  {isInAlbum(idx) && (
+                    <span className="text-xs font-medium text-[var(--gold)] bg-[var(--gold-soft)] px-2 py-1 rounded-full">
+                      באלבום
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {/* Generated image */}
-              {hasImage && imageForScript && (
-                <div className="p-5 border-b border-[var(--card-border)]">
-                  {(imageForScript.url || imageForScript.base64) ? (
-                    <div className={`relative w-full max-w-md mx-auto rounded-[12px] transition-all ${
-                      isInAlbum(idx) ? "ring-3 ring-[var(--gold)] ring-offset-2" : ""
-                    }`}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={imageForScript.url || imageForScript.base64}
-                        alt={`קריאטיב לתסריט ${idx + 1}`}
-                        className="w-full rounded-[10px] shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={() => setModalImage(imageForScript)}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full max-w-md mx-auto rounded-[10px] bg-[var(--content-bg)] border border-[var(--card-border)] p-8 text-center">
-                      <p className="text-[var(--text-muted)] text-sm">התמונה לא זמינה - צור מחדש</p>
-                    </div>
-                  )}
-                  {/* Action buttons below image */}
-                  <div className="flex items-center justify-center gap-3 mt-3">
-                    <button
-                      onClick={() => setModalImage(imageForScript)}
-                      className="px-4 py-2 text-sm font-medium bg-[var(--content-bg)] text-[var(--text-secondary)] rounded-[10px] hover:bg-gray-200 transition-colors cursor-pointer"
-                    >
-                      הגדל תמונה
-                    </button>
-                    {(imageForScript.url || imageForScript.base64) && (
-                      <a
-                        href={imageForScript.url || imageForScript.base64}
-                        download={`creative-${idx + 1}.png`}
-                        className="px-4 py-2 text-sm font-medium bg-[var(--success)] text-white rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
-                      >
-                        הורד תמונה
-                      </a>
-                    )}
-                    {/* Add/Remove from Album — Rule 10: pill shape with heart */}
-                    {(imageForScript.url || imageForScript.base64) && (
-                      <button
-                        type="button"
-                        onClick={() => toggleAlbumImage(imageForScript)}
-                        className={`px-5 py-2 text-sm font-semibold rounded-full cursor-pointer transition-all flex items-center gap-1.5 ${
-                          isInAlbum(idx)
-                            ? "bg-green-50 text-[var(--success)] border border-[var(--success)]"
-                            : "bg-transparent text-[var(--gold)] border border-[var(--gold)] hover:bg-[var(--gold-soft)]"
-                        }`}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill={isInAlbum(idx) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                        </svg>
-                        {isInAlbum(idx) ? "נוסף לאלבום" : "הוסף לאלבום"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Creative editor */}
+              {/* Canvas Editor */}
               {activeScriptIdx === idx && suggestion && project && (
                 <div className="p-5 border-b border-[var(--card-border)]">
                   {creativeError && (
@@ -282,15 +222,16 @@ export default function CreativePage() {
                       {creativeError}
                     </div>
                   )}
-                  <CreativeEditor
+                  <CanvasEditor
                     suggestion={suggestion}
                     userInfo={{
                       name: project.user_name,
                       role: selectedNiche?.name ?? "",
                       niche: selectedNiche?.name ?? "",
                     }}
-                    generatedImage={imageForScript ? { url: imageForScript.url, base64: imageForScript.base64 } : null}
-                    onGenerate={handleGenerateCreative}
+                    backgroundImage={bgForScript}
+                    onGenerateBackground={handleGenerateBackground}
+                    onSaveToAlbum={handleSaveToAlbum}
                     scriptIdx={idx}
                   />
                 </div>
@@ -306,7 +247,7 @@ export default function CreativePage() {
                     onClick={() => handleSuggestCreative(idx)}
                     className={hasImage ? "btn-outline !py-2.5 !px-5 text-sm" : "btn-gold !py-2.5 !px-5 text-sm"}
                   >
-                    {hasImage ? "ערוך ויצור מחדש" : "צור קריאייטיב לתסריט"}
+                    {hasImage ? "ערוך קריאייטיב" : "צור קריאייטיב לתסריט"}
                   </button>
                 </div>
               )}
@@ -358,46 +299,6 @@ export default function CreativePage() {
           >
             עבור לאלבום הקריאטיבים
           </button>
-        </div>
-      )}
-
-      {/* Image lightbox modal */}
-      {modalImage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setModalImage(null)}
-        >
-          <div
-            className="relative max-w-lg w-full max-h-[90vh] flex flex-col bg-[var(--card-bg)] rounded-[16px] overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setModalImage(null)}
-              className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors cursor-pointer text-lg"
-            >
-              &times;
-            </button>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={modalImage.url || modalImage.base64}
-                alt={`קריאטיב לתסריט ${modalImage.scriptIdx + 1}`}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div className="flex-shrink-0 p-4 flex items-center justify-between border-t border-[var(--card-border)]" dir="rtl">
-              <p className="text-sm font-semibold text-[var(--text-secondary)]">
-                קריאטיב לתסריט {modalImage.scriptIdx + 1}
-              </p>
-              <a
-                href={modalImage.url || modalImage.base64}
-                download={`creative-${modalImage.scriptIdx + 1}.png`}
-                className="px-5 py-2.5 bg-[var(--success)] text-white font-semibold rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
-              >
-                הורד תמונה באיכות גבוהה
-              </a>
-            </div>
-          </div>
         </div>
       )}
     </div>
