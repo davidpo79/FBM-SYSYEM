@@ -400,12 +400,22 @@ export default function NichesPage() {
     setNiches,
     selectedNiche,
     setSelectedNiche,
+    setPainAnalysis,
+    setScripts,
+    setGeneratedImages,
   } = useProject();
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
   const [showBrainstorm, setShowBrainstorm] = useState(false);
   const generationAttempted = useRef(false);
+
+  /** Clear all downstream pipeline data when niche changes */
+  const clearDownstream = () => {
+    setPainAnalysis("");
+    setScripts("");
+    setGeneratedImages([]);
+  };
 
   // Redirect if strategy not approved
   useEffect(() => {
@@ -462,8 +472,18 @@ export default function NichesPage() {
   };
 
   const handleSelectNiche = (niche: typeof niches[0]) => {
+    clearDownstream();
     setSelectedNiche(niche);
     router.push(`/project/${projectId}/pains`);
+  };
+
+  /** Reset niches and re-generate from scratch */
+  const handleResetNiches = () => {
+    clearDownstream();
+    setSelectedNiche(null);
+    setNiches([]);
+    setShowBrainstorm(false);
+    generationAttempted.current = false;
   };
 
   if (error) {
@@ -532,8 +552,8 @@ export default function NichesPage() {
         })}
       </div>
 
-      {/* Brainstorm toggle */}
-      <div className="mt-6">
+      {/* Action buttons */}
+      <div className="mt-6 flex flex-wrap gap-3">
         <button
           onClick={() => setShowBrainstorm((v) => !v)}
           className="flex items-center gap-2 px-5 py-2.5 rounded-[10px] border transition-all cursor-pointer text-sm font-semibold"
@@ -566,6 +586,27 @@ export default function NichesPage() {
             ? "סגור סיעור מוחות"
             : "לא מרגיש מתאים? בוא נחשוב ביחד"}
         </button>
+
+        <button
+          onClick={handleResetNiches}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-[10px] border border-[var(--card-border)] text-[var(--text-secondary)] hover:border-red-400 hover:text-red-400 transition-all cursor-pointer text-sm font-semibold"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+          </svg>
+          התחל מחדש ניתוח נישות
+        </button>
       </div>
 
       {/* Brainstorm panel */}
@@ -574,6 +615,8 @@ export default function NichesPage() {
           <BrainstormPanel
             strategy={strategy}
             onSelectCustomNiche={(niche) => {
+              clearDownstream();
+              setNiches([niche]);
               setSelectedNiche(niche);
               router.push(`/project/${projectId}/pains`);
             }}
