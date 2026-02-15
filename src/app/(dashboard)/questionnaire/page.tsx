@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { questions, type QuestionnaireAnswers } from "@/lib/questions";
+import { getQuestions, type QuestionnaireAnswers } from "@/lib/questions";
 import StepIndicator from "@/components/questionnaire/StepIndicator";
 import QuestionCard from "@/components/questionnaire/QuestionCard";
 
@@ -11,21 +11,25 @@ const STORAGE_KEY = "fbm_questionnaire_progress";
 
 export default function QuestionnairePage() {
   const router = useRouter();
-  const [step, setStep] = useState(-1); // -1 = name step, 0+ = questions
+  const [step, setStep] = useState(-1); // -1 = name step, 0 = niche step, 1+ = questions
   const [ownerName, setOwnerName] = useState("");
+  const [ownerNiche, setOwnerNiche] = useState("");
   const [answers, setAnswers] = useState<QuestionnaireAnswers>({});
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const questions = getQuestions(ownerNiche);
 
   // Load saved progress from localStorage
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        const { step: savedStep, answers: savedAnswers, ownerName: savedName } = JSON.parse(saved);
+        const { step: savedStep, answers: savedAnswers, ownerName: savedName, ownerNiche: savedNiche } = JSON.parse(saved);
         setStep(savedStep ?? -1);
         setAnswers(savedAnswers ?? {});
         setOwnerName(savedName ?? "");
+        setOwnerNiche(savedNiche ?? "");
       } catch {
         // ignore corrupted data
       }
@@ -34,13 +38,14 @@ export default function QuestionnairePage() {
 
   // Save progress to localStorage on changes
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, answers, ownerName }));
-  }, [step, answers, ownerName]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, answers, ownerName, ownerNiche }));
+  }, [step, answers, ownerName, ownerNiche]);
 
   const isNameStep = step === -1;
-  const currentQuestion = isNameStep ? null : questions[step];
+  const isNicheStep = step === 0;
+  const currentQuestion = (isNameStep || isNicheStep) ? null : questions[step - 1];
   const currentAnswer = currentQuestion ? (answers[currentQuestion.id] ?? "") : "";
-  const isLast = step === questions.length - 1;
+  const isLast = step === questions.length;
 
   const validate = (): boolean => {
     if (isNameStep) {
@@ -48,6 +53,11 @@ export default function QuestionnairePage() {
         setError("נא להזין שם מלא");
         return false;
       }
+      setError("");
+      return true;
+    }
+    if (isNicheStep) {
+      // Niche is optional — always valid
       setError("");
       return true;
     }
@@ -93,6 +103,7 @@ export default function QuestionnairePage() {
       }
 
       const userName = ownerName.trim();
+      const niche = ownerNiche.trim() || null;
 
       // Build answers map for AI prompts (id → answer text)
       const answersMap: Record<string, string> = {};
@@ -117,6 +128,7 @@ export default function QuestionnairePage() {
           answers: answersArray,
           user_name: userName,
           answers_map: answersMap,
+          owner_niche: niche,
           status: "pending",
         })
         .select("id")
@@ -138,7 +150,7 @@ export default function QuestionnairePage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <StepIndicator current={step + 2} total={questions.length + 1} />
+      <StepIndicator current={step + 2} total={questions.length + 2} />
 
       {isNameStep ? (
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 p-6" dir="rtl">
@@ -165,6 +177,33 @@ export default function QuestionnairePage() {
           {error && (
             <p className="text-red-500 text-sm mt-2">{error}</p>
           )}
+        </div>
+      ) : isNicheStep ? (
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 p-6" dir="rtl">
+          <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+            התאמה אישית
+          </span>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2 mb-2">
+            מה בעל העסק עושה?
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            הנישה תשמש להתאמת השאלות לתחום הספציפי שלך
+          </p>
+          <input
+            type="text"
+            value={ownerNiche}
+            onChange={(e) => {
+              setOwnerNiche(e.target.value);
+              if (error) setError("");
+            }}
+            placeholder="לדוגמה: עיצוב פנים, אימון כושר, ייעוץ עסקי..."
+            dir="rtl"
+            className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-lg"
+          />
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 flex items-center gap-1">
+            <span>💡</span>
+            <span>אם אתה משווק FBM שממלא עבור עצמו — השאר ריק</span>
+          </p>
         </div>
       ) : (
         <QuestionCard
