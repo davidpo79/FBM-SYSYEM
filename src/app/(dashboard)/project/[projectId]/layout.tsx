@@ -315,13 +315,19 @@ export default function ProjectLayout({
 
 function FbmExpertButton() {
   const [showTooltip, setShowTooltip] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleClick = () => {
+    setShowTooltip(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setShowTooltip(false), 3000);
+  };
 
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => setShowTooltip((v) => !v)}
-        onBlur={() => setTimeout(() => setShowTooltip(false), 150)}
+        onClick={handleClick}
         className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[10px] cursor-pointer transition-all hover:opacity-90"
         style={{
           background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
@@ -340,22 +346,16 @@ function FbmExpertButton() {
       </button>
       {showTooltip && (
         <div
-          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-2 text-xs font-medium text-white rounded-lg whitespace-nowrap z-50"
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-4 py-2.5 text-xs font-medium text-white rounded-lg whitespace-nowrap z-50 animate-in"
           style={{ backgroundColor: "#1a1a1a" }}
         >
-          בקרוב — המומחה האישי שלך
+          בקרוב — המומחה האישי שלך ✨
           <div
             className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45"
             style={{ backgroundColor: "#1a1a1a" }}
           />
         </div>
       )}
-      <style jsx>{`
-        @keyframes fbm-glow {
-          from { box-shadow: 0 0 8px rgba(212, 168, 67, 0.3); }
-          to   { box-shadow: 0 0 16px rgba(212, 168, 67, 0.6); }
-        }
-      `}</style>
     </div>
   );
 }

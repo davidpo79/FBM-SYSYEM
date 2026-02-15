@@ -7,7 +7,6 @@ import { supabase } from "@/lib/supabase";
 import JSZip from "jszip";
 import { exportToPdf } from "@/lib/pdf-export";
 import { downloadBlob } from "@/lib/pdf-export";
-import FBMLogo from "@/components/FBMLogo";
 
 type AlbumImage = { url: string; base64?: string; scriptIdx: number };
 
@@ -258,8 +257,16 @@ export default function AlbumPage() {
           </div>
         )}
         <div className="relative z-10">
-          <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-            <FBMLogo size={24} />
+          <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-3">
+            <div className="relative w-8 h-8 flex-shrink-0">
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: "radial-gradient(circle, rgba(212, 168, 67, 0.35) 0%, rgba(212, 168, 67, 0) 70%)",
+                }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center text-lg">📸</div>
+            </div>
             אלבום הקריאטיבים
           </h2>
           <p className="text-sm text-[var(--text-muted)] mt-1">
