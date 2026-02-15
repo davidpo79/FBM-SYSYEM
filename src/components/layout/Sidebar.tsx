@@ -47,7 +47,7 @@ export default function Sidebar({
 
   const toolsNav = [
     { href: "#expert", label: "מומחה FBM", emoji: "\u{1F916}", badge: "●", disabled: false, isExpert: true },
-    { href: "#suggest", label: "הצעה לשיפור", emoji: "\u{1F4A1}", disabled: false, isSuggest: true },
+    { href: "#suggest", label: "הצעה לייעול", emoji: "\u{1F4A1}", disabled: false, isSuggest: true },
     { href: "/settings", label: "הגדרות", emoji: "\u2699\uFE0F", disabled: false },
   ];
 
@@ -56,7 +56,7 @@ export default function Sidebar({
         { href: "/admin", label: "דשבורד אדמין", emoji: "\u{1F6E1}\uFE0F" },
         { href: "/admin/students", label: "ניהול תלמידים", emoji: "\u{1F393}" },
         { href: "/admin/analytics", label: "אנליטיקס", emoji: "\u{1F4CA}" },
-        { href: "/admin/suggestions", label: "הצעות שיפור", emoji: "\u{1F4AC}" },
+        { href: "/admin/suggestions", label: "הצעות ייעול", emoji: "\u{1F4AC}" },
         { href: "/admin/settings", label: "הגדרות מערכת", emoji: "\u{1F527}" },
       ]
     : [];

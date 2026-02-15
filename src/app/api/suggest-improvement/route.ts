@@ -59,16 +59,16 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (error) {
-        console.error("suggest-improvement - insert error:", error);
+        console.error("suggest-improvement - insert error:", error.message, error.details, error.hint);
         return NextResponse.json(
-          { error: "שגיאה בשמירת ההצעה" },
+          { error: `שגיאה בשמירת ההצעה: ${error.message}` },
           { status: 500 },
         );
       }
 
       return NextResponse.json({
         success: true,
-        suggestionId: data.id,
+        suggestionId: data?.id,
         message: "ההצעה נשמרה בהצלחה! תודה על המשוב.",
       });
     }

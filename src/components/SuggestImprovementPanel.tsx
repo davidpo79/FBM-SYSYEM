@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
 interface SuggestImprovementPanelProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ interface Message {
 const INITIAL_MESSAGE: Message = {
   role: "assistant",
   content:
-    "שלום! אשמח לשמוע את ההצעה שלך לשיפור המערכת. ספר/י לי מה חסר לך או מה היית רוצה שישופר ב-FBM Studio.",
+    "שלום! אשמח לשמוע את ההצעה שלך לייעול המערכת. ספר/י לי מה חסר לך או מה היית רוצה שישופר ב-FBM Studio.",
 };
 
 export default function SuggestImprovementPanel({
@@ -27,8 +28,16 @@ export default function SuggestImprovementPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Get user id on mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserId(user.id);
+    });
+  }, []);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -101,7 +110,12 @@ export default function SuggestImprovementPanel({
     const firstUserMessage = messages.find((m) => m.role === "user");
     const title = firstUserMessage
       ? firstUserMessage.content.slice(0, 100)
-      : "הצעת שיפור";
+      : "הצעת ייעול";
+
+    // Filter out the initial greeting message
+    const conversationToSave = messages.filter(
+      (m) => m !== INITIAL_MESSAGE
+    );
 
     try {
       const res = await fetch("/api/suggest-improvement", {
@@ -110,15 +124,20 @@ export default function SuggestImprovementPanel({
         body: JSON.stringify({
           action: "submit",
           title,
-          conversation: messages,
+          conversation: conversationToSave,
+          userId: userId,
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to send");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send");
+      }
 
       setSubmitted(true);
-    } catch {
-      setError("שגיאה בשליחה. נסה שוב.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "שגיאה בשליחה";
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -188,7 +207,7 @@ export default function SuggestImprovementPanel({
               <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
             </svg>
             <span className="font-bold text-sm text-white">
-              הצעה לשיפור המערכת
+              הצעה לייעול המערכת
             </span>
           </div>
           <button
