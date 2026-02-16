@@ -5,7 +5,7 @@
  * Swagger: https://app.sumit.co.il/help/developers/swagger/index.html
  *
  * Base URL: https://api.sumit.co.il
- * Auth: CompanyID (integer) + APIKey in JSON body
+ * Auth: Credentials object { CompanyID (integer), APIKey } in JSON body
  */
 
 const SUMIT_BASE_URL = "https://api.sumit.co.il";
@@ -49,8 +49,10 @@ async function sumitRequest(endpoint: string, body: Record<string, unknown>): Pr
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      CompanyID: companyId,
-      APIKey: apiKey,
+      Credentials: {
+        CompanyID: companyId,
+        APIKey: apiKey,
+      },
       ...body,
     }),
   });
