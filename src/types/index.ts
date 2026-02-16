@@ -1,3 +1,22 @@
+import type { PlanType } from "@/lib/plan-limits";
+
+export type SubscriptionStatus = "none" | "active";
+
+export interface UserProfile {
+  user_id: string;
+  full_name: string;
+  plan: PlanType;
+  trial_start: string | null;
+  trial_days: number;
+  subscription_status: SubscriptionStatus;
+  plan_price: number;
+  sumit_customer_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type { PlanType };
+
 export type BackgroundType = "lighthouse" | "mountain" | "path" | "office" | "city" | "sunset" | "forest" | "studio";
 export type ColorType = "gold" | "teal";
 export type FontSizeType = "small" | "medium" | "large";

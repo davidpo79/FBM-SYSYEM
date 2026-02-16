@@ -10,13 +10,28 @@ ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can check own admin status" ON admin_users
   FOR SELECT USING (auth.uid() = user_id);
 
--- 2. User profiles (full name)
+-- 2. User profiles (full name + billing)
 CREATE TABLE IF NOT EXISTS user_profiles (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id),
   full_name TEXT NOT NULL,
+  plan TEXT DEFAULT 'trial',
+  trial_start TIMESTAMPTZ DEFAULT NOW(),
+  trial_days INTEGER DEFAULT 14,
+  subscription_status TEXT DEFAULT 'active',
+  plan_price INTEGER DEFAULT 0,
+  sumit_customer_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 2b. Billing columns hotfix (for existing deployments where user_profiles already exists)
+ALTER TABLE user_profiles
+  ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'trial',
+  ADD COLUMN IF NOT EXISTS trial_start TIMESTAMPTZ DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS trial_days INTEGER DEFAULT 14,
+  ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'active',
+  ADD COLUMN IF NOT EXISTS plan_price INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS sumit_customer_id TEXT;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can read own profile" ON user_profiles FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update own profile" ON user_profiles FOR UPDATE USING (auth.uid() = user_id);
