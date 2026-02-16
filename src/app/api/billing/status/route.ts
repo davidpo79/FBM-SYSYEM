@@ -1,15 +1,22 @@
-import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { isTrialExpired, getTrialDaysLeft } from "@/lib/plan-limits";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    // Get current user from Authorization header
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "");
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseAdmin
       .from("user_profiles")
       .select("plan, trial_start, trial_days, subscription_status, plan_price")
       .eq("user_id", user.id)
