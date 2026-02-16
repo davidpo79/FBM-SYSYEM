@@ -2,37 +2,40 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { PLAN_LABELS, PLAN_PRICES, CONSULTING_PRODUCT } from "@/lib/plan-limits";
 
 type Tab = "general" | "plan" | "invoices";
 
 const plans = [
   {
-    name: "Free",
-    price: "0",
-    period: "",
-    features: ["פרויקט אחד", "3 קריאייטיבים", "ייצוא PDF"],
-    current: false,
+    key: "standard",
+    name: "סטנדרט",
+    price: String(PLAN_PRICES.standard),
+    period: "/חודש",
+    features: [
+      "10 פרויקטים",
+      "30 תמונות AI בחודש",
+      "3 תסריטים לפרויקט",
+      "20 שיחות ביום עם מומחה FBM",
+      "קופי בסיסי",
+    ],
   },
   {
-    name: "Pro",
-    price: "149",
+    key: "premium",
+    name: "פרימיום",
+    price: String(PLAN_PRICES.premium),
     period: "/חודש",
-    features: ["פרויקטים ללא הגבלה", "קריאייטיבים ללא הגבלה", "ייצוא ZIP", "תמיכה בעדיפות"],
-    current: true,
+    popular: true,
+    features: [
+      "פרויקטים ללא הגבלה",
+      "תמונות AI ללא הגבלה",
+      "5 תסריטים לפרויקט",
+      "שיחות ללא הגבלה עם מומחה FBM",
+      "3 וריאציות קופי",
+      "דוחות PDF ללקוח",
+      "בנק תסריטים",
+    ],
   },
-  {
-    name: "Agency",
-    price: "449",
-    period: "/חודש",
-    features: ["White Label", "ניהול לקוחות", "גישת API", "לוח בקרה מתקדם"],
-    current: false,
-  },
-];
-
-const invoices = [
-  { date: "01/02/2026", description: "תוכנית Pro - פברואר 2026", amount: "149", status: "שולם" },
-  { date: "01/01/2026", description: "תוכנית Pro - ינואר 2026", amount: "149", status: "שולם" },
-  { date: "01/12/2025", description: "תוכנית Pro - דצמבר 2025", amount: "149", status: "שולם" },
 ];
 
 export default function SettingsPage() {
@@ -43,6 +46,9 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [currentPlan, setCurrentPlan] = useState<string>("trial");
+  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
+  const [consultingLoading, setConsultingLoading] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -52,16 +58,56 @@ export default function SettingsPage() {
 
       const { data } = await supabase
         .from("user_profiles")
-        .select("full_name")
+        .select("full_name, plan")
         .eq("user_id", user.id)
         .single();
 
       if (data?.full_name) {
         setFullName(data.full_name);
       }
+      if (data?.plan) {
+        setCurrentPlan(data.plan);
+      }
     }
     loadProfile();
   }, []);
+
+  const handleUpgrade = async (planKey: string) => {
+    setUpgradeLoading(planKey);
+    try {
+      const res = await fetch("/api/billing/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planKey }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.paymentUrl) {
+        throw new Error(json.error || "Failed to create checkout");
+      }
+      window.location.href = json.paymentUrl;
+    } catch {
+      setError("שגיאה ביצירת קישור תשלום");
+      setUpgradeLoading(null);
+    }
+  };
+
+  const handleConsulting = async () => {
+    setConsultingLoading(true);
+    try {
+      const res = await fetch("/api/billing/consulting-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (!res.ok || !json.paymentUrl) {
+        throw new Error(json.error || "Failed to create checkout");
+      }
+      window.location.href = json.paymentUrl;
+    } catch {
+      setError("שגיאה ביצירת קישור תשלום לייעוץ");
+      setConsultingLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -235,86 +281,107 @@ export default function SettingsPage() {
 
       {/* Plan tab */}
       {tab === "plan" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`bg-[var(--card-bg)] border rounded-[16px] p-6 relative ${
-                plan.current
-                  ? "border-[var(--gold)] gold-glow"
-                  : "border-[var(--card-border)]"
-              }`}
-            >
-              {plan.current && (
-                <span className="absolute -top-3 right-4 bg-[var(--gold)] text-white text-xs font-bold px-3 py-1 rounded-full">
-                  התוכנית שלך
-                </span>
-              )}
-              <h3 className="text-xl font-bold text-[var(--text-primary)] mb-1">{plan.name}</h3>
-              <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-3xl font-bold text-[var(--text-primary)]">&#8362;{plan.price}</span>
-                {plan.period && (
-                  <span className="text-sm text-[var(--text-muted)]">{plan.period}</span>
-                )}
+        <div>
+          {/* Current plan info */}
+          <div className="card-static p-4 mb-6">
+            <p className="text-sm text-[var(--text-secondary)]">
+              התוכנית הנוכחית שלך: <span className="font-bold text-[var(--gold)]">{PLAN_LABELS[currentPlan] || currentPlan}</span>
+            </p>
+          </div>
+
+          {/* Subscription plans */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {plans.map((plan) => {
+              const isCurrent = currentPlan === plan.key;
+              const isHigher = plan.key === "premium" && currentPlan === "premium";
+              return (
+                <div
+                  key={plan.key}
+                  className={`bg-[var(--card-bg)] border rounded-[16px] p-6 relative ${
+                    isCurrent
+                      ? "border-[var(--gold)] gold-glow"
+                      : plan.key === "premium"
+                        ? "border-[var(--gold)]"
+                        : "border-[var(--card-border)]"
+                  }`}
+                >
+                  {isCurrent && (
+                    <span className="absolute -top-3 right-4 bg-[var(--gold)] text-white text-xs font-bold px-3 py-1 rounded-full">
+                      התוכנית שלך
+                    </span>
+                  )}
+                  {!isCurrent && plan.key === "premium" && (
+                    <span className="absolute -top-3 right-4 bg-[var(--gold)] text-white text-xs font-bold px-3 py-1 rounded-full">
+                      מומלץ
+                    </span>
+                  )}
+                  <h3 className="text-xl font-bold text-[var(--text-primary)] mb-1">{plan.name}</h3>
+                  <div className="flex items-baseline gap-1 mb-4">
+                    <span className="text-3xl font-bold text-[var(--text-primary)]">&#8362;{plan.price}</span>
+                    <span className="text-sm text-[var(--text-muted)]">{plan.period}</span>
+                  </div>
+                  <ul className="space-y-2 mb-6">
+                    {plan.features.map((f, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isCurrent ? "var(--gold)" : "var(--success)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => !isCurrent && handleUpgrade(plan.key)}
+                    disabled={isCurrent || isHigher || upgradeLoading !== null}
+                    className={`w-full py-2.5 rounded-[10px] font-semibold text-sm transition-opacity cursor-pointer disabled:cursor-default ${
+                      isCurrent
+                        ? "bg-[var(--content-bg)] text-[var(--text-muted)]"
+                        : "bg-[var(--gold)] text-white hover:opacity-90 disabled:opacity-50"
+                    }`}
+                  >
+                    {upgradeLoading === plan.key ? "מעבד..." : isCurrent ? "התוכנית הנוכחית" : "שדרג"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Consulting one-time purchase */}
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-6 relative">
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">{CONSULTING_PRODUCT.description}</h3>
+                <p className="text-sm text-[var(--text-secondary)] mb-3">
+                  שעת ייעוץ אישית 1-על-1 עם דוד — אסטרטגיה, קופי, קמפיינים, ואופטימיזציה
+                </p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-[var(--text-primary)]">&#8362;{CONSULTING_PRODUCT.priceWithVAT.toLocaleString()}</span>
+                  <span className="text-xs text-[var(--text-muted)]">כולל מע&quot;מ</span>
+                </div>
               </div>
-              <ul className="space-y-2 mb-6">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={plan.current ? "var(--gold)" : "var(--success)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
               <button
-                className={`w-full py-2.5 rounded-[10px] font-semibold text-sm transition-opacity cursor-pointer ${
-                  plan.current
-                    ? "bg-[var(--content-bg)] text-[var(--text-muted)] cursor-default"
-                    : "bg-[var(--gold)] text-white hover:opacity-90"
-                }`}
-                disabled={plan.current}
+                onClick={handleConsulting}
+                disabled={consultingLoading}
+                className="px-6 py-2.5 rounded-[10px] font-semibold text-sm cursor-pointer transition-all hover:opacity-90 disabled:opacity-50"
+                style={{
+                  background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
+                  color: "#0F1117",
+                  boxShadow: "0 2px 8px rgba(212, 168, 67, 0.3)",
+                }}
               >
-                {plan.current ? "התוכנית הנוכחית" : "שדרג"}
+                {consultingLoading ? "מעבד..." : "רכוש שעת ייעוץ"}
               </button>
             </div>
-          ))}
+          </div>
         </div>
       )}
 
       {/* Invoices tab */}
       {tab === "invoices" && (
-        <div className="card-static overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--card-border)]">
-                <th className="text-right px-6 py-4 font-semibold text-[var(--text-secondary)]">תאריך</th>
-                <th className="text-right px-6 py-4 font-semibold text-[var(--text-secondary)]">תיאור</th>
-                <th className="text-right px-6 py-4 font-semibold text-[var(--text-secondary)]">סכום</th>
-                <th className="text-right px-6 py-4 font-semibold text-[var(--text-secondary)]">סטטוס</th>
-                <th className="text-right px-6 py-4 font-semibold text-[var(--text-secondary)]">הורדה</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map((inv, i) => (
-                <tr key={i} className={i % 2 === 1 ? "bg-[var(--content-bg)]" : ""}>
-                  <td className="px-6 py-4 text-[var(--text-primary)]">{inv.date}</td>
-                  <td className="px-6 py-4 text-[var(--text-primary)]">{inv.description}</td>
-                  <td className="px-6 py-4 text-[var(--text-primary)] font-medium">&#8362;{inv.amount}</td>
-                  <td className="px-6 py-4">
-                    <span className="bg-green-50 text-[var(--success)] text-xs font-medium px-2 py-1 rounded-full">
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button className="text-[var(--gold)] hover:opacity-80 text-xs font-medium cursor-pointer">
-                      PDF
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="card-static p-8 text-center">
+          <p className="text-[var(--text-muted)] text-sm">
+            החשבוניות שלך יופיעו כאן לאחר ביצוע תשלום
+          </p>
         </div>
       )}
     </div>

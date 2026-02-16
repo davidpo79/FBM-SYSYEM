@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { PLAN_PRICES } from "@/lib/plan-limits";
 
 /**
- * Sumit webhook handler.
- * Called by Sumit after a payment is completed.
- * Updates user plan in user_profiles.
+ * Sumit webhook handler for consulting payments.
+ * Creates a record in the consultations table when payment succeeds.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -26,22 +24,21 @@ export async function POST(req: NextRequest) {
       || 0;
     const statusCode = body?.StatusCode ?? body?.Data?.StatusCode ?? body?.Status ?? -1;
 
-    console.log("Sumit webhook received:", {
+    console.log("Consultation webhook received:", {
       customerEmail,
       transactionId,
       amount,
       statusCode,
-      rawKeys: Object.keys(body),
     });
 
     // Status 0 = success in Sumit
     if (statusCode !== 0 && statusCode !== 200) {
-      console.log("Sumit webhook: payment not successful, status:", statusCode);
+      console.log("Consultation webhook: payment not successful, status:", statusCode);
       return NextResponse.json({ received: true, processed: false });
     }
 
     if (!customerEmail) {
-      console.error("Sumit webhook: no customer email found");
+      console.error("Consultation webhook: no customer email found");
       return NextResponse.json({ received: true, processed: false });
     }
 
@@ -52,39 +49,43 @@ export async function POST(req: NextRequest) {
     );
 
     if (!user) {
-      console.error("Sumit webhook: user not found for email:", customerEmail);
+      console.error("Consultation webhook: user not found for email:", customerEmail);
       return NextResponse.json({ received: true, processed: false });
     }
 
-    // Determine plan from amount
-    let plan = "standard";
-    if (amount >= PLAN_PRICES.premium) {
-      plan = "premium";
+    // Create consultation record
+    const { error: insertError } = await supabaseAdmin
+      .from("consultations")
+      .insert({
+        user_id: user.id,
+        transaction_id: transactionId || null,
+        amount: amount || 1170,
+        status: "pending",
+      });
+
+    if (insertError) {
+      console.error("Consultation webhook: failed to insert consultation:", insertError);
+      return NextResponse.json({ error: "Failed to create consultation" }, { status: 500 });
     }
 
-    // Update user profile
-    const { error: updateError } = await supabaseAdmin
-      .from("user_profiles")
-      .upsert(
-        {
-          user_id: user.id,
-          plan,
-          subscription_status: "active",
-          plan_price: amount,
-          sumit_customer_id: transactionId || undefined,
-        },
-        { onConflict: "user_id" },
-      );
-
-    if (updateError) {
-      console.error("Sumit webhook: failed to update profile:", updateError);
-      return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
+    // Create admin notification (best-effort)
+    try {
+      await supabaseAdmin
+        .from("admin_notifications")
+        .insert({
+          type: "consultation_purchased",
+          title: "שעת ייעוץ חדשה נרכשה",
+          message: `${user.email} רכש/ה שעת ייעוץ`,
+          metadata: { userId: user.id, email: user.email, transactionId },
+        });
+    } catch {
+      // non-critical, ignore
     }
 
-    console.log(`Sumit webhook: updated user ${user.email} to plan ${plan}`);
+    console.log(`Consultation webhook: created consultation for ${user.email}`);
     return NextResponse.json({ received: true, processed: true });
   } catch (error) {
-    console.error("Sumit webhook error:", error);
+    console.error("Consultation webhook error:", error);
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }

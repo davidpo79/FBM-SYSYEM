@@ -1,10 +1,10 @@
-export type PlanType = "trial" | "standard" | "premium" | "expired" | "coaching";
+export type PlanType = "trial" | "standard" | "premium" | "expired";
 
 export interface PlanLimits {
   projects: number;
   aiImages: number;
   scriptsPerProject: number;
-  chatMessages: number;
+  chatMessages: number;       // daily chat messages with FBM expert
   copyVariations: number;
   clientReport: boolean;
   scriptBank: boolean;
@@ -12,10 +12,10 @@ export interface PlanLimits {
 
 export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
   trial: {
-    projects: 999,
-    aiImages: 999,
+    projects: 999,             // unlimited - let users experience the product
+    aiImages: 999,             // unlimited
     scriptsPerProject: 3,
-    chatMessages: 999,
+    chatMessages: 20,          // 20 daily chats with FBM expert
     copyVariations: 1,
     clientReport: false,
     scriptBank: false,
@@ -24,7 +24,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     projects: 10,
     aiImages: 30,
     scriptsPerProject: 3,
-    chatMessages: 20,
+    chatMessages: 20,          // 20 daily chats with FBM expert
     copyVariations: 1,
     clientReport: false,
     scriptBank: false,
@@ -33,7 +33,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     projects: 999,
     aiImages: 999,
     scriptsPerProject: 5,
-    chatMessages: 999,
+    chatMessages: 999,         // unlimited chats with FBM expert
     copyVariations: 3,
     clientReport: true,
     scriptBank: true,
@@ -47,15 +47,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     clientReport: false,
     scriptBank: false,
   },
-  coaching: {
-    projects: 999,
-    aiImages: 999,
-    scriptsPerProject: 5,
-    chatMessages: 999,
-    copyVariations: 3,
-    clientReport: true,
-    scriptBank: true,
-  },
 };
 
 export const PLAN_PRICES: Record<string, number> = {
@@ -68,7 +59,14 @@ export const PLAN_LABELS: Record<string, string> = {
   standard: "סטנדרט",
   premium: "פרימיום",
   expired: "פג תוקף",
-  coaching: "קואצ'ינג",
+};
+
+// Consulting: one-time product (not a subscription plan)
+export const CONSULTING_PRODUCT = {
+  type: "one-time" as const,
+  price: 1000,               // before VAT
+  priceWithVAT: 1170,        // including 17% VAT
+  description: "שעת ייעוץ אישית עם דוד",
 };
 
 export function getPlanLimits(plan: string): PlanLimits {

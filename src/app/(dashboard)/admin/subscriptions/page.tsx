@@ -17,7 +17,7 @@ interface Subscription {
   hasSumitId: boolean;
 }
 
-const PLAN_OPTIONS = ["trial", "standard", "premium", "coaching"];
+const PLAN_OPTIONS = ["trial", "standard", "premium"];
 
 export default function AdminSubscriptionsPage() {
   const router = useRouter();
@@ -106,8 +106,6 @@ export default function AdminSubscriptionsPage() {
         return { backgroundColor: "rgba(212, 168, 67, 0.15)", color: "#D4A843" };
       case "standard":
         return { backgroundColor: "rgba(99, 102, 241, 0.15)", color: "#818CF8" };
-      case "coaching":
-        return { backgroundColor: "rgba(34, 197, 94, 0.15)", color: "#22C55E" };
       case "expired":
         return { backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#EF4444" };
       default:
@@ -222,7 +220,7 @@ export default function AdminSubscriptionsPage() {
             }}
           />
           <div className="flex gap-2 flex-wrap">
-            {["all", "trial", "standard", "premium", "expired", "coaching"].map((f) => (
+            {["all", "trial", "standard", "premium", "expired"].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}

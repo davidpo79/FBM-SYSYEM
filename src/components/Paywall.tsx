@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import ConsultingCard from "@/components/ConsultingCard";
 
 interface PaywallProps {
   daysLeft?: number | null;
   currentPlan?: string;
+  projectCount?: number;
 }
 
 const plans = [
@@ -16,8 +18,8 @@ const plans = [
       "10 פרויקטים",
       "30 תמונות AI בחודש",
       "3 תסריטים לפרויקט",
+      "20 שיחות ביום עם מומחה FBM",
       "קופי בסיסי",
-      "20 הודעות צ'אט ביום",
     ],
     highlight: false,
   },
@@ -29,8 +31,8 @@ const plans = [
       "פרויקטים ללא הגבלה",
       "תמונות AI ללא הגבלה",
       "5 תסריטים לפרויקט",
+      "שיחות ללא הגבלה עם מומחה FBM",
       "3 וריאציות קופי",
-      "צ'אט ללא הגבלה",
       "דוחות PDF ללקוח",
       "בנק תסריטים",
     ],
@@ -38,7 +40,7 @@ const plans = [
   },
 ];
 
-export default function Paywall({ daysLeft, currentPlan }: PaywallProps) {
+export default function Paywall({ daysLeft, currentPlan, projectCount }: PaywallProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -84,7 +86,7 @@ export default function Paywall({ daysLeft, currentPlan }: PaywallProps) {
         </h2>
         <p className="text-[var(--text-secondary)] text-sm max-w-md mx-auto">
           {isExpired
-            ? "כל הפרויקטים שלך שמורים ומחכים לך! בחר תוכנית כדי להמשיך."
+            ? `${projectCount ? `כל ${projectCount} הפרויקטים שלך` : "כל הפרויקטים שלך"} שמורים ומחכים לך! בחר תוכנית כדי להמשיך.`
             : `נשארו לך ${daysLeft} ימי ניסיון. שדרג עכשיו כדי להמשיך בלי הפרעות.`}
         </p>
       </div>
@@ -168,6 +170,13 @@ export default function Paywall({ daysLeft, currentPlan }: PaywallProps) {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Consulting section */}
+      <div className="text-center mt-10 max-w-md w-full">
+        <div className="mx-4 h-px mb-6" style={{ background: "linear-gradient(to left, transparent, var(--card-border), transparent)" }} />
+        <p className="text-sm text-[var(--text-secondary)] mb-4">מעדיף ייעוץ אישי?</p>
+        <ConsultingCard />
       </div>
 
       <p className="text-xs text-[var(--text-muted)] mt-8 text-center">

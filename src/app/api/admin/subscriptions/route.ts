@@ -60,9 +60,6 @@ export async function PATCH(req: NextRequest) {
         updateData.plan_price = 0;
         // Reset trial start to now
         updateData.trial_start = new Date().toISOString();
-      } else if (plan === "coaching") {
-        updateData.subscription_status = "active";
-        updateData.plan_price = 0;
       }
 
       const { error } = await supabaseAdmin
