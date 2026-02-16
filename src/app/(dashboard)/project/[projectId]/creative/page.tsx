@@ -35,6 +35,179 @@ function CountdownTimer({ seconds }: { seconds: number }) {
   );
 }
 
+/* ── Toggle Switch ── */
+function ToggleSwitch({ enabled, onChange, label }: { enabled: boolean; onChange: (v: boolean) => void; label?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!enabled)}
+      className="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+      style={{ backgroundColor: enabled ? 'var(--gold)' : '#9ca3af' }}
+      role="switch"
+      aria-checked={enabled}
+      aria-label={label}
+    >
+      <span
+        className="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+        style={{ transform: enabled ? 'translateX(0px)' : 'translateX(16px)' }}
+      />
+    </button>
+  );
+}
+
+/* ── Creative Chat Modal ── */
+function CreativeChatModal({
+  open,
+  onClose,
+  onApply,
+  scriptText,
+  currentHeadline,
+  currentSubtitle,
+  currentCta,
+  niche,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onApply: (field: "headline" | "subtitle" | "cta", value: string) => void;
+  scriptText: string;
+  currentHeadline: string;
+  currentSubtitle: string;
+  currentCta: string;
+  niche: string;
+}) {
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([
+    { role: "assistant", text: "שלום! אני מומחה קריאטיב ופרסום עם 15 שנות ניסיון.\nאני כאן לעזור לך עם כותרות, תתי-כותרות ו-CTA שיביאו תוצאות.\n\nאיך אוכל לעזור? למשל:\n- \"תציע כותרות חדשות\"\n- \"שפר את התת-כותרת\"\n- \"תן רעיונות ל-CTA\"" }
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    const userMsg = input.trim();
+    setInput("");
+    setMessages(prev => [...prev, { role: "user", text: userMsg }]);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/creative-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMsg,
+          scriptText,
+          currentHeadline,
+          currentSubtitle,
+          currentCta,
+          niche,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setMessages(prev => [...prev, { role: "assistant", text: json.reply }]);
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", text: "שגיאה בקבלת תשובה. נסה שוב." }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
+        dir="rtl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-[var(--text-primary)]">מומחה קריאטיב AI</h3>
+            <p className="text-xs text-[var(--text-muted)]">15 שנות ניסיון בפרסום דיגיטלי</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl cursor-pointer">✕</button>
+        </div>
+
+        {/* Messages */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
+                  msg.role === "user"
+                    ? "bg-[var(--gold)] text-white rounded-br-none"
+                    : "bg-gray-100 dark:bg-gray-800 text-[var(--text-primary)] rounded-bl-none"
+                }`}
+              >
+                {msg.text}
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div className="flex justify-end">
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-bl-none px-4 py-2.5 text-sm text-[var(--text-muted)]">
+                חושב...
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Quick apply buttons */}
+        <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800 flex gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => onApply("headline", currentHeadline)}
+            className="text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer"
+          >
+            החל על כותרת
+          </button>
+          <button
+            type="button"
+            onClick={() => onApply("subtitle", currentSubtitle)}
+            className="text-xs px-3 py-1 rounded-full bg-purple-50 text-purple-600 hover:bg-purple-100 cursor-pointer"
+          >
+            החל על תת-כותרת
+          </button>
+          <button
+            type="button"
+            onClick={() => onApply("cta", currentCta)}
+            className="text-xs px-3 py-1 rounded-full bg-green-50 text-green-600 hover:bg-green-100 cursor-pointer"
+          >
+            החל על CTA
+          </button>
+        </div>
+
+        {/* Input */}
+        <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder="שאל את המומחה..."
+            className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-transparent text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+          />
+          <button
+            onClick={handleSend}
+            disabled={loading || !input.trim()}
+            className="px-4 py-2 rounded-xl bg-[var(--gold)] text-white font-semibold text-sm disabled:opacity-50 cursor-pointer"
+          >
+            שלח
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Per-script state ── */
 type ScriptState = "idle" | "analyzing" | "ready";
 
@@ -48,6 +221,12 @@ interface ScriptCreative {
   format: FormatType;
   customBackground?: string;
   designVision?: string;
+  showHeadline: boolean;
+  showSubtitle: boolean;
+  showCta: boolean;
+  ownerPhoto?: string;
+  ownerName: string;
+  ownerTitle: string;
 }
 
 export default function CreativePage() {
@@ -64,6 +243,8 @@ export default function CreativePage() {
   const [creativeError, setCreativeError] = useState("");
   const [scriptCreatives, setScriptCreatives] = useState<Record<number, ScriptCreative>>({});
   const [isGeneratingBg, setIsGeneratingBg] = useState<Record<number, boolean>>({});
+  const [chatOpen, setChatOpen] = useState<number | null>(null);
+  const autoCreatedRef = useRef(false);
 
   // Album
   const albumStorageKey = `album_${projectId}`;
@@ -102,12 +283,17 @@ export default function CreativePage() {
       subtitle: "",
       cta: "",
       format: "story" as FormatType,
+      showHeadline: true,
+      showSubtitle: true,
+      showCta: true,
+      ownerName: "",
+      ownerTitle: "",
     };
   };
 
-  /* ── One Click Magic: analyze + auto-template ── */
+  /* ── One Click Magic: analyze + auto-template + auto-generate background ── */
   const handleCreateCreative = useCallback(
-    async (scriptIdx: number) => {
+    async (scriptIdx: number, autoGenerateBg = false) => {
       const scriptParts = splitScripts(scripts);
       const scriptText = scriptParts[scriptIdx] ?? "";
 
@@ -143,8 +329,47 @@ export default function CreativePage() {
             subtitle: `שיווק מבוסס תדר — לידים מדויקים ל${selectedNiche?.name || ""}`.slice(0, 80),
             cta: suggestion.cta || "שלחו הודעה",
             format: "story",
+            showHeadline: true,
+            showSubtitle: true,
+            showCta: true,
+            ownerName: project?.user_name || "",
+            ownerTitle: selectedNiche?.name || "",
           },
         }));
+
+        // Auto-generate background for WOW effect
+        if (autoGenerateBg && suggestion.image_prompt) {
+          setIsGeneratingBg(prev => ({ ...prev, [scriptIdx]: true }));
+          try {
+            const bgRes = await fetch("/api/generate-creatives", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                background: suggestion.background,
+                format: "story",
+                designVision: suggestion.look_and_feel || "",
+                imagePrompt: suggestion.image_prompt,
+              }),
+            });
+            const bgText = await bgRes.text();
+            let bgJson;
+            try { bgJson = JSON.parse(bgText); } catch { bgJson = null; }
+            if (bgJson?.success) {
+              const bgSrc = bgJson.imageBase64 || bgJson.imageUrl || "";
+              setScriptCreatives((prev) => ({
+                ...prev,
+                [scriptIdx]: { ...prev[scriptIdx], customBackground: bgSrc },
+              }));
+              const newImage = { url: bgJson.imageUrl || "", base64: bgJson.imageBase64 || "", scriptIdx };
+              setGeneratedImages((prev) => {
+                const filtered = prev.filter((img) => img.scriptIdx !== scriptIdx);
+                return [...filtered, newImage];
+              });
+            }
+          } finally {
+            setIsGeneratingBg(prev => ({ ...prev, [scriptIdx]: false }));
+          }
+        }
       } catch (e) {
         console.error("Suggest creative error:", e);
         setScriptCreatives((prev) => ({
@@ -155,8 +380,19 @@ export default function CreativePage() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scripts, selectedNiche],
+    [scripts, selectedNiche, project, setGeneratedImages],
   );
+
+  /* ── Auto-create on page load for WOW effect ── */
+  useEffect(() => {
+    if (!scripts || autoCreatedRef.current) return;
+    const parts = splitScripts(scripts);
+    if (parts.length > 0 && !scriptCreatives[0]) {
+      autoCreatedRef.current = true;
+      handleCreateCreative(0, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scripts]);
 
   /* ── Change template for a script ── */
   const handleChangeTemplate = useCallback((scriptIdx: number, templateId: string) => {
@@ -167,7 +403,7 @@ export default function CreativePage() {
   }, []);
 
   /* ── Update text fields ── */
-  const updateField = useCallback((scriptIdx: number, field: "headline" | "subtitle" | "cta" | "format" | "designVision", value: string) => {
+  const updateField = useCallback((scriptIdx: number, field: keyof ScriptCreative, value: string | boolean) => {
     setScriptCreatives((prev) => ({
       ...prev,
       [scriptIdx]: { ...prev[scriptIdx], [field]: value },
@@ -212,6 +448,7 @@ export default function CreativePage() {
         setCreativeError(`שגיאה ביצירת הרקע: ${msg}`);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [setGeneratedImages],
   );
 
@@ -226,6 +463,23 @@ export default function CreativePage() {
       return [...filtered, { url: "", base64, scriptIdx }];
     });
   }, [setGeneratedImages]);
+
+  /* ── Remove background ── */
+  const handleRemoveBackground = useCallback((scriptIdx: number) => {
+    setScriptCreatives((prev) => ({
+      ...prev,
+      [scriptIdx]: { ...prev[scriptIdx], customBackground: undefined },
+    }));
+    setGeneratedImages((prev) => prev.filter((img) => img.scriptIdx !== scriptIdx));
+  }, [setGeneratedImages]);
+
+  /* ── Upload owner photo ── */
+  const handleUploadOwnerPhoto = useCallback((base64: string, scriptIdx: number) => {
+    setScriptCreatives((prev) => ({
+      ...prev,
+      [scriptIdx]: { ...prev[scriptIdx], ownerPhoto: base64 },
+    }));
+  }, []);
 
   /* ── Save to album ── */
   const handleSaveToAlbum = useCallback(
@@ -307,7 +561,7 @@ export default function CreativePage() {
               {creative.state === "idle" && (
                 <div className="p-5 text-center">
                   <button
-                    onClick={() => handleCreateCreative(idx)}
+                    onClick={() => handleCreateCreative(idx, true)}
                     className="btn-gold !py-3 !px-8 text-base"
                   >
                     ✨ צור קריאייטיב
@@ -318,9 +572,11 @@ export default function CreativePage() {
               {/* ── State: ANALYZING ── */}
               {creative.state === "analyzing" && (
                 <div className="p-8 text-center">
-                  <CountdownTimer seconds={5} />
+                  <CountdownTimer seconds={isGeneratingBg[idx] ? 20 : 5} />
                   <p className="text-sm text-[var(--text-muted)] mt-3">
-                    FBM Studio מנתח את התסריט ומציע קריאטיב...
+                    {isGeneratingBg[idx]
+                      ? "FBM Studio מכין את העיצוב המושלם שלך... כותרת, רקע ו-CTA"
+                      : "FBM Studio מנתח את התסריט ומציע קריאטיב..."}
                   </p>
                 </div>
               )}
@@ -339,58 +595,158 @@ export default function CreativePage() {
                     <div className="lg:w-[55%] flex-shrink-0">
                       <TemplatePreview
                         template={template}
-                        headline={creative.headline}
-                        subtitle={creative.subtitle}
-                        cta={creative.cta}
+                        headline={creative.showHeadline ? creative.headline : ""}
+                        subtitle={creative.showSubtitle ? creative.subtitle : ""}
+                        cta={creative.showCta ? creative.cta : ""}
                         format={creative.format}
                         customBackground={creative.customBackground}
                         onSaveToAlbum={handleSaveToAlbum}
                         scriptIdx={idx}
+                        ownerPhoto={creative.ownerPhoto}
+                        ownerName={creative.ownerName}
+                        ownerTitle={creative.ownerTitle}
                       />
                     </div>
 
                     {/* RIGHT: Edit panel */}
                     <div className="lg:w-[45%] space-y-4 lg:max-h-[80vh] lg:overflow-y-auto lg:pr-1">
-                      {/* Headline */}
+
+                      {/* Chatbot button */}
+                      <button
+                        type="button"
+                        onClick={() => setChatOpen(idx)}
+                        className="w-full py-2.5 rounded-xl border-2 border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 font-semibold text-sm hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <span className="text-lg">🤖</span>
+                        מומחה קריאטיב AI — בריינסטורמינג כותרות ו-CTA
+                      </button>
+
+                      {/* Headline with toggle */}
                       <div>
-                        <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-                          כותרת
-                        </label>
-                        <textarea
-                          value={creative.headline}
-                          onChange={(e) => updateField(idx, "headline", e.target.value)}
-                          maxLength={120}
-                          rows={2}
-                          className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
-                        />
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-sm font-bold text-[var(--text-primary)]">
+                            כותרת
+                          </label>
+                          <ToggleSwitch
+                            enabled={creative.showHeadline}
+                            onChange={(v) => updateField(idx, "showHeadline", v)}
+                            label="הצג כותרת"
+                          />
+                        </div>
+                        {creative.showHeadline && (
+                          <textarea
+                            value={creative.headline}
+                            onChange={(e) => updateField(idx, "headline", e.target.value)}
+                            maxLength={120}
+                            rows={2}
+                            className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
+                          />
+                        )}
                       </div>
 
-                      {/* Subtitle */}
+                      {/* Subtitle with toggle */}
                       <div>
-                        <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-                          תת-כותרת
-                        </label>
-                        <input
-                          type="text"
-                          value={creative.subtitle}
-                          onChange={(e) => updateField(idx, "subtitle", e.target.value)}
-                          maxLength={80}
-                          className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
-                        />
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-sm font-bold text-[var(--text-primary)]">
+                            תת-כותרת
+                          </label>
+                          <ToggleSwitch
+                            enabled={creative.showSubtitle}
+                            onChange={(v) => updateField(idx, "showSubtitle", v)}
+                            label="הצג תת-כותרת"
+                          />
+                        </div>
+                        {creative.showSubtitle && (
+                          <input
+                            type="text"
+                            value={creative.subtitle}
+                            onChange={(e) => updateField(idx, "subtitle", e.target.value)}
+                            maxLength={80}
+                            className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
+                          />
+                        )}
                       </div>
 
-                      {/* CTA */}
+                      {/* CTA with toggle */}
                       <div>
-                        <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-                          CTA
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-sm font-bold text-[var(--text-primary)]">
+                            CTA
+                          </label>
+                          <ToggleSwitch
+                            enabled={creative.showCta}
+                            onChange={(v) => updateField(idx, "showCta", v)}
+                            label="הצג CTA"
+                          />
+                        </div>
+                        {creative.showCta && (
+                          <input
+                            type="text"
+                            value={creative.cta}
+                            onChange={(e) => updateField(idx, "cta", e.target.value)}
+                            maxLength={30}
+                            className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
+                          />
+                        )}
+                      </div>
+
+                      {/* Owner photo upload section */}
+                      <div className="border border-[var(--card-border)] rounded-xl p-3 space-y-3">
+                        <label className="block text-sm font-bold text-[var(--text-primary)]">
+                          תמונת בעל העסק
                         </label>
-                        <input
-                          type="text"
-                          value={creative.cta}
-                          onChange={(e) => updateField(idx, "cta", e.target.value)}
-                          maxLength={30}
-                          className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
-                        />
+                        <div className="flex items-center gap-3">
+                          {creative.ownerPhoto ? (
+                            <div className="relative">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={creative.ownerPhoto}
+                                alt=""
+                                className="w-14 h-14 rounded-full object-cover border-2 border-[var(--gold)]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => updateField(idx, "ownerPhoto", "")}
+                                className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center cursor-pointer hover:bg-red-600"
+                                title="הסר תמונה"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="w-14 h-14 rounded-full border-2 border-dashed border-[var(--card-border)] flex items-center justify-center text-[var(--text-muted)] hover:border-[var(--gold)] cursor-pointer transition-all">
+                              <span className="text-xl">📷</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onload = () => handleUploadOwnerPhoto(reader.result as string, idx);
+                                  reader.readAsDataURL(file);
+                                }}
+                              />
+                            </label>
+                          )}
+                          <div className="flex-1 space-y-2">
+                            <input
+                              type="text"
+                              value={creative.ownerName}
+                              onChange={(e) => updateField(idx, "ownerName", e.target.value)}
+                              placeholder="שם בעל העסק"
+                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+                            />
+                            <input
+                              type="text"
+                              value={creative.ownerTitle}
+                              onChange={(e) => updateField(idx, "ownerTitle", e.target.value)}
+                              placeholder="למשל: מומחה שיווק, יועץ משכנתאות"
+                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+                            />
+                          </div>
+                        </div>
                       </div>
 
                       {/* Format */}
@@ -449,10 +805,13 @@ export default function CreativePage() {
                         <textarea
                           value={creative.designVision || ""}
                           onChange={(e) => updateField(idx, "designVision", e.target.value)}
-                          placeholder="למשל: אווירה חמה עם תאורה דרמטית, צבעים כהים עם הדגשות זהב..."
+                          placeholder="למשל: בעל העסק עומד ליד מגדלור שמאיר על קבוצת אנשים, אווירה חמה עם תאורה דרמטית..."
                           rows={2}
                           className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
                         />
+                        <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                          תאר בדיוק את הרקע שאתה רוצה — הוא יקבל עדיפות מקסימלית בעיצוב
+                        </p>
                       </div>
 
                       {/* Generate AI Background */}
@@ -464,7 +823,9 @@ export default function CreativePage() {
                               background: creative.suggestion?.background || "lighthouse",
                               format: creative.format,
                               designVision: creative.designVision || creative.suggestion?.look_and_feel || "",
-                              imagePrompt: creative.suggestion?.image_prompt || "",
+                              imagePrompt: creative.designVision
+                                ? creative.designVision
+                                : (creative.suggestion?.image_prompt || ""),
                             }, idx);
                           } finally {
                             setIsGeneratingBg(prev => ({ ...prev, [idx]: false }));
@@ -488,25 +849,37 @@ export default function CreativePage() {
                             : '✨ צור רקע AI (1 credit)'}
                       </button>
 
-                      {/* Upload custom background */}
-                      <label className="block w-full py-3 rounded-xl border-2 border-dashed border-[var(--card-border)] text-center text-sm font-semibold text-[var(--text-secondary)] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-all cursor-pointer">
-                        📁 העלה רקע מותאם (0 credits)
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              const base64 = reader.result as string;
-                              handleUploadBackground(base64, idx);
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                        />
-                      </label>
+                      {/* Upload custom background + Remove background */}
+                      <div className="flex gap-2">
+                        <label className="flex-1 block py-3 rounded-xl border-2 border-dashed border-[var(--card-border)] text-center text-sm font-semibold text-[var(--text-secondary)] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-all cursor-pointer">
+                          📁 העלה רקע מותאם (0 credits)
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const base64 = reader.result as string;
+                                handleUploadBackground(base64, idx);
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                        </label>
+                        {creative.customBackground && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBackground(idx)}
+                            className="px-4 py-3 rounded-xl border-2 border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all cursor-pointer"
+                            title="הסר רקע"
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
 
                       <p className="text-xs text-[var(--text-muted)] text-center">
                         שינוי טקסט, מיקום, תבנית — מיידי. רק &quot;צור רקע&quot; משתמש ב-AI.
@@ -547,6 +920,22 @@ export default function CreativePage() {
             המשך לקופי למודעות
           </button>
         </div>
+      )}
+
+      {/* Chat Modal */}
+      {chatOpen !== null && (
+        <CreativeChatModal
+          open={true}
+          onClose={() => setChatOpen(null)}
+          scriptText={scriptParts[chatOpen] || ""}
+          currentHeadline={getCreative(chatOpen).headline}
+          currentSubtitle={getCreative(chatOpen).subtitle}
+          currentCta={getCreative(chatOpen).cta}
+          niche={selectedNiche?.name || ""}
+          onApply={(field, value) => {
+            updateField(chatOpen, field, value);
+          }}
+        />
       )}
     </div>
   );

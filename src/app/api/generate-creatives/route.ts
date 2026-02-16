@@ -48,14 +48,28 @@ export async function POST(req: NextRequest) {
       || backgroundDescriptions[background]
       || backgroundDescriptions.lighthouse;
 
-    const prompt = `Create a HIGH-END professional advertising image for a social media ad.
+    const prompt = `Create a HIGH-END professional advertising BACKGROUND IMAGE for a social media ad.
+
+⚠️ #1 ABSOLUTE TOP PRIORITY — BACKGROUND SCENE:
+The MOST IMPORTANT thing in this image is the BACKGROUND SCENE described below.
+This takes precedence over ALL other instructions. The background scene must be rendered
+EXACTLY as described — every element, every detail, every object mentioned must appear.
+If the user asks for "a lighthouse illuminating a group of people" — you MUST show exactly that.
+If the user asks for a specific scene — reproduce it PRECISELY and FAITHFULLY.
 
 FORMAT: ${dimensions}
 
-SCENE DESCRIPTION: ${sceneDescription}
+SCENE DESCRIPTION (EXECUTE THIS EXACTLY): ${sceneDescription}
+
+⚠️ #2 ABSOLUTE RULE — ZERO TEXT ON THE IMAGE:
+- Do NOT include ANY text, typography, letters, words, numbers, or characters — in ANY language
+- Do NOT include ANY UI elements, buttons, logos, watermarks, labels, or captions
+- The image must be a PURE VISUAL BACKGROUND — completely clean of any writing
+- This is a background-only image. Text will be added separately as an overlay later.
+- NO TEXT WHATSOEVER — this is non-negotiable
 
 STYLE REQUIREMENTS:
-- This is a PREMIUM advertising image — the quality should match top-tier Facebook/Instagram ads
+- This is a PREMIUM advertising background — the quality should match top-tier Facebook/Instagram ads
 - Photorealistic, ultra high quality, 8K rendering
 - Dramatic cinematic lighting with depth — use volumetric light, god rays, lens flares where appropriate
 - Rich deep color grading — blacks should be deep, colors should be saturated but natural
@@ -63,27 +77,21 @@ STYLE REQUIREMENTS:
 - Atmospheric effects: mist, rain, light particles, bokeh — add atmosphere!
 - The overall mood should feel POWERFUL, ASPIRATIONAL, and PROFESSIONAL
 
-TEXT OVERLAY ZONES — CRITICAL:
-- The TOP 30% of the image should have a darker/contrasted area suitable for large white or gold HEADLINE text overlay
-- The BOTTOM 20% should have a darker area suitable for a CTA button overlay
+COMPOSITION FOR TEXT OVERLAY (secondary to background scene):
+- The TOP 30% of the image should have a slightly darker/contrasted area (for headline overlay later)
+- The BOTTOM 20% should have a slightly darker area (for CTA button overlay later)
 - The MIDDLE area (30%-60%) can have the main visual interest
-- Do NOT include any actual text, letters, words, logos, or UI elements in the image
-- But DO design the composition knowing that text will be placed on top
+- But the BACKGROUND SCENE described above is MORE IMPORTANT than these zones
 
 WHAT TO INCLUDE:
-- Rich environmental details and atmosphere
+- Rich environmental details and atmosphere matching the scene description
 - Human figures or silhouettes are ENCOURAGED (they add emotional connection)
 - Symbolic elements related to the scene
 - Cinematic lighting effects (rim light, backlight, volumetric rays, god rays)
 - Professional color grading (warm golds, deep shadows, cinematic feel)
 
-WHAT TO ABSOLUTELY EXCLUDE:
-- Do NOT include any text, typography, letters, or words — NONE AT ALL
-- Do NOT include any UI elements, buttons, or logos
-- Do NOT include any watermarks
-- No text means NO TEXT in any language
-
-This should look like it was shot by a professional photographer and color graded by a Hollywood colorist.`;
+This should look like it was shot by a professional photographer and color graded by a Hollywood colorist.
+Remember: ZERO TEXT on the image. Pure background only.`;
 
     // Gemini generates the background image (no text!)
     const geminiAspectRatio = fmt === "story" ? "9:16" : "1:1";

@@ -5,6 +5,7 @@ import type { CreativeTemplate } from "./templates";
 import type { FormatType } from "@/types";
 import DraggableText from "./DraggableText";
 import DraggableCTA from "./DraggableCTA";
+import DraggableProfile from "./DraggableProfile";
 import { exportCanvasToPng, renderCanvasToBase64 } from "./CanvasExport";
 
 interface TemplatePreviewProps {
@@ -16,6 +17,9 @@ interface TemplatePreviewProps {
   customBackground?: string; // base64 from upload or AI
   onSaveToAlbum?: (base64: string, scriptIdx: number) => void;
   scriptIdx: number;
+  ownerPhoto?: string;
+  ownerName?: string;
+  ownerTitle?: string;
 }
 
 export default function TemplatePreview({
@@ -27,6 +31,9 @@ export default function TemplatePreview({
   customBackground,
   onSaveToAlbum,
   scriptIdx,
+  ownerPhoto,
+  ownerName,
+  ownerTitle,
 }: TemplatePreviewProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -35,6 +42,7 @@ export default function TemplatePreview({
   const [headlinePos, setHeadlinePos] = useState({ x: template.headline.x, y: template.headline.y });
   const [subtitlePos, setSubtitlePos] = useState({ x: template.subtitle.x, y: template.subtitle.y });
   const [ctaPos, setCtaPos] = useState({ x: template.cta.x, y: template.cta.y });
+  const [profilePos, setProfilePos] = useState({ x: 5, y: 85 });
 
   const handleExportPng = useCallback(async () => {
     if (!canvasRef.current) return;
@@ -136,6 +144,8 @@ export default function TemplatePreview({
     });
   };
 
+  const showProfile = !!(ownerName || ownerPhoto);
+
   return (
     <div>
       {/* The Canvas */}
@@ -215,6 +225,20 @@ export default function TemplatePreview({
           shadow={template.cta.shadow}
           onDragEnd={(nx, ny) => setCtaPos({ x: nx, y: ny })}
         />
+
+        {/* Layer 7: Owner Profile — draggable */}
+        {showProfile && (
+          <DraggableProfile
+            name={ownerName || ""}
+            role={ownerTitle || ""}
+            image={ownerPhoto}
+            accentColor={template.cta.bgColor}
+            x={profilePos.x}
+            y={profilePos.y}
+            visible={true}
+            onDragEnd={(nx, ny) => setProfilePos({ x: nx, y: ny })}
+          />
+        )}
       </div>
 
       {/* Export buttons */}
