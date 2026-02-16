@@ -95,10 +95,14 @@ export async function createPaymentLink(params: {
       },
       Items: [
         {
-          Description: params.description,
-          Price: params.price,
+          Item: {
+            Name: params.description,
+            Price: params.price,
+            Currency: "ILS",
+          },
           Quantity: 1,
-          Currency: "ILS",
+          UnitPrice: params.price,
+          Description: params.description,
         },
       ],
       RedirectURL: params.redirectUrl,
@@ -171,10 +175,14 @@ export async function chargePayment(params: {
       },
       Items: [
         {
-          Description: params.description,
-          Price: params.price,
+          Item: {
+            Name: params.description,
+            Price: params.price,
+            Currency: "ILS",
+          },
           Quantity: 1,
-          Currency: "ILS",
+          UnitPrice: params.price,
+          Description: params.description,
         },
       ],
       ...(params.token ? { CreditCardToken: params.token } : {}),
@@ -215,10 +223,14 @@ export async function createRecurringCharge(params: {
       },
       Items: [
         {
-          Description: params.description,
-          Price: params.price,
+          Item: {
+            Name: params.description,
+            Price: params.price,
+            Currency: "ILS",
+          },
           Quantity: 1,
-          Currency: "ILS",
+          UnitPrice: params.price,
+          Description: params.description,
         },
       ],
       CreditCardToken: params.token,
