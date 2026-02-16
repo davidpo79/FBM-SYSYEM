@@ -172,6 +172,16 @@ export default function DashboardLayout({
     return () => window.removeEventListener("profile-name-changed", handler);
   }, []);
 
+  // Update sidebar plan badge when billing plan changes (e.g. after payment)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const plan = (e as CustomEvent<string>).detail;
+      if (plan) setBillingPlan(plan);
+    };
+    window.addEventListener("billing-plan-changed", handler);
+    return () => window.removeEventListener("billing-plan-changed", handler);
+  }, []);
+
   // Refresh suggestions badge when admin changes a suggestion status
   const refreshSuggestionsCount = useCallback(() => {
     if (!isAdmin) return;

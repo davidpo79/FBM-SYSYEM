@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { PLAN_LABELS, PLAN_PRICES, CONSULTING_PRODUCT } from "@/lib/plan-limits";
 import PaymentModal from "@/components/PaymentModal";
 import type { CustomerDetails } from "@/components/PaymentModal";
 
 type Tab = "general" | "plan" | "invoices";
+type CancelStep = "confirm" | "retention" | null;
 
 const plans = [
   {
@@ -40,6 +41,88 @@ const plans = [
   },
 ];
 
+// Simple confetti effect using canvas
+function ConfettiCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ["#D4A843", "#22C55E", "#3B82F6", "#EF4444", "#A855F7", "#F59E0B", "#EC4899"];
+    const particles: Array<{
+      x: number; y: number; w: number; h: number;
+      color: string; vx: number; vy: number;
+      rotation: number; rotationSpeed: number;
+      opacity: number;
+    }> = [];
+
+    for (let i = 0; i < 150; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        w: Math.random() * 8 + 4,
+        h: Math.random() * 6 + 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        vx: (Math.random() - 0.5) * 4,
+        vy: Math.random() * 3 + 2,
+        rotation: Math.random() * 360,
+        rotationSpeed: (Math.random() - 0.5) * 10,
+        opacity: 1,
+      });
+    }
+
+    let animId: number;
+    let frame = 0;
+    const maxFrames = 180; // ~3 seconds at 60fps
+
+    function animate() {
+      if (!ctx || !canvas) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      frame++;
+
+      const fadeStart = maxFrames * 0.7;
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.05;
+        p.rotation += p.rotationSpeed;
+        if (frame > fadeStart) {
+          p.opacity = Math.max(0, 1 - (frame - fadeStart) / (maxFrames - fadeStart));
+        }
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.globalAlpha = p.opacity;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+
+      if (frame < maxFrames) {
+        animId = requestAnimationFrame(animate);
+      }
+    }
+
+    animId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none"
+      style={{ zIndex: 10001 }}
+    />
+  );
+}
+
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("general");
   const [fullName, setFullName] = useState("");
@@ -49,12 +132,21 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [currentPlan, setCurrentPlan] = useState<string>("trial");
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>("none");
   const [cancelLoading, setCancelLoading] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentType, setPaymentType] = useState<"plan" | "consulting">("plan");
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  // Success popup state
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  // Cancel flow state
+  const [cancelStep, setCancelStep] = useState<CancelStep>(null);
+  const [discountLoading, setDiscountLoading] = useState(false);
 
   // Reset loading state when user navigates back
   useEffect(() => {
@@ -65,6 +157,28 @@ export default function SettingsPage() {
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  const fetchBillingStatus = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+    try {
+      const res = await fetch("/api/billing/status", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.plan) {
+        setCurrentPlan(data.plan);
+        setSubscriptionStatus(data.subscriptionStatus || "none");
+        // Notify layout to update sidebar plan badge
+        window.dispatchEvent(
+          new CustomEvent("billing-plan-changed", { detail: data.plan }),
+        );
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   useEffect(() => {
@@ -87,7 +201,8 @@ export default function SettingsPage() {
       }
     }
     loadProfile();
-  }, []);
+    fetchBillingStatus();
+  }, [fetchBillingStatus]);
 
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -144,10 +259,45 @@ export default function SettingsPage() {
     }
   };
 
-  const handleCancelSubscription = async () => {
-    if (!confirm("האם אתה בטוח שברצונך לבטל את המנוי? תוכל להמשיך להשתמש עד סוף תקופת החיוב הנוכחית.")) {
-      return;
+  // Cancel flow: step 1 - show confirmation dialog
+  const handleCancelClick = () => {
+    setCancelStep("confirm");
+    setError("");
+  };
+
+  // Cancel flow: user confirmed cancellation -> show retention offer
+  const handleCancelConfirmed = () => {
+    setCancelStep("retention");
+  };
+
+  // Cancel flow: user took the 50% discount offer
+  const handleTakeDiscount = async () => {
+    setDiscountLoading(true);
+    setError("");
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/billing/apply-discount", {
+        method: "POST",
+        headers,
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to apply discount");
+      }
+      setCancelStep(null);
+      // Refresh billing status
+      await fetchBillingStatus();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      setError(`שגיאה בהפעלת ההנחה: ${msg}`);
+      setCancelStep(null);
+    } finally {
+      setDiscountLoading(false);
     }
+  };
+
+  // Cancel flow: user declined the offer -> actually cancel
+  const handleDeclineOffer = async () => {
     setCancelLoading(true);
     setError("");
     try {
@@ -160,11 +310,13 @@ export default function SettingsPage() {
       if (!res.ok) {
         throw new Error(json.error || "Failed to cancel subscription");
       }
-      setCurrentPlan("trial");
-      alert("המנוי בוטל בהצלחה.");
+      setCancelStep(null);
+      // Refresh billing status
+      await fetchBillingStatus();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       setError(`שגיאה בביטול המנוי: ${msg}`);
+      setCancelStep(null);
     } finally {
       setCancelLoading(false);
     }
@@ -173,9 +325,52 @@ export default function SettingsPage() {
   const handlePaymentComplete = useCallback(() => {
     setShowPayment(false);
     setPaymentUrl(null);
-    setSelectedPlan(null);
-    window.location.reload();
-  }, []);
+
+    // Show success popup with confetti
+    setShowSuccess(true);
+    setShowConfetti(true);
+
+    // Update plan after a short delay to allow webhook to process
+    const pollPlan = async (attempts: number) => {
+      for (let i = 0; i < attempts; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) continue;
+        try {
+          const res = await fetch("/api/billing/status", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          if (data.plan && data.plan !== "trial" && data.plan !== "expired") {
+            setCurrentPlan(data.plan);
+            setSubscriptionStatus(data.subscriptionStatus || "active");
+            setSelectedPlan(null);
+            window.dispatchEvent(
+              new CustomEvent("billing-plan-changed", { detail: data.plan }),
+            );
+            return;
+          }
+        } catch {
+          // retry
+        }
+      }
+      // Fallback: if selectedPlan was set, use it
+      if (selectedPlan) {
+        setCurrentPlan(selectedPlan);
+        setSubscriptionStatus("active");
+        window.dispatchEvent(
+          new CustomEvent("billing-plan-changed", { detail: selectedPlan }),
+        );
+      }
+      setSelectedPlan(null);
+    };
+
+    pollPlan(5);
+
+    // Stop confetti after 3s
+    setTimeout(() => setShowConfetti(false), 3000);
+  }, [selectedPlan]);
 
   const handlePaymentClose = useCallback(() => {
     setShowPayment(false);
@@ -216,7 +411,7 @@ export default function SettingsPage() {
           .single();
 
         if (existing) {
-          // Row exists → update
+          // Row exists -> update
           const { error: updateError } = await supabase
             .from("user_profiles")
             .update({ full_name: trimmedName, updated_at: new Date().toISOString() })
@@ -228,7 +423,7 @@ export default function SettingsPage() {
             console.error("update failed:", updateError.message);
           }
         } else {
-          // No row → insert
+          // No row -> insert
           const { error: insertError } = await supabase
             .from("user_profiles")
             .insert({ user_id: user.id, full_name: trimmedName });
@@ -369,12 +564,15 @@ export default function SettingsPage() {
           <div className="card-static p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
             <p className="text-sm text-[var(--text-secondary)]">
               התוכנית הנוכחית שלך: <span className="font-bold text-[var(--gold)]">{PLAN_LABELS[currentPlan] || currentPlan}</span>
+              {subscriptionStatus === "cancelling" && (
+                <span className="text-xs text-red-500 mr-2">(בתהליך ביטול)</span>
+              )}
             </p>
-            {isActivePlan && (
+            {isActivePlan && subscriptionStatus === "active" && (
               <button
-                onClick={handleCancelSubscription}
+                onClick={handleCancelClick}
                 disabled={cancelLoading}
-                className="text-xs text-red-500 hover:text-red-700 underline cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-red-500 border border-red-300 rounded-[10px] hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {cancelLoading ? "מבטל..." : "בטל מנוי"}
               </button>
@@ -418,17 +616,22 @@ export default function SettingsPage() {
                       </li>
                     ))}
                   </ul>
-                  <button
-                    onClick={() => !isCurrent && handleUpgrade(plan.key)}
-                    disabled={isCurrent || isHigher || showPayment}
-                    className={`w-full py-2.5 rounded-[10px] font-semibold text-sm transition-opacity cursor-pointer disabled:cursor-default mt-auto ${
-                      isCurrent
-                        ? "bg-[var(--content-bg)] text-[var(--text-muted)]"
-                        : "bg-[var(--gold)] text-white hover:opacity-90 disabled:opacity-50"
-                    }`}
-                  >
-                    {isCurrent ? "התוכנית הנוכחית" : "הפעל מנוי חודשי"}
-                  </button>
+                  {isCurrent ? (
+                    <button
+                      disabled
+                      className="w-full py-2.5 rounded-[10px] font-semibold text-sm bg-[var(--content-bg)] text-[var(--text-muted)] cursor-default mt-auto"
+                    >
+                      התוכנית הנוכחית
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleUpgrade(plan.key)}
+                      disabled={isHigher || showPayment}
+                      className="w-full py-2.5 rounded-[10px] font-semibold text-sm bg-[var(--gold)] text-white hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer disabled:cursor-default mt-auto"
+                    >
+                      הפעל מנוי חודשי
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -482,6 +685,149 @@ export default function SettingsPage() {
           onClose={handlePaymentClose}
         />
       )}
+
+      {/* Success popup after payment */}
+      {showSuccess && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        >
+          <div
+            className="relative w-full max-w-md mx-4 rounded-2xl overflow-hidden shadow-2xl p-8 text-center"
+            dir="rtl"
+            style={{ background: "#fff", animation: "scaleIn 0.3s ease-out" }}
+          >
+            <div
+              className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)" }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">תודה רבה על הרשמתך!</h2>
+            <p className="text-gray-600 mb-2">המנוי שלך הופעל בהצלחה</p>
+            <p className="text-sm text-gray-500 mb-6">חשבונית מס נשלחה לכתובת המייל שלך</p>
+            <button
+              onClick={() => setShowSuccess(false)}
+              className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer transition-all"
+              style={{
+                background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
+                color: "#0F1117",
+                boxShadow: "0 4px 16px rgba(212,168,67,0.3)",
+              }}
+            >
+              מעולה, בואו נתחיל!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confetti effect */}
+      {showConfetti && <ConfettiCanvas />}
+
+      {/* Cancel confirmation dialog */}
+      {cancelStep === "confirm" && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        >
+          <div
+            className="relative w-full max-w-md mx-4 rounded-2xl overflow-hidden shadow-2xl p-8 text-center"
+            dir="rtl"
+            style={{ background: "#fff" }}
+          >
+            <div
+              className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(239,68,68,0.1)" }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">האם אתה בטוח שברצונך לבטל את המנוי?</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              לאחר הביטול תוכל להמשיך להשתמש עד סוף תקופת החיוב הנוכחית
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelConfirmed}
+                className="flex-1 py-3 rounded-xl font-bold text-sm cursor-pointer transition-all bg-red-500 text-white hover:bg-red-600"
+              >
+                כן, בטל מנוי
+              </button>
+              <button
+                onClick={() => setCancelStep(null)}
+                className="flex-1 py-3 rounded-xl font-bold text-sm cursor-pointer transition-all border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                לא, המשך מנוי
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Retention offer dialog */}
+      {cancelStep === "retention" && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        >
+          <div
+            className="relative w-full max-w-md mx-4 rounded-2xl overflow-hidden shadow-2xl p-8 text-center"
+            dir="rtl"
+            style={{ background: "#fff" }}
+          >
+            <div
+              className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, rgba(212,168,67,0.15) 0%, rgba(212,168,67,0.05) 100%)" }}
+            >
+              <span className="text-3xl">
+                &#127873;
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">רגע לפני שעוזבים!</h2>
+            <p className="text-gray-600 mb-1">יש לנו הצעה חד פעמית במיוחד בשבילך:</p>
+            <div
+              className="my-4 p-4 rounded-xl"
+              style={{ background: "linear-gradient(135deg, rgba(212,168,67,0.1) 0%, rgba(212,168,67,0.05) 100%)", border: "1px solid rgba(212,168,67,0.3)" }}
+            >
+              <p className="text-2xl font-bold" style={{ color: "#D4A843" }}>50% הנחה</p>
+              <p className="text-sm text-gray-600">על החיוב החודשי הקרוב</p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleTakeDiscount}
+                disabled={discountLoading}
+                className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer transition-all disabled:opacity-50"
+                style={{
+                  background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
+                  color: "#0F1117",
+                  boxShadow: "0 4px 16px rgba(212,168,67,0.3)",
+                }}
+              >
+                {discountLoading ? "מפעיל הנחה..." : "אקח את ההצעה!"}
+              </button>
+              <button
+                onClick={handleDeclineOffer}
+                disabled={cancelLoading}
+                className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer transition-all text-gray-500 hover:text-gray-700 disabled:opacity-50"
+              >
+                {cancelLoading ? "מבטל מנוי..." : "אוותר על ההצעה"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes scaleIn {
+          from { transform: scale(0.8); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
