@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   full_name TEXT NOT NULL,
   plan TEXT DEFAULT 'trial',
   trial_start TIMESTAMPTZ DEFAULT NOW(),
-  trial_days INTEGER DEFAULT 14,
+  trial_days INTEGER DEFAULT 30,
   subscription_status TEXT DEFAULT 'active',
   plan_price INTEGER DEFAULT 0,
   sumit_customer_id TEXT,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 ALTER TABLE user_profiles
   ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'trial',
   ADD COLUMN IF NOT EXISTS trial_start TIMESTAMPTZ DEFAULT NOW(),
-  ADD COLUMN IF NOT EXISTS trial_days INTEGER DEFAULT 14,
+  ADD COLUMN IF NOT EXISTS trial_days INTEGER DEFAULT 30,
   ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'active',
   ADD COLUMN IF NOT EXISTS plan_price INTEGER DEFAULT 0,
   ADD COLUMN IF NOT EXISTS sumit_customer_id TEXT;
@@ -85,7 +85,26 @@ CREATE POLICY "Users can read own notifications" ON admin_notifications FOR SELE
 CREATE POLICY "Users can update own notifications" ON admin_notifications FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Service role can insert notifications" ON admin_notifications FOR INSERT USING (true);
 
--- 6. Improvement suggestions
+-- 6. Consultations (one-time consulting sessions)
+CREATE TABLE IF NOT EXISTS consultations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  transaction_id TEXT,
+  amount DECIMAL(10,2) DEFAULT 1170.00,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'scheduled', 'completed', 'cancelled')),
+  scheduled_date TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_consultations_user ON consultations(user_id);
+CREATE INDEX IF NOT EXISTS idx_consultations_status ON consultations(status);
+ALTER TABLE consultations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can read own consultations" ON consultations
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Service role can manage consultations" ON consultations
+  FOR ALL USING (true);
+
+-- 7. Improvement suggestions
 CREATE TABLE IF NOT EXISTS improvement_suggestions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id),
