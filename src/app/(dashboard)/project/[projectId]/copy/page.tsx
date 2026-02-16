@@ -31,19 +31,15 @@ function CountdownTimer({ seconds }: { seconds: number }) {
   );
 }
 
-/* ── Chatbot flow type ── */
-interface ChatbotFlow {
-  step1: string;
-  step2: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  replyA: string;
-  replyB: string;
-  replyC: string;
-  step4: string;
-  step5: string;
+/* ── Chatbot result type ── */
+interface ChatbotResult {
+  message1: string;
+  buttonText: string;
+  message2: string;
 }
+
+type OwnerGender = "male" | "female";
+type AudienceGender = "male" | "female" | "all";
 
 export default function CopyPage() {
   const router = useRouter();
@@ -56,11 +52,12 @@ export default function CopyPage() {
   const [editText, setEditText] = useState<Record<number, string>>({});
   const [copied, setCopied] = useState<Record<number, boolean>>({});
 
-  // Chatbot flow state
-  const [chatbotFlow, setChatbotFlow] = useState<ChatbotFlow | null>(null);
+  // Chatbot state
+  const [ownerGender, setOwnerGender] = useState<OwnerGender>("male");
+  const [audienceGender, setAudienceGender] = useState<AudienceGender>("all");
+  const [chatbot, setChatbot] = useState<ChatbotResult | null>(null);
   const [chatbotGenerating, setChatbotGenerating] = useState(false);
   const [chatbotCopied, setChatbotCopied] = useState<Record<string, boolean>>({});
-  const [activeReply, setActiveReply] = useState<"A" | "B" | "C" | null>(null);
 
   // Redirect if no scripts
   useEffect(() => {
@@ -91,7 +88,6 @@ export default function CopyPage() {
         const json = await res.json();
         if (!res.ok) throw new Error(json.error);
         setCopies((prev) => ({ ...prev, [idx]: json.copy }));
-        // Update pipeline state
         setAdCopy(json.copy);
       } catch (e) {
         console.error("generate-copy error:", e);
@@ -108,30 +104,30 @@ export default function CopyPage() {
     setTimeout(() => setCopied((prev) => ({ ...prev, [idx]: false })), 2000);
   }, [copies]);
 
-  /* ── Generate Chatbot Flow ── */
+  /* ── Generate Chatbot ── */
   const handleGenerateChatbot = useCallback(async () => {
     setChatbotGenerating(true);
     try {
-      const scriptParts = splitScripts(scripts);
       const res = await fetch("/api/generate-chatbot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           niche: selectedNiche?.name || "",
-          scriptText: scriptParts[0] || "",
+          ownerGender,
+          audienceGender,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setChatbotFlow(json.flow);
+      setChatbot(json.chatbot);
     } catch (e) {
       console.error("generate-chatbot error:", e);
     } finally {
       setChatbotGenerating(false);
     }
-  }, [scripts, selectedNiche]);
+  }, [selectedNiche, ownerGender, audienceGender]);
 
-  const copyToClipboard = useCallback(async (text: string, key: string) => {
+  const copyText = useCallback(async (text: string, key: string) => {
     await navigator.clipboard.writeText(text);
     setChatbotCopied((prev) => ({ ...prev, [key]: true }));
     setTimeout(() => setChatbotCopied((prev) => ({ ...prev, [key]: false })), 2000);
@@ -207,7 +203,6 @@ export default function CopyPage() {
               {/* ── State: READY ── */}
               {hasCopy && !isGenerating && (
                 <div className="p-5">
-                  {/* Copy content */}
                   <div className="bg-white/90 backdrop-blur border border-[var(--card-border)] rounded-2xl p-5">
                     {isEditing ? (
                       <textarea
@@ -229,7 +224,6 @@ export default function CopyPage() {
                     )}
                   </div>
 
-                  {/* Action buttons */}
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => handleCopy(idx)}
@@ -268,144 +262,197 @@ export default function CopyPage() {
         })}
       </div>
 
-      {/* ── Chatbot Flow Generator ── */}
-      <div className="mt-10 pt-8 border-t border-[var(--card-border)]">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-bold text-[var(--text-primary)]">
-            💬 צ&apos;אטבוט מעורבות להודעות
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* ── Chatbot for Messenger Engagement Campaign ── */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <div className="mt-10 pt-8 border-t-2 border-[var(--card-border)]">
+        <div className="mb-4">
+          <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">
+            💬 צ&apos;אטבוט לקמפיין מעורבות להודעות
           </h3>
-          {chatbotFlow && (
-            <span className="text-xs font-medium text-[var(--success)] bg-green-50 px-2 py-1 rounded-full">
-              ✓ מוכן
-            </span>
-          )}
+          <p className="text-sm text-[var(--text-muted)]">
+            צור את הטקסט לצ&apos;אטבוט שנשלח אוטומטית כשלקוח לוחץ על &quot;שליחת הודעה&quot; במודעה.
+          </p>
         </div>
-        <p className="text-sm text-[var(--text-muted)] mb-4">
-          צור תסריט צ&apos;אטבוט אוטומטי לקמפיין מעורבות להודעות — מותאם לנישה {selectedNiche?.name || "שלך"}.
-        </p>
 
-        {!chatbotFlow && !chatbotGenerating && (
+        {/* Gender selectors */}
+        <div className="card-static p-5 mb-4 space-y-4" dir="rtl">
+          {/* Owner gender */}
+          <div>
+            <label className="block text-sm font-bold text-[var(--text-primary)] mb-2">
+              בעל/ת העסק (מי שפונה):
+            </label>
+            <div className="flex gap-2">
+              <GenderButton
+                label="בעל עסק (גבר)"
+                active={ownerGender === "male"}
+                onClick={() => { setOwnerGender("male"); setChatbot(null); }}
+              />
+              <GenderButton
+                label="בעלת עסק (אישה)"
+                active={ownerGender === "female"}
+                onClick={() => { setOwnerGender("female"); setChatbot(null); }}
+              />
+            </div>
+          </div>
+
+          {/* Audience gender */}
+          <div>
+            <label className="block text-sm font-bold text-[var(--text-primary)] mb-2">
+              קהל היעד (למי פונים):
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              <GenderButton
+                label="גברים"
+                active={audienceGender === "male"}
+                onClick={() => { setAudienceGender("male"); setChatbot(null); }}
+              />
+              <GenderButton
+                label="נשים"
+                active={audienceGender === "female"}
+                onClick={() => { setAudienceGender("female"); setChatbot(null); }}
+              />
+              <GenderButton
+                label="גברים ונשים"
+                active={audienceGender === "all"}
+                onClick={() => { setAudienceGender("all"); setChatbot(null); }}
+              />
+            </div>
+          </div>
+
+          {/* Generate button */}
           <button
             onClick={handleGenerateChatbot}
-            className="btn-gold !py-3 !px-6 text-sm"
+            disabled={chatbotGenerating}
+            className="w-full btn-gold !py-3 text-sm disabled:opacity-50"
           >
-            ✨ צור צ&apos;אטבוט לקמפיין הודעות
+            {chatbotGenerating
+              ? "⏳ יוצר צ\u0027אטבוט..."
+              : chatbot
+                ? "🔄 צור מחדש"
+                : "✨ צור צ\u0027אטבוט לקמפיין הודעות"}
           </button>
-        )}
+        </div>
 
+        {/* Loading state */}
         {chatbotGenerating && (
-          <div className="p-8 text-center card-static rounded-2xl">
-            <CountdownTimer seconds={12} />
+          <div className="p-8 text-center card-static rounded-2xl mb-4">
+            <CountdownTimer seconds={5} />
             <p className="text-sm text-[var(--text-muted)] mt-3">
               FBM Studio בונה צ&apos;אטבוט מותאם לנישה...
             </p>
           </div>
         )}
 
-        {chatbotFlow && !chatbotGenerating && (
-          <div className="space-y-4">
-            {/* Step 1: Opening message */}
-            <ChatbotMessage
-              label="שלב 1 — הודעת פתיחה"
-              sublabel="תגובה אוטומטית למי שמגיב על המודעה"
-              text={chatbotFlow.step1}
-              isBusiness
-              onCopy={() => copyToClipboard(chatbotFlow.step1, "step1")}
-              copied={chatbotCopied["step1"]}
-            />
+        {/* ── Chatbot Result — Messenger-like conversation ── */}
+        {chatbot && !chatbotGenerating && (
+          <div className="space-y-3" dir="rtl">
 
-            {/* Step 2: Filter question */}
-            <ChatbotMessage
-              label="שלב 2 — שאלת סינון"
-              sublabel="שאלה עם כפתורי בחירה"
-              text={chatbotFlow.step2}
-              isBusiness
-              onCopy={() => copyToClipboard(chatbotFlow.step2, "step2")}
-              copied={chatbotCopied["step2"]}
-            />
-
-            {/* Options buttons */}
-            <div className="flex gap-2 flex-wrap justify-center">
-              {(["A", "B", "C"] as const).map((opt) => {
-                const text = chatbotFlow[`option${opt}`];
-                return (
-                  <button
-                    key={opt}
-                    onClick={() => setActiveReply(activeReply === opt ? null : opt)}
-                    className="px-4 py-2 rounded-full text-sm font-medium cursor-pointer transition-all"
-                    style={{
-                      backgroundColor: activeReply === opt ? "var(--gold)" : "rgba(212, 168, 67, 0.1)",
-                      color: activeReply === opt ? "#0F1117" : "var(--gold)",
-                      border: `1px solid ${activeReply === opt ? "var(--gold)" : "rgba(212, 168, 67, 0.3)"}`,
-                    }}
-                  >
-                    {text}
-                  </button>
-                );
-              })}
+            {/* Message 1: Opening */}
+            <div className="card-static overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-[var(--card-border)] flex items-center justify-between">
+                <span className="text-xs font-bold text-[var(--text-secondary)]">
+                  📨 הודעה 1 — הודעת פתיחה
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)]">
+                  נשלחת אוטומטית ללקוח
+                </span>
+              </div>
+              <div className="p-4">
+                <div
+                  className="rounded-2xl p-4 text-sm leading-relaxed whitespace-pre-wrap"
+                  style={{
+                    backgroundColor: "rgba(0, 132, 255, 0.08)",
+                    border: "1px solid rgba(0, 132, 255, 0.15)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {chatbot.message1}
+                </div>
+                <button
+                  onClick={() => copyText(chatbot.message1, "msg1")}
+                  className="mt-2 text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-all font-medium"
+                  style={{
+                    backgroundColor: chatbotCopied["msg1"] ? "rgba(34, 197, 94, 0.1)" : "rgba(156, 163, 175, 0.08)",
+                    color: chatbotCopied["msg1"] ? "#22C55E" : "var(--text-muted)",
+                    border: `1px solid ${chatbotCopied["msg1"] ? "rgba(34, 197, 94, 0.2)" : "var(--card-border)"}`,
+                  }}
+                >
+                  {chatbotCopied["msg1"] ? "✅ הועתק!" : "📋 העתק הודעה"}
+                </button>
+              </div>
             </div>
 
-            {/* Reply for selected option */}
-            {activeReply && (
-              <ChatbotMessage
-                label={`תשובה לאפשרות ${activeReply === "A" ? "א" : activeReply === "B" ? "ב" : "ג"}`}
-                sublabel={chatbotFlow[`option${activeReply}`]}
-                text={chatbotFlow[`reply${activeReply}`]}
-                isBusiness
-                onCopy={() => copyToClipboard(chatbotFlow[`reply${activeReply}`], `reply${activeReply}`)}
-                copied={chatbotCopied[`reply${activeReply}`]}
-              />
-            )}
-
-            {/* Step 4: Value offer + CTA */}
-            <ChatbotMessage
-              label="שלב 4 — הצעת ערך + CTA"
-              sublabel="הנעה לפעולה"
-              text={chatbotFlow.step4}
-              isBusiness
-              onCopy={() => copyToClipboard(chatbotFlow.step4, "step4")}
-              copied={chatbotCopied["step4"]}
-            />
-
-            {/* Step 5: Closing */}
-            <ChatbotMessage
-              label="שלב 5 — סגירה"
-              sublabel="הודעת תודה ואישור"
-              text={chatbotFlow.step5}
-              isBusiness
-              onCopy={() => copyToClipboard(chatbotFlow.step5, "step5")}
-              copied={chatbotCopied["step5"]}
-            />
-
-            {/* Copy all + regenerate */}
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => {
-                  const allText = [
-                    `📨 הודעת פתיחה:\n${chatbotFlow.step1}`,
-                    `❓ שאלת סינון:\n${chatbotFlow.step2}`,
-                    `🅰️ אפשרות א: ${chatbotFlow.optionA}`,
-                    `🅱️ אפשרות ב: ${chatbotFlow.optionB}`,
-                    `🅲 אפשרות ג: ${chatbotFlow.optionC}`,
-                    `↩️ תשובה א:\n${chatbotFlow.replyA}`,
-                    `↩️ תשובה ב:\n${chatbotFlow.replyB}`,
-                    `↩️ תשובה ג:\n${chatbotFlow.replyC}`,
-                    `🎯 הצעת ערך:\n${chatbotFlow.step4}`,
-                    `✅ סגירה:\n${chatbotFlow.step5}`,
-                  ].join("\n\n---\n\n");
-                  copyToClipboard(allText, "all");
-                }}
-                className="flex-1 btn-gold !py-2.5 text-sm"
-              >
-                {chatbotCopied["all"] ? "✅ הכל הועתק!" : "📋 העתק הכל"}
-              </button>
-              <button
-                onClick={handleGenerateChatbot}
-                className="flex-1 py-2.5 rounded-xl border border-[var(--card-border)] text-sm font-bold text-[var(--text-secondary)] hover:border-[var(--gold)] transition-all cursor-pointer"
-              >
-                🔄 צור מחדש
-              </button>
+            {/* Button the customer clicks */}
+            <div className="flex justify-center py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[var(--text-muted)]">הלקוח לוחץ:</span>
+                <div
+                  className="px-5 py-2.5 rounded-full text-sm font-bold"
+                  style={{
+                    background: "linear-gradient(135deg, #0084FF 0%, #0066CC 100%)",
+                    color: "#FFFFFF",
+                    boxShadow: "0 2px 8px rgba(0, 132, 255, 0.3)",
+                  }}
+                >
+                  {chatbot.buttonText}
+                </div>
+              </div>
             </div>
+
+            {/* Message 2: Follow-up */}
+            <div className="card-static overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-[var(--card-border)] flex items-center justify-between">
+                <span className="text-xs font-bold text-[var(--text-secondary)]">
+                  📨 הודעה 2 — בקשת טלפון
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)]">
+                  נשלחת אחרי לחיצת הכפתור
+                </span>
+              </div>
+              <div className="p-4">
+                <div
+                  className="rounded-2xl p-4 text-sm leading-relaxed whitespace-pre-wrap"
+                  style={{
+                    backgroundColor: "rgba(0, 132, 255, 0.08)",
+                    border: "1px solid rgba(0, 132, 255, 0.15)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {chatbot.message2}
+                </div>
+                <button
+                  onClick={() => copyText(chatbot.message2, "msg2")}
+                  className="mt-2 text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-all font-medium"
+                  style={{
+                    backgroundColor: chatbotCopied["msg2"] ? "rgba(34, 197, 94, 0.1)" : "rgba(156, 163, 175, 0.08)",
+                    color: chatbotCopied["msg2"] ? "#22C55E" : "var(--text-muted)",
+                    border: `1px solid ${chatbotCopied["msg2"] ? "rgba(34, 197, 94, 0.2)" : "var(--card-border)"}`,
+                  }}
+                >
+                  {chatbotCopied["msg2"] ? "✅ הועתק!" : "📋 העתק הודעה"}
+                </button>
+              </div>
+            </div>
+
+            {/* Copy all */}
+            <button
+              onClick={() => {
+                const allText = [
+                  `📨 הודעה 1 — הודעת פתיחה:`,
+                  chatbot.message1,
+                  ``,
+                  `🔘 כפתור: ${chatbot.buttonText}`,
+                  ``,
+                  `📨 הודעה 2 — בקשת טלפון:`,
+                  chatbot.message2,
+                ].join("\n");
+                copyText(allText, "all");
+              }}
+              className="w-full btn-gold !py-2.5 text-sm"
+            >
+              {chatbotCopied["all"] ? "✅ הכל הועתק!" : "📋 העתק את כל הצ\u0027אטבוט"}
+            </button>
           </div>
         )}
       </div>
@@ -425,51 +472,29 @@ export default function CopyPage() {
   );
 }
 
-/* ── Chatbot Message Bubble ── */
-function ChatbotMessage({
+/* ── Gender selector button ── */
+function GenderButton({
   label,
-  sublabel,
-  text,
-  isBusiness,
-  onCopy,
-  copied,
+  active,
+  onClick,
 }: {
   label: string;
-  sublabel?: string;
-  text: string;
-  isBusiness?: boolean;
-  onCopy: () => void;
-  copied?: boolean;
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className={`flex ${isBusiness ? "justify-start" : "justify-end"}`} dir="rtl">
-      <div className="max-w-[85%] lg:max-w-[70%]">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-bold text-[var(--text-secondary)]">{label}</span>
-          {sublabel && (
-            <span className="text-[10px] text-[var(--text-muted)]">{sublabel}</span>
-          )}
-        </div>
-        <div
-          className="relative rounded-2xl p-4 text-sm leading-relaxed"
-          style={{
-            backgroundColor: isBusiness ? "rgba(212, 168, 67, 0.08)" : "var(--content-bg)",
-            border: `1px solid ${isBusiness ? "rgba(212, 168, 67, 0.2)" : "var(--card-border)"}`,
-          }}
-        >
-          <div className="whitespace-pre-wrap text-[var(--text-primary)]">{text}</div>
-          <button
-            onClick={onCopy}
-            className="absolute top-2 left-2 text-xs px-2 py-1 rounded-lg cursor-pointer transition-all"
-            style={{
-              backgroundColor: copied ? "rgba(34, 197, 94, 0.1)" : "rgba(156, 163, 175, 0.1)",
-              color: copied ? "#22C55E" : "var(--text-muted)",
-            }}
-          >
-            {copied ? "✅" : "📋"}
-          </button>
-        </div>
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all"
+      style={{
+        backgroundColor: active ? "var(--gold)" : "var(--content-bg)",
+        color: active ? "#0F1117" : "var(--text-secondary)",
+        border: `1.5px solid ${active ? "var(--gold)" : "var(--card-border)"}`,
+        fontWeight: active ? 700 : 500,
+      }}
+    >
+      {label}
+    </button>
   );
 }
