@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { PLAN_LABELS } from "@/lib/plan-limits";
+import { PLAN_LABELS, PLAN_PRICES, CONSULTING_PRODUCT } from "@/lib/plan-limits";
 
 type Tab = "general" | "plan" | "invoices";
 
@@ -10,7 +10,7 @@ const plans = [
   {
     key: "standard",
     name: "סטנדרט",
-    price: "97",
+    price: String(PLAN_PRICES.standard),
     period: "/חודש",
     features: [
       "10 פרויקטים",
@@ -23,8 +23,9 @@ const plans = [
   {
     key: "premium",
     name: "פרימיום",
-    price: "197",
+    price: String(PLAN_PRICES.premium),
     period: "/חודש",
+    popular: true,
     features: [
       "פרויקטים ללא הגבלה",
       "תמונות AI ללא הגבלה",
@@ -37,12 +38,6 @@ const plans = [
   },
 ];
 
-const invoices = [
-  { date: "01/02/2026", description: "תוכנית Pro - פברואר 2026", amount: "149", status: "שולם" },
-  { date: "01/01/2026", description: "תוכנית Pro - ינואר 2026", amount: "149", status: "שולם" },
-  { date: "01/12/2025", description: "תוכנית Pro - דצמבר 2025", amount: "149", status: "שולם" },
-];
-
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("general");
   const [fullName, setFullName] = useState("");
@@ -53,6 +48,7 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [currentPlan, setCurrentPlan] = useState<string>("trial");
   const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
+  const [consultingLoading, setConsultingLoading] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -92,6 +88,24 @@ export default function SettingsPage() {
     } catch {
       setError("שגיאה ביצירת קישור תשלום");
       setUpgradeLoading(null);
+    }
+  };
+
+  const handleConsulting = async () => {
+    setConsultingLoading(true);
+    try {
+      const res = await fetch("/api/billing/consulting-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (!res.ok || !json.paymentUrl) {
+        throw new Error(json.error || "Failed to create checkout");
+      }
+      window.location.href = json.paymentUrl;
+    } catch {
+      setError("שגיאה ביצירת קישור תשלום לייעוץ");
+      setConsultingLoading(false);
     }
   };
 
@@ -275,7 +289,8 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Subscription plans */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             {plans.map((plan) => {
               const isCurrent = currentPlan === plan.key;
               const isHigher = plan.key === "premium" && currentPlan === "premium";
@@ -330,42 +345,43 @@ export default function SettingsPage() {
               );
             })}
           </div>
+
+          {/* Consulting one-time purchase */}
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-[16px] p-6 relative">
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">{CONSULTING_PRODUCT.description}</h3>
+                <p className="text-sm text-[var(--text-secondary)] mb-3">
+                  שעת ייעוץ אישית 1-על-1 עם דוד — אסטרטגיה, קופי, קמפיינים, ואופטימיזציה
+                </p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-[var(--text-primary)]">&#8362;{CONSULTING_PRODUCT.priceWithVAT.toLocaleString()}</span>
+                  <span className="text-xs text-[var(--text-muted)]">כולל מע&quot;מ</span>
+                </div>
+              </div>
+              <button
+                onClick={handleConsulting}
+                disabled={consultingLoading}
+                className="px-6 py-2.5 rounded-[10px] font-semibold text-sm cursor-pointer transition-all hover:opacity-90 disabled:opacity-50"
+                style={{
+                  background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
+                  color: "#0F1117",
+                  boxShadow: "0 2px 8px rgba(212, 168, 67, 0.3)",
+                }}
+              >
+                {consultingLoading ? "מעבד..." : "רכוש שעת ייעוץ"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Invoices tab */}
       {tab === "invoices" && (
-        <div className="card-static overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--card-border)]">
-                <th className="text-right px-6 py-4 font-semibold text-[var(--text-secondary)]">תאריך</th>
-                <th className="text-right px-6 py-4 font-semibold text-[var(--text-secondary)]">תיאור</th>
-                <th className="text-right px-6 py-4 font-semibold text-[var(--text-secondary)]">סכום</th>
-                <th className="text-right px-6 py-4 font-semibold text-[var(--text-secondary)]">סטטוס</th>
-                <th className="text-right px-6 py-4 font-semibold text-[var(--text-secondary)]">הורדה</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map((inv, i) => (
-                <tr key={i} className={i % 2 === 1 ? "bg-[var(--content-bg)]" : ""}>
-                  <td className="px-6 py-4 text-[var(--text-primary)]">{inv.date}</td>
-                  <td className="px-6 py-4 text-[var(--text-primary)]">{inv.description}</td>
-                  <td className="px-6 py-4 text-[var(--text-primary)] font-medium">&#8362;{inv.amount}</td>
-                  <td className="px-6 py-4">
-                    <span className="bg-green-50 text-[var(--success)] text-xs font-medium px-2 py-1 rounded-full">
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button className="text-[var(--gold)] hover:opacity-80 text-xs font-medium cursor-pointer">
-                      PDF
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="card-static p-8 text-center">
+          <p className="text-[var(--text-muted)] text-sm">
+            החשבוניות שלך יופיעו כאן לאחר ביצוע תשלום
+          </p>
         </div>
       )}
     </div>
