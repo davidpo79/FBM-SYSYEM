@@ -24,10 +24,14 @@ export async function GET() {
     },
     Items: [
       {
-        Description: "Test Item",
-        Price: 1,
+        Item: {
+          Name: "Test Item",
+          Price: 1,
+          Currency: "ILS",
+        },
         Quantity: 1,
-        Currency: "ILS",
+        UnitPrice: 1,
+        Description: "Test Item",
       },
     ],
     RedirectURL: "https://example.com/success",
