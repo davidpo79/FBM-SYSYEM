@@ -55,11 +55,30 @@ function ToggleSwitch({ enabled, onChange, label }: { enabled: boolean; onChange
   );
 }
 
+/* ── Extract structured suggestion from AI chat response ── */
+function extractSuggestion(text: string): { headline?: string; subtitle?: string; cta?: string } {
+  const result: { headline?: string; subtitle?: string; cta?: string } = {};
+
+  // Match headline: כותרת: "..." or **כותרת:** "..." or כותרת: ...
+  const headlineMatch = text.match(/\*?\*?כותרת\*?\*?[:\s]+["״]([^"״]+)["״]/);
+  if (headlineMatch) result.headline = headlineMatch[1].trim();
+
+  // Match subtitle/pilot offer
+  const subtitleMatch = text.match(/\*?\*?(?:תת-כותרת|הצעת פיילוט|תת כותרת)[^:]*\*?\*?[:\s]+["״]([^"״]+)["״]/);
+  if (subtitleMatch) result.subtitle = subtitleMatch[1].trim();
+
+  // Match CTA
+  const ctaMatch = text.match(/\*?\*?CTA\*?\*?[:\s]+["״]([^"״]+)["״]/);
+  if (ctaMatch) result.cta = ctaMatch[1].trim();
+
+  return result;
+}
+
 /* ── Creative Chat Modal ── */
 function CreativeChatModal({
   open,
   onClose,
-  onApply,
+  onApplyAll,
   scriptText,
   currentHeadline,
   currentSubtitle,
@@ -68,7 +87,7 @@ function CreativeChatModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onApply: (field: "headline" | "subtitle" | "cta", value: string) => void;
+  onApplyAll: (data: { headline?: string; subtitle?: string; cta?: string }) => void;
   scriptText: string;
   currentHeadline: string;
   currentSubtitle: string;
@@ -76,10 +95,11 @@ function CreativeChatModal({
   niche: string;
 }) {
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([
-    { role: "assistant", text: "שלום! אני מומחה קריאטיב ופרסום עם 15 שנות ניסיון.\nאני כאן לעזור לך עם כותרות, תתי-כותרות ו-CTA שיביאו תוצאות.\n\nאיך אוכל לעזור? למשל:\n- \"תציע כותרות חדשות\"\n- \"שפר את התת-כותרת\"\n- \"תן רעיונות ל-CTA\"" }
+    { role: "assistant", text: "שלום! אני מומחה קריאטיב ופרסום עם 15 שנות ניסיון.\nאני כאן לעזור לך עם כותרות, הצעות פיילוט ו-CTA שיביאו תוצאות.\n\nאיך אוכל לעזור? למשל:\n- \"תציע הצעה חדשה לקריאטיב\"\n- \"שפר את הצעת הפיילוט\"\n- \"תן רעיונות לכותרות ו-CTA\"" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [appliedIdx, setAppliedIdx] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -94,6 +114,7 @@ function CreativeChatModal({
     setInput("");
     setMessages(prev => [...prev, { role: "user", text: userMsg }]);
     setLoading(true);
+    setAppliedIdx(null);
 
     try {
       const res = await fetch("/api/creative-chat", {
@@ -116,6 +137,19 @@ function CreativeChatModal({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Find the latest assistant message with extractable content
+  const lastAssistantMsg = [...messages].reverse().find(m => m.role === "assistant");
+  const extracted = lastAssistantMsg ? extractSuggestion(lastAssistantMsg.text) : {};
+  const hasExtracted = !!(extracted.headline || extracted.subtitle || extracted.cta);
+
+  const handleApplyAll = () => {
+    if (!hasExtracted) return;
+    onApplyAll(extracted);
+    // Find the index of the last assistant message
+    const idx = messages.length - 1 - [...messages].reverse().findIndex(m => m.role === "assistant");
+    setAppliedIdx(idx);
   };
 
   if (!open) return null;
@@ -160,30 +194,38 @@ function CreativeChatModal({
           )}
         </div>
 
-        {/* Quick apply buttons */}
-        <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800 flex gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => onApply("headline", currentHeadline)}
-            className="text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer"
-          >
-            החל על כותרת
-          </button>
-          <button
-            type="button"
-            onClick={() => onApply("subtitle", currentSubtitle)}
-            className="text-xs px-3 py-1 rounded-full bg-purple-50 text-purple-600 hover:bg-purple-100 cursor-pointer"
-          >
-            החל על תת-כותרת
-          </button>
-          <button
-            type="button"
-            onClick={() => onApply("cta", currentCta)}
-            className="text-xs px-3 py-1 rounded-full bg-green-50 text-green-600 hover:bg-green-100 cursor-pointer"
-          >
-            החל על CTA
-          </button>
-        </div>
+        {/* Apply All button — prominent, single action */}
+        {hasExtracted && (
+          <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
+            {/* Preview what will be applied */}
+            <div className="bg-[var(--gold-soft)] border border-[var(--gold)]/30 rounded-xl p-3 text-xs space-y-1">
+              <p className="font-bold text-[var(--gold)] text-[11px] mb-1.5">זוהה בהצעה:</p>
+              {extracted.headline && (
+                <p className="text-[var(--text-primary)]"><span className="font-semibold">כותרת:</span> {extracted.headline}</p>
+              )}
+              {extracted.subtitle && (
+                <p className="text-[var(--text-primary)]"><span className="font-semibold">הצעת פיילוט:</span> {extracted.subtitle}</p>
+              )}
+              {extracted.cta && (
+                <p className="text-[var(--text-primary)]"><span className="font-semibold">CTA:</span> {extracted.cta}</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleApplyAll}
+              disabled={appliedIdx !== null}
+              className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
+                appliedIdx !== null
+                  ? "bg-green-100 text-green-700 border border-green-300"
+                  : "bg-[var(--gold)] text-white hover:opacity-90"
+              }`}
+            >
+              {appliedIdx !== null
+                ? "הוחל בהצלחה!"
+                : "החל הכל — כותרת, הצעת פיילוט ו-CTA"}
+            </button>
+          </div>
+        )}
 
         {/* Input */}
         <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2">
@@ -224,6 +266,7 @@ interface ScriptCreative {
   showHeadline: boolean;
   showSubtitle: boolean;
   showCta: boolean;
+  showOwnerProfile: boolean;
   ownerPhoto?: string;
   ownerName: string;
   ownerTitle: string;
@@ -286,6 +329,7 @@ export default function CreativePage() {
       showHeadline: true,
       showSubtitle: true,
       showCta: true,
+      showOwnerProfile: true,
       ownerName: "",
       ownerTitle: "",
     };
@@ -335,6 +379,7 @@ export default function CreativePage() {
             showHeadline: true,
             showSubtitle: true,
             showCta: true,
+            showOwnerProfile: true,
             ownerName: project?.user_name || "",
             ownerTitle: selectedNiche?.name || "",
           },
@@ -605,9 +650,9 @@ export default function CreativePage() {
                         customBackground={creative.customBackground}
                         onSaveToAlbum={handleSaveToAlbum}
                         scriptIdx={idx}
-                        ownerPhoto={creative.ownerPhoto}
-                        ownerName={creative.ownerName}
-                        ownerTitle={creative.ownerTitle}
+                        ownerPhoto={creative.showOwnerProfile ? creative.ownerPhoto : undefined}
+                        ownerName={creative.showOwnerProfile ? creative.ownerName : ""}
+                        ownerTitle={creative.showOwnerProfile ? creative.ownerTitle : ""}
                       />
                     </div>
 
@@ -680,7 +725,7 @@ export default function CreativePage() {
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <label className="text-sm font-bold text-[var(--text-primary)]">
-                            CTA
+                            CTA (הנעה לפעולה)
                           </label>
                           <ToggleSwitch
                             enabled={creative.showCta}
@@ -702,61 +747,70 @@ export default function CreativePage() {
 
                       {/* Owner photo upload section */}
                       <div className="border border-[var(--card-border)] rounded-xl p-3 space-y-3">
-                        <label className="block text-sm font-bold text-[var(--text-primary)]">
-                          תמונת בעל העסק
-                        </label>
-                        <div className="flex items-center gap-3">
-                          {creative.ownerPhoto ? (
-                            <div className="relative">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={creative.ownerPhoto}
-                                alt=""
-                                className="w-14 h-14 rounded-full object-cover border-2 border-[var(--gold)]"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => updateField(idx, "ownerPhoto", "")}
-                                className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center cursor-pointer hover:bg-red-600"
-                                title="הסר תמונה"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ) : (
-                            <label className="w-14 h-14 rounded-full border-2 border-dashed border-[var(--card-border)] flex items-center justify-center text-[var(--text-muted)] hover:border-[var(--gold)] cursor-pointer transition-all">
-                              <span className="text-xl">📷</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  const reader = new FileReader();
-                                  reader.onload = () => handleUploadOwnerPhoto(reader.result as string, idx);
-                                  reader.readAsDataURL(file);
-                                }}
-                              />
-                            </label>
-                          )}
-                          <div className="flex-1 space-y-2">
-                            <input
-                              type="text"
-                              value={creative.ownerName}
-                              onChange={(e) => updateField(idx, "ownerName", e.target.value)}
-                              placeholder="שם בעל העסק"
-                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
-                            />
-                            <input
-                              type="text"
-                              value={creative.ownerTitle}
-                              onChange={(e) => updateField(idx, "ownerTitle", e.target.value)}
-                              placeholder="למשל: מומחה שיווק, יועץ משכנתאות"
-                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
-                            />
-                          </div>
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-bold text-[var(--text-primary)]">
+                            תמונת בעל העסק
+                          </label>
+                          <ToggleSwitch
+                            enabled={creative.showOwnerProfile}
+                            onChange={(v) => updateField(idx, "showOwnerProfile", v)}
+                            label="הצג תמונת בעל העסק"
+                          />
                         </div>
+                        {creative.showOwnerProfile && (
+                          <div className="flex items-center gap-3">
+                            {creative.ownerPhoto ? (
+                              <div className="relative">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={creative.ownerPhoto}
+                                  alt=""
+                                  className="w-14 h-14 rounded-full object-cover border-2 border-[var(--gold)]"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => updateField(idx, "ownerPhoto", "")}
+                                  className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center cursor-pointer hover:bg-red-600"
+                                  title="הסר תמונה"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="w-14 h-14 rounded-full border-2 border-dashed border-[var(--card-border)] flex items-center justify-center text-[var(--text-muted)] hover:border-[var(--gold)] cursor-pointer transition-all">
+                                <span className="text-xl">📷</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    const reader = new FileReader();
+                                    reader.onload = () => handleUploadOwnerPhoto(reader.result as string, idx);
+                                    reader.readAsDataURL(file);
+                                  }}
+                                />
+                              </label>
+                            )}
+                            <div className="flex-1 space-y-2">
+                              <input
+                                type="text"
+                                value={creative.ownerName}
+                                onChange={(e) => updateField(idx, "ownerName", e.target.value)}
+                                placeholder="שם בעל העסק"
+                                className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+                              />
+                              <input
+                                type="text"
+                                value={creative.ownerTitle}
+                                onChange={(e) => updateField(idx, "ownerTitle", e.target.value)}
+                                placeholder="למשל: מומחה שיווק, יועץ משכנתאות"
+                                className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Format */}
@@ -942,8 +996,10 @@ export default function CreativePage() {
           currentSubtitle={getCreative(chatOpen).subtitle}
           currentCta={getCreative(chatOpen).cta}
           niche={selectedNiche?.name || ""}
-          onApply={(field, value) => {
-            updateField(chatOpen, field, value);
+          onApplyAll={(data) => {
+            if (data.headline) updateField(chatOpen, "headline", data.headline);
+            if (data.subtitle) updateField(chatOpen, "subtitle", data.subtitle);
+            if (data.cta) updateField(chatOpen, "cta", data.cta);
           }}
         />
       )}
