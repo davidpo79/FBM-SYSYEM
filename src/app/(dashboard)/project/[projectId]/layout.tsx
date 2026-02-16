@@ -49,6 +49,9 @@ export interface ProjectContextValue {
   // Creatives
   generatedImages: { url: string; base64?: string; scriptIdx: number }[];
   setGeneratedImages: React.Dispatch<React.SetStateAction<{ url: string; base64?: string; scriptIdx: number }[]>>;
+  // Copy
+  adCopy: string;
+  setAdCopy: (s: string) => void;
   // Downloads
   handleDownloadPdf: (title: string, content: string, filename: string) => Promise<void>;
   handleDownloadAll: () => Promise<void>;
@@ -87,6 +90,7 @@ export default function ProjectLayout({
   const [generatedImages, setGeneratedImages] = useState<
     { url: string; base64?: string; scriptIdx: number }[]
   >([]);
+  const [adCopy, setAdCopy] = useState("");
 
   // Downloads
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -129,6 +133,7 @@ export default function ProjectLayout({
         if (data.painAnalysis) setPainAnalysis(data.painAnalysis);
         if (data.scripts) setScripts(data.scripts);
         if (data.generatedImages?.length) setGeneratedImages(data.generatedImages);
+        if (data.adCopy) setAdCopy(data.adCopy);
       }
     } catch (e) {
       console.error("Failed to load pipeline state:", e);
@@ -155,6 +160,7 @@ export default function ProjectLayout({
           scriptIdx,
           ...((!url && base64) ? { base64 } : {}),
         })),
+        adCopy,
       };
       // Save to localStorage (primary)
       try {
@@ -170,7 +176,7 @@ export default function ProjectLayout({
       }).catch(() => { /* ignore — localStorage is the primary store */ });
     }, 500);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [hydrated, projectId, strategy, strategyApproved, niches, selectedNiche, painAnalysis, scripts, generatedImages]);
+  }, [hydrated, projectId, strategy, strategyApproved, niches, selectedNiche, painAnalysis, scripts, generatedImages, adCopy]);
 
   const handleDownloadPdf = useCallback(async (title: string, content: string, filename: string) => {
     setDownloading(filename);
@@ -217,6 +223,7 @@ export default function ProjectLayout({
     { key: "pains", label: "ניתוח כאבים", href: `/project/${projectId}/pains` },
     { key: "scripts", label: "תסריטים", href: `/project/${projectId}/scripts` },
     { key: "creative", label: "קריאייטיב", href: `/project/${projectId}/creative` },
+    { key: "copy", label: "קופי", href: `/project/${projectId}/copy` },
     { key: "album", label: "אלבום", href: `/project/${projectId}/album` },
   ];
 
@@ -226,6 +233,7 @@ export default function ProjectLayout({
   if (painAnalysis) completedSteps.push("pains");
   if (scripts) completedSteps.push("scripts");
   if (generatedImages.length > 0) completedSteps.push("creative");
+  if (adCopy) completedSteps.push("copy");
 
   // Current step from pathname
   const currentStepKey = pathname.split("/").pop() || "strategy";
@@ -237,6 +245,7 @@ export default function ProjectLayout({
     pains: "ניתוח כאבים",
     scripts: "תסריטים",
     creative: "קריאייטיב",
+    copy: "קופי + צ'אטבוט",
     album: "אלבום הקריאטיבים",
   };
 
@@ -280,6 +289,8 @@ export default function ProjectLayout({
         setScripts,
         generatedImages,
         setGeneratedImages,
+        adCopy,
+        setAdCopy,
         handleDownloadPdf,
         handleDownloadAll,
         downloading,
