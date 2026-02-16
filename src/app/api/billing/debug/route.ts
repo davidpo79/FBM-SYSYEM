@@ -12,10 +12,12 @@ export async function GET() {
   const companyId = rawCompanyId.trim().replace(/^["']|["']$/g, "");
   const apiKey = rawApiKey.trim().replace(/^["']|["']$/g, "");
 
-  // Build exact body to send
+  // Build exact body to send — credentials must be inside a Credentials object
   const requestBody = {
-    CompanyID: Number(companyId) || 0,
-    APIKey: apiKey,
+    Credentials: {
+      CompanyID: Number(companyId) || 0,
+      APIKey: apiKey,
+    },
     Customer: {
       Name: "Test Customer",
       EmailAddress: "test@test.com",
@@ -47,11 +49,12 @@ export async function GET() {
       httpStatus: res.status,
       fullResponse: json,
       sentBody: {
-        CompanyID: requestBody.CompanyID,
-        APIKey_length: requestBody.APIKey.length,
-        APIKey_first4: requestBody.APIKey.substring(0, 4),
-        APIKey_last4: requestBody.APIKey.substring(requestBody.APIKey.length - 4),
+        CompanyID: requestBody.Credentials.CompanyID,
+        APIKey_length: requestBody.Credentials.APIKey.length,
+        APIKey_first4: requestBody.Credentials.APIKey.substring(0, 4),
+        APIKey_last4: requestBody.Credentials.APIKey.substring(requestBody.Credentials.APIKey.length - 4),
         bodyStringLength: bodyString.length,
+        format: "Credentials object (nested)",
       },
     };
   } catch (e) {
