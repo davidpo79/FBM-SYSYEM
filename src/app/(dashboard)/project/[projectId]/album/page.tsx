@@ -135,17 +135,18 @@ export default function AlbumPage() {
 
       // Add documents
       const docsFolder = zip.folder("documents");
+      const userName = project?.user_name ?? "export";
       if (docsFolder && strategy) {
         const pdfBlob = await exportToPdf("מסמך אסטרטגיה FBM", strategy);
-        docsFolder.file("strategy.pdf", pdfBlob);
+        docsFolder.file(`${userName} מסמך תדר וקהלים.pdf`, pdfBlob);
       }
       if (docsFolder && painAnalysis) {
         const pdfBlob = await exportToPdf(`ניתוח כאבים - ${selectedNiche?.name ?? ""}`, painAnalysis);
-        docsFolder.file("pain-analysis.pdf", pdfBlob);
+        docsFolder.file(`${userName} מסמך נישות.pdf`, pdfBlob);
       }
       if (docsFolder && scripts) {
         const pdfBlob = await exportToPdf("תסריטי וידאו FBM", scripts);
-        docsFolder.file("scripts.pdf", pdfBlob);
+        docsFolder.file(`${userName} תסריטים.pdf`, pdfBlob);
       }
 
       // Add selected images (or all if none selected)
@@ -171,7 +172,7 @@ export default function AlbumPage() {
       }
 
       const blob = await zip.generateAsync({ type: "blob" });
-      downloadBlob(blob, `fbm-project-${project?.user_name ?? "export"}.zip`);
+      downloadBlob(blob, `${project?.user_name ?? "export"} פרויקט FBM.zip`);
     } catch (e) {
       console.error("ZIP error:", e);
     } finally {
@@ -200,7 +201,7 @@ export default function AlbumPage() {
       sections.push(`\n## קריאטיבים\n${displayImages.length} תמונות נוצרו\n`);
 
       const blob = await exportToPdf("סיכום פרויקט FBM", sections.join("\n"));
-      downloadBlob(blob, `fbm-summary-${project?.user_name ?? "export"}.pdf`);
+      downloadBlob(blob, `${project?.user_name ?? "export"} סיכום פרויקט.pdf`);
     } catch (e) {
       console.error("PDF export error:", e);
     } finally {

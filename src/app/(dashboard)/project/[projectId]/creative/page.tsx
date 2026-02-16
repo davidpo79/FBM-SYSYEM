@@ -351,7 +351,7 @@ export default function CreativePage() {
                     </div>
 
                     {/* RIGHT: Edit panel */}
-                    <div className="lg:w-[45%] space-y-4">
+                    <div className="lg:w-[45%] space-y-4 max-h-[70vh] lg:max-h-none overflow-y-auto">
                       {/* Headline */}
                       <div>
                         <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">

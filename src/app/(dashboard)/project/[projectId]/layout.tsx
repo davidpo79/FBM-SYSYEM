@@ -221,21 +221,22 @@ export default function ProjectLayout({
     setDownloading("zip");
     try {
       const documents = [];
+      const userName = project?.user_name ?? "export";
       if (strategy) {
-        documents.push({ title: "מסמך אסטרטגיה FBM", content: strategy, filename: "strategy.pdf" });
+        documents.push({ title: "מסמך אסטרטגיה FBM", content: strategy, filename: `${userName} מסמך תדר וקהלים.pdf` });
       }
       if (painAnalysis) {
-        documents.push({ title: `ניתוח כאבים - ${selectedNiche?.name ?? ""}`, content: painAnalysis, filename: "pain-analysis.pdf" });
+        documents.push({ title: `ניתוח כאבים - ${selectedNiche?.name ?? ""}`, content: painAnalysis, filename: `${userName} מסמך נישות.pdf` });
       }
       if (scripts) {
-        documents.push({ title: "תסריטי וידאו FBM", content: scripts, filename: "scripts.pdf" });
+        documents.push({ title: "תסריטי וידאו FBM", content: scripts, filename: `${userName} תסריטים.pdf` });
       }
       const images = generatedImages.map((img, i) => ({
         url: img.url,
         base64: img.base64,
         filename: `creative-${i + 1}.png`,
       }));
-      await downloadAllAsZip(documents, images, `fbm-project-${project?.user_name ?? "export"}.zip`);
+      await downloadAllAsZip(documents, images, `${userName} פרויקט FBM.zip`);
     } catch (e) {
       console.error("ZIP export error:", e);
     } finally {

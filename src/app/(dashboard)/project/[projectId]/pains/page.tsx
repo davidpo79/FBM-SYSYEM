@@ -35,6 +35,7 @@ export default function PainsPage() {
   const router = useRouter();
   const { projectId } = useParams<{ projectId: string }>();
   const {
+    project,
     strategy,
     selectedNiche,
     painAnalysis,
@@ -122,13 +123,13 @@ export default function PainsPage() {
               handleDownloadPdf(
                 `ניתוח כאבים - ${selectedNiche?.name ?? ""}`,
                 painAnalysis,
-                "pain-analysis.pdf",
+                `${project?.user_name ?? "export"} מסמך נישות.pdf`,
               )
             }
-            disabled={downloading === "pain-analysis.pdf"}
+            disabled={downloading?.includes("מסמך נישות")}
             className="px-4 py-2 text-sm font-medium bg-white border border-[var(--card-border)] text-[var(--text-secondary)] rounded-[10px] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
           >
-            {downloading === "pain-analysis.pdf" ? "מייצא..." : "הורד כ-PDF"}
+            {downloading?.includes("מסמך נישות") ? "מייצא..." : "הורד כ-PDF"}
           </button>
         </div>
         <div className="p-6">

@@ -163,11 +163,11 @@ export default function StrategyPage() {
                 המסמך אושר - עכשיו ניתן להוריד
               </p>
               <button
-                onClick={() => handleDownloadPdf("מסמך אסטרטגיה FBM", strategy, "strategy.pdf")}
-                disabled={downloading === "strategy.pdf"}
+                onClick={() => handleDownloadPdf("מסמך אסטרטגיה FBM", strategy, `${project?.user_name ?? "export"} מסמך תדר וקהלים.pdf`)}
+                disabled={downloading?.includes("מסמך תדר וקהלים")}
                 className="px-4 py-2 text-sm font-medium bg-white border border-[var(--card-border)] text-[var(--text-secondary)] rounded-[10px] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
               >
-                {downloading === "strategy.pdf" ? "מייצא..." : "הורד כ-PDF"}
+                {downloading?.includes("מסמך תדר וקהלים") ? "מייצא..." : "הורד כ-PDF"}
               </button>
             </div>
           )}
