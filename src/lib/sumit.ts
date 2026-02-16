@@ -8,7 +8,7 @@
  * Auth: CompanyID + APIKey in JSON body
  */
 
-const SUMIT_COMPANY_ID = process.env.SUMIT_COMPANY_ID || "";
+const SUMIT_COMPANY_ID = Number(process.env.SUMIT_COMPANY_ID) || 0;
 const SUMIT_API_KEY = process.env.SUMIT_API_KEY || "";
 const SUMIT_BASE_URL = "https://api.sumit.co.il";
 
