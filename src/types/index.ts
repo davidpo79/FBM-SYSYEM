@@ -1,6 +1,6 @@
 import type { PlanType } from "@/lib/plan-limits";
 
-export type SubscriptionStatus = "none" | "active";
+export type SubscriptionStatus = "none" | "active" | "cancelling" | "cancelled";
 
 export interface TrialNotifications {
   day3: boolean;
@@ -17,6 +17,8 @@ export interface UserProfile {
   subscription_status: SubscriptionStatus;
   plan_price: number;
   sumit_customer_id: string | null;
+  sumit_recurring_id: string | null;
+  subscription_ends_at: string | null;
   trial_notifications: TrialNotifications;
   created_at: string;
   updated_at: string;
