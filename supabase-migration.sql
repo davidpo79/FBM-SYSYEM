@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   subscription_status TEXT DEFAULT 'active',
   plan_price INTEGER DEFAULT 0,
   sumit_customer_id TEXT,
+  trial_notifications JSONB DEFAULT '{"day3": false, "day2": false, "day1": false}',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -31,7 +32,9 @@ ALTER TABLE user_profiles
   ADD COLUMN IF NOT EXISTS trial_days INTEGER DEFAULT 30,
   ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'active',
   ADD COLUMN IF NOT EXISTS plan_price INTEGER DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS sumit_customer_id TEXT;
+  ADD COLUMN IF NOT EXISTS sumit_customer_id TEXT,
+  ADD COLUMN IF NOT EXISTS trial_notifications JSONB DEFAULT '{"day3": false, "day2": false, "day1": false}';
+CREATE INDEX IF NOT EXISTS idx_trial_users ON user_profiles(trial_start) WHERE plan = 'trial';
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can read own profile" ON user_profiles FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update own profile" ON user_profiles FOR UPDATE USING (auth.uid() = user_id);

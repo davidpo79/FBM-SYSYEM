@@ -8,7 +8,9 @@ import FBMExpertPanel from "@/components/chat/FBMExpertPanel";
 import NotificationBell from "@/components/NotificationBell";
 import SuggestImprovementPanel from "@/components/SuggestImprovementPanel";
 import Paywall from "@/components/Paywall";
+import TrialBanner from "@/components/TrialBanner";
 import { PLAN_LABELS } from "@/lib/plan-limits";
+import { shouldShowTrialBanner } from "@/lib/trial-utils";
 import Image from "next/image";
 import type { User } from "@supabase/supabase-js";
 
@@ -261,25 +263,17 @@ export default function DashboardLayout({
           <NotificationBell />
         </div>
         <main className="p-6 lg:p-8 min-h-screen">
-          {/* Trial warning banner */}
-          {billingPlan === "trial" && billingDaysLeft !== null && billingDaysLeft <= 5 && billingDaysLeft > 0 && (
-            <div
-              className="mb-4 p-3 rounded-xl text-sm text-center font-medium"
-              style={{
-                background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)",
-                border: "1px solid rgba(245, 158, 11, 0.3)",
-                color: "#F59E0B",
-              }}
-            >
-              {billingDaysLeft === 1
-                ? "נשאר לך יום אחד של ניסיון! שדרג עכשיו כדי להמשיך."
-                : `נשארו לך ${billingDaysLeft} ימי ניסיון. שדרג את התוכנית שלך כדי להמשיך בלי הפרעות.`}
-            </div>
+          {/* Trial warning banner (3 days or less remaining) */}
+          {shouldShowTrialBanner(billingPlan, billingDaysLeft) && (
+            <TrialBanner
+              daysLeft={billingDaysLeft!}
+              onUpgrade={() => router.push("/settings?tab=plan")}
+            />
           )}
 
           {/* Show Paywall if plan expired, otherwise show content */}
           {!billingLoading && billingPlan === "expired" ? (
-            <Paywall daysLeft={billingDaysLeft} currentPlan={billingPlan} />
+            <Paywall daysLeft={billingDaysLeft} currentPlan={billingPlan} projectCount={projectCount} />
           ) : (
             children
           )}

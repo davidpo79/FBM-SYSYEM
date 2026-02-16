@@ -62,6 +62,7 @@ export default function Sidebar({
         { href: "/admin", label: "דשבורד אדמין", emoji: "\u{1F6E1}\uFE0F" },
         { href: "/admin/students", label: "ניהול תלמידים", emoji: "\u{1F393}" },
         { href: "/admin/subscriptions", label: "מנויים ותשלומים", emoji: "\u{1F4B3}" },
+        { href: "/admin/consultations", label: "שעות ייעוץ", emoji: "\u{1F4DE}" },
         { href: "/admin/analytics", label: "אנליטיקס", emoji: "\u{1F4CA}" },
         { href: "/admin/suggestions", label: "הצעות ייעול", emoji: "\u{1F4AC}", badge: newSuggestionsCount > 0 ? newSuggestionsCount : undefined },
         { href: "/admin/settings", label: "הגדרות מערכת", emoji: "\u{1F527}" },
