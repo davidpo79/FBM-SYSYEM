@@ -5,41 +5,54 @@ import { NextResponse } from "next/server";
  * DELETE THIS FILE after debugging is complete.
  */
 export async function GET() {
-  const companyId = process.env.SUMIT_COMPANY_ID;
-  const apiKey = process.env.SUMIT_API_KEY;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const rawCompanyId = process.env.SUMIT_COMPANY_ID ?? "";
+  const rawApiKey = process.env.SUMIT_API_KEY ?? "";
 
-  // Try a real Sumit API call to see the exact response
+  // Trim whitespace/quotes that may have been accidentally included
+  const companyId = rawCompanyId.trim().replace(/^["']|["']$/g, "");
+  const apiKey = rawApiKey.trim().replace(/^["']|["']$/g, "");
+
+  // Build exact body to send
+  const requestBody = {
+    CompanyID: Number(companyId) || 0,
+    APIKey: apiKey,
+    Customer: {
+      Name: "Test Customer",
+      EmailAddress: "test@test.com",
+    },
+    Items: [
+      {
+        Description: "Test Item",
+        Price: 1,
+        Quantity: 1,
+        Currency: "ILS",
+      },
+    ],
+    RedirectURL: "https://example.com/success",
+    MaximumPayments: 1,
+    SendDocumentByEmail: false,
+  };
+
   let sumitTestResult: unknown = null;
   try {
+    const bodyString = JSON.stringify(requestBody);
     const res = await fetch("https://api.sumit.co.il/billing/payments/beginredirect/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        CompanyID: Number(companyId) || 0,
-        APIKey: apiKey || "",
-        Customer: {
-          Name: "Test Customer",
-          EmailAddress: "test@test.com",
-        },
-        Items: [
-          {
-            Description: "Test Item",
-            Price: 1,
-            Quantity: 1,
-            Currency: "ILS",
-          },
-        ],
-        RedirectURL: "https://example.com/success",
-        MaximumPayments: 1,
-        SendDocumentByEmail: false,
-      }),
+      body: bodyString,
     });
 
     const json = await res.json();
     sumitTestResult = {
       httpStatus: res.status,
       fullResponse: json,
+      sentBody: {
+        CompanyID: requestBody.CompanyID,
+        APIKey_length: requestBody.APIKey.length,
+        APIKey_first4: requestBody.APIKey.substring(0, 4),
+        APIKey_last4: requestBody.APIKey.substring(requestBody.APIKey.length - 4),
+        bodyStringLength: bodyString.length,
+      },
     };
   } catch (e) {
     sumitTestResult = {
@@ -48,17 +61,15 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    sumit: {
-      SUMIT_COMPANY_ID_set: !!companyId,
-      SUMIT_COMPANY_ID_value: companyId ? `${companyId.substring(0, 3)}...` : "(empty)",
-      SUMIT_COMPANY_ID_asNumber: Number(companyId) || 0,
-      SUMIT_API_KEY_set: !!apiKey,
-      SUMIT_API_KEY_length: apiKey?.length || 0,
-      SUMIT_API_KEY_preview: apiKey ? `${apiKey.substring(0, 4)}...` : "(empty)",
-    },
-    supabase: {
-      SUPABASE_SERVICE_ROLE_KEY_set: !!serviceRoleKey,
-      NEXT_PUBLIC_SUPABASE_URL_set: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    credentials: {
+      raw_companyId_length: rawCompanyId.length,
+      raw_apiKey_length: rawApiKey.length,
+      trimmed_companyId_length: companyId.length,
+      trimmed_apiKey_length: apiKey.length,
+      companyId_charCodes_first5: Array.from(rawCompanyId.substring(0, 5)).map((c) => c.charCodeAt(0)),
+      apiKey_charCodes_first5: Array.from(rawApiKey.substring(0, 5)).map((c) => c.charCodeAt(0)),
+      companyId_asNumber: Number(companyId) || 0,
+      companyId_isNaN: isNaN(Number(companyId)),
     },
     sumitApiTest: sumitTestResult,
   });
