@@ -15,6 +15,8 @@ export interface ProjectRow {
   user_name: string;
   answers_map: Record<string, string>;
   status: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pipeline_data?: Record<string, any> | null;
 }
 
 export interface Niche {
@@ -103,7 +105,7 @@ export default function ProjectLayout({
     async function load() {
       const { data, error: dbErr } = await supabase
         .from("projects")
-        .select("id, user_name, answers_map, status")
+        .select("id, user_name, answers_map, status, pipeline_data")
         .eq("id", projectId)
         .single();
 
@@ -118,26 +120,51 @@ export default function ProjectLayout({
     load();
   }, [projectId]);
 
-  // Hydrate pipeline state from localStorage after project loads
+  // Hydrate pipeline state from localStorage, fallback to Supabase pipeline_data
   useEffect(() => {
     if (loading) return;
     if (!project) { setHydrated(true); return; }
+
+    // Helper to apply pipeline data from any source
+    const applyPipelineData = (data: Record<string, unknown>) => {
+      if (data.strategy) setStrategy(data.strategy as string);
+      if (data.strategyApproved) setStrategyApproved(true);
+      if ((data.niches as unknown[])?.length) setNiches(data.niches as Niche[]);
+      if (data.selectedNiche) setSelectedNiche(data.selectedNiche as Niche);
+      if (data.painAnalysis) setPainAnalysis(data.painAnalysis as string);
+      if (data.scripts) setScripts(data.scripts as string);
+      if ((data.generatedImages as unknown[])?.length) setGeneratedImages(data.generatedImages as { url: string; base64?: string; scriptIdx: number }[]);
+      if (data.adCopy) setAdCopy(data.adCopy as string);
+    };
+
+    let loaded = false;
     try {
       const saved = localStorage.getItem(`fbm-pipeline-${projectId}`);
       if (saved) {
         const data = JSON.parse(saved);
-        if (data.strategy) setStrategy(data.strategy);
-        if (data.strategyApproved) setStrategyApproved(true);
-        if (data.niches?.length) setNiches(data.niches);
-        if (data.selectedNiche) setSelectedNiche(data.selectedNiche);
-        if (data.painAnalysis) setPainAnalysis(data.painAnalysis);
-        if (data.scripts) setScripts(data.scripts);
-        if (data.generatedImages?.length) setGeneratedImages(data.generatedImages);
-        if (data.adCopy) setAdCopy(data.adCopy);
+        // Only consider it loaded if there's actual content
+        if (data.strategy || data.scripts || data.selectedNiche) {
+          applyPipelineData(data);
+          loaded = true;
+        }
       }
     } catch (e) {
-      console.error("Failed to load pipeline state:", e);
+      console.error("Failed to load pipeline from localStorage:", e);
     }
+
+    // Fallback: load from Supabase pipeline_data (critical for mobile!)
+    if (!loaded && project.pipeline_data) {
+      try {
+        applyPipelineData(project.pipeline_data as Record<string, unknown>);
+        // Re-save to localStorage so it's available next time
+        try {
+          localStorage.setItem(`fbm-pipeline-${projectId}`, JSON.stringify(project.pipeline_data));
+        } catch { /* quota exceeded — ignore */ }
+      } catch (e) {
+        console.error("Failed to load pipeline from Supabase:", e);
+      }
+    }
+
     setHydrated(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, project, projectId]);

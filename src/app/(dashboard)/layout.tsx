@@ -7,6 +7,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import FBMExpertPanel from "@/components/chat/FBMExpertPanel";
 import NotificationBell from "@/components/NotificationBell";
 import SuggestImprovementPanel from "@/components/SuggestImprovementPanel";
+import Image from "next/image";
 import type { User } from "@supabase/supabase-js";
 
 export default function DashboardLayout({
@@ -307,6 +308,7 @@ function MobileSidebarContent({
         { href: `/project/${projectId}/pains`, label: "ניתוח כאבים", emoji: "\u{1F494}" },
         { href: `/project/${projectId}/scripts`, label: "תסריטים", emoji: "\u{1F4DD}" },
         { href: `/project/${projectId}/creative`, label: "קריאייטיב", emoji: "\u{1F3A8}" },
+        { href: `/project/${projectId}/copy`, label: "קופי", emoji: "\u{1F4CB}" },
         { href: `/project/${projectId}/album`, label: "אלבום וסיכום", emoji: "\u{1F4F8}", badge: albumCount > 0 ? albumCount : undefined },
       ]
     : [];
@@ -319,14 +321,17 @@ function MobileSidebarContent({
   return (
     <>
       {/* Logo */}
-      <div className="px-5 py-5 flex items-center gap-3" style={{ borderBottom: "1px solid #2A2D3A" }}>
-        <span className="text-white font-bold text-lg">FBM Studio</span>
-        <span
-          className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-          style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}
-        >
-          Beta
-        </span>
+      <div className="px-5 pt-5 pb-4 flex flex-col items-center gap-2" style={{ borderBottom: "1px solid #2A2D3A" }}>
+        <Image src="/logo-fbm.png" alt="FBM" width={64} height={64} className="rounded" />
+        <div className="flex items-center gap-2">
+          <span className="text-white font-bold text-lg">FBM Studio</span>
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+            style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}
+          >
+            Beta
+          </span>
+        </div>
       </div>
 
       {/* Project indicator */}
