@@ -5,12 +5,16 @@
  * Swagger: https://app.sumit.co.il/help/developers/swagger/index.html
  *
  * Base URL: https://api.sumit.co.il
- * Auth: CompanyID + APIKey in JSON body
+ * Auth: CompanyID (integer) + APIKey in JSON body
  */
 
-const SUMIT_COMPANY_ID = Number(process.env.SUMIT_COMPANY_ID) || 0;
-const SUMIT_API_KEY = process.env.SUMIT_API_KEY || "";
 const SUMIT_BASE_URL = "https://api.sumit.co.il";
+
+function getSumitCredentials() {
+  const companyId = Number(process.env.SUMIT_COMPANY_ID) || 0;
+  const apiKey = process.env.SUMIT_API_KEY || "";
+  return { companyId, apiKey };
+}
 
 interface SumitResponse {
   Data?: {
@@ -27,12 +31,26 @@ interface SumitResponse {
 }
 
 async function sumitRequest(endpoint: string, body: Record<string, unknown>): Promise<SumitResponse> {
+  const { companyId, apiKey } = getSumitCredentials();
+
+  console.log("Sumit request:", {
+    endpoint,
+    companyId,
+    apiKeyLength: apiKey.length,
+    hasCompanyId: companyId > 0,
+    hasApiKey: apiKey.length > 0,
+  });
+
+  if (!companyId || !apiKey) {
+    throw new Error(`Sumit credentials missing: CompanyID=${companyId}, APIKey length=${apiKey.length}`);
+  }
+
   const res = await fetch(`${SUMIT_BASE_URL}${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      CompanyID: SUMIT_COMPANY_ID,
-      APIKey: SUMIT_API_KEY,
+      CompanyID: companyId,
+      APIKey: apiKey,
       ...body,
     }),
   });
@@ -41,7 +59,17 @@ async function sumitRequest(endpoint: string, body: Record<string, unknown>): Pr
     throw new Error(`Sumit API error: ${res.status} ${res.statusText}`);
   }
 
-  return res.json();
+  const json = await res.json();
+
+  console.log("Sumit response:", {
+    endpoint,
+    status: json.Status,
+    hasRedirectURL: !!json.Data?.RedirectURL,
+    userError: json.UserErrorMessage || null,
+    technicalError: json.TechnicalErrorDetails || null,
+  });
+
+  return json;
 }
 
 /**
