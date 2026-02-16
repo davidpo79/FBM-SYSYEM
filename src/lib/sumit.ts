@@ -82,6 +82,7 @@ async function sumitRequest(endpoint: string, body: Record<string, unknown>): Pr
 export async function createPaymentLink(params: {
   customerName: string;
   customerEmail: string;
+  companyNumber?: string;
   description: string;
   price: number;
   redirectUrl: string;
@@ -92,6 +93,7 @@ export async function createPaymentLink(params: {
       Customer: {
         Name: params.customerName,
         EmailAddress: params.customerEmail,
+        ...(params.companyNumber ? { CompanyNumber: params.companyNumber } : {}),
       },
       Items: [
         {

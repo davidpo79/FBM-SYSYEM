@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { PLAN_LABELS, PLAN_PRICES, CONSULTING_PRODUCT } from "@/lib/plan-limits";
 import PaymentModal from "@/components/PaymentModal";
+import type { CustomerDetails } from "@/components/PaymentModal";
 
 type Tab = "general" | "plan" | "invoices";
 
@@ -48,17 +49,18 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [currentPlan, setCurrentPlan] = useState<string>("trial");
-  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
-  const [consultingLoading, setConsultingLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentType, setPaymentType] = useState<"plan" | "consulting">("plan");
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
   // Reset loading state when user navigates back
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        setUpgradeLoading(null);
-        setConsultingLoading(false);
+        setPaymentLoading(false);
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
@@ -96,37 +98,37 @@ export default function SettingsPage() {
     };
   };
 
-  const handleUpgrade = async (planKey: string) => {
-    setUpgradeLoading(planKey);
+  const handleUpgrade = (planKey: string) => {
+    setSelectedPlan(planKey);
+    setPaymentType("plan");
+    setPaymentUrl(null);
+    setShowPayment(true);
     setError("");
-    try {
-      const headers = await getAuthHeaders();
-      const res = await fetch("/api/billing/create-checkout", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ plan: planKey }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.paymentUrl) {
-        throw new Error(json.error || "Failed to create checkout");
-      }
-      setPaymentUrl(json.paymentUrl);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Unknown error";
-      console.error("handleUpgrade error:", msg);
-      setError(`שגיאה ביצירת קישור תשלום: ${msg}`);
-      setUpgradeLoading(null);
-    }
   };
 
-  const handleConsulting = async () => {
-    setConsultingLoading(true);
+  const handleConsulting = () => {
+    setPaymentType("consulting");
+    setPaymentUrl(null);
+    setShowPayment(true);
+    setError("");
+  };
+
+  const handleSubmitDetails = async (details: CustomerDetails) => {
+    setPaymentLoading(true);
     setError("");
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch("/api/billing/consulting-checkout", {
+      const endpoint = paymentType === "consulting"
+        ? "/api/billing/consulting-checkout"
+        : "/api/billing/create-checkout";
+      const body = paymentType === "consulting"
+        ? { customerName: details.customerName, customerIdNumber: details.customerIdNumber }
+        : { plan: selectedPlan, customerName: details.customerName, customerIdNumber: details.customerIdNumber };
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers,
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok || !json.paymentUrl) {
@@ -135,9 +137,10 @@ export default function SettingsPage() {
       setPaymentUrl(json.paymentUrl);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
-      console.error("handleConsulting error:", msg);
-      setError(`שגיאה ביצירת קישור תשלום לייעוץ: ${msg}`);
-      setConsultingLoading(false);
+      setError(`שגיאה ביצירת קישור תשלום: ${msg}`);
+      setShowPayment(false);
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -168,17 +171,17 @@ export default function SettingsPage() {
   };
 
   const handlePaymentComplete = useCallback(() => {
+    setShowPayment(false);
     setPaymentUrl(null);
-    setUpgradeLoading(null);
-    setConsultingLoading(false);
-    // Reload to get updated plan status
+    setSelectedPlan(null);
     window.location.reload();
   }, []);
 
   const handlePaymentClose = useCallback(() => {
+    setShowPayment(false);
     setPaymentUrl(null);
-    setUpgradeLoading(null);
-    setConsultingLoading(false);
+    setSelectedPlan(null);
+    setPaymentLoading(false);
   }, []);
 
   const handleSave = async () => {
@@ -417,14 +420,14 @@ export default function SettingsPage() {
                   </ul>
                   <button
                     onClick={() => !isCurrent && handleUpgrade(plan.key)}
-                    disabled={isCurrent || isHigher || upgradeLoading !== null}
+                    disabled={isCurrent || isHigher || showPayment}
                     className={`w-full py-2.5 rounded-[10px] font-semibold text-sm transition-opacity cursor-pointer disabled:cursor-default mt-auto ${
                       isCurrent
                         ? "bg-[var(--content-bg)] text-[var(--text-muted)]"
                         : "bg-[var(--gold)] text-white hover:opacity-90 disabled:opacity-50"
                     }`}
                   >
-                    {upgradeLoading === plan.key ? "מעבד..." : isCurrent ? "התוכנית הנוכחית" : "הפעל מנוי חודשי"}
+                    {isCurrent ? "התוכנית הנוכחית" : "הפעל מנוי חודשי"}
                   </button>
                 </div>
               );
@@ -446,7 +449,7 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={handleConsulting}
-                disabled={consultingLoading}
+                disabled={showPayment}
                 className="px-6 py-2.5 rounded-[10px] font-semibold text-sm cursor-pointer transition-all hover:opacity-90 disabled:opacity-50"
                 style={{
                   background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
@@ -454,7 +457,7 @@ export default function SettingsPage() {
                   boxShadow: "0 2px 8px rgba(212, 168, 67, 0.3)",
                 }}
               >
-                {consultingLoading ? "מעבד..." : "רכוש שעת ייעוץ"}
+                רכוש שעת ייעוץ
               </button>
             </div>
           </div>
@@ -470,9 +473,11 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {paymentUrl && (
+      {showPayment && (
         <PaymentModal
           url={paymentUrl}
+          onSubmitDetails={handleSubmitDetails}
+          loading={paymentLoading}
           onComplete={handlePaymentComplete}
           onClose={handlePaymentClose}
         />

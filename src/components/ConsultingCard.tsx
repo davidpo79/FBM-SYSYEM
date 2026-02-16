@@ -4,14 +4,22 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { CONSULTING_PRODUCT } from "@/lib/plan-limits";
 import PaymentModal from "@/components/PaymentModal";
+import type { CustomerDetails } from "@/components/PaymentModal";
 
 export default function ConsultingCard() {
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPayment, setShowPayment] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
-  const handleBookConsulting = async () => {
-    setLoading(true);
+  const handleBookConsulting = () => {
+    setPaymentUrl(null);
+    setShowPayment(true);
+    setError("");
+  };
+
+  const handleSubmitDetails = async (details: CustomerDetails) => {
+    setPaymentLoading(true);
     setError("");
 
     try {
@@ -23,6 +31,10 @@ export default function ConsultingCard() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify({
+          customerName: details.customerName,
+          customerIdNumber: details.customerIdNumber,
+        }),
       });
 
       const json = await res.json();
@@ -33,19 +45,22 @@ export default function ConsultingCard() {
       setPaymentUrl(json.paymentUrl);
     } catch (e) {
       setError(e instanceof Error ? e.message : "שגיאה ביצירת קישור תשלום");
-      setLoading(false);
+      setShowPayment(false);
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
   const handlePaymentComplete = useCallback(() => {
+    setShowPayment(false);
     setPaymentUrl(null);
-    setLoading(false);
     window.location.reload();
   }, []);
 
   const handlePaymentClose = useCallback(() => {
+    setShowPayment(false);
     setPaymentUrl(null);
-    setLoading(false);
+    setPaymentLoading(false);
   }, []);
 
   return (
@@ -91,7 +106,7 @@ export default function ConsultingCard() {
 
             <button
               onClick={handleBookConsulting}
-              disabled={loading}
+              disabled={showPayment}
               className="w-full py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 background: "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)",
@@ -99,15 +114,17 @@ export default function ConsultingCard() {
                 boxShadow: "0 4px 16px rgba(34, 197, 94, 0.3)",
               }}
             >
-              {loading ? "מעבד..." : "הזמן עכשיו"}
+              הזמן עכשיו
             </button>
           </div>
         </div>
       </div>
 
-      {paymentUrl && (
+      {showPayment && (
         <PaymentModal
           url={paymentUrl}
+          onSubmitDetails={handleSubmitDetails}
+          loading={paymentLoading}
           onComplete={handlePaymentComplete}
           onClose={handlePaymentClose}
         />

@@ -4,7 +4,8 @@ import { cancelRecurringCharge } from "@/lib/sumit";
 
 /**
  * Cancel a user's subscription.
- * Cancels the recurring charge in Sumit and updates the user's plan.
+ * Cancels the recurring charge in Sumit but keeps the plan active
+ * until the end of the current billing period (30 days from last charge).
  */
 export async function POST(req: NextRequest) {
   try {
@@ -31,13 +32,15 @@ export async function POST(req: NextRequest) {
       // Continue anyway to update our DB - the admin can cancel manually in Sumit if needed
     }
 
-    // Update user profile to cancelled
+    // Keep plan active until end of billing period (30 days from now)
+    const subscriptionEndsAt = new Date();
+    subscriptionEndsAt.setDate(subscriptionEndsAt.getDate() + 30);
+
     const { error: updateError } = await supabaseAdmin
       .from("user_profiles")
       .update({
-        subscription_status: "cancelled",
-        plan: "trial",
-        plan_price: 0,
+        subscription_status: "cancelling",
+        subscription_ends_at: subscriptionEndsAt.toISOString(),
       })
       .eq("user_id", user.id);
 
@@ -46,8 +49,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to update subscription" }, { status: 500 });
     }
 
-    console.log(`Subscription cancelled for ${customerEmail}`);
-    return NextResponse.json({ success: true });
+    console.log(`Subscription cancelling for ${customerEmail}, active until ${subscriptionEndsAt.toISOString()}`);
+    return NextResponse.json({
+      success: true,
+      endsAt: subscriptionEndsAt.toISOString(),
+    });
   } catch (error) {
     console.error("Cancel subscription error:", error);
     return NextResponse.json({ error: "Failed to cancel subscription" }, { status: 500 });

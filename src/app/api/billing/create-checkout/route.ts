@@ -5,7 +5,7 @@ import { PLAN_PRICES } from "@/lib/plan-limits";
 
 export async function POST(req: NextRequest) {
   try {
-    const { plan } = await req.json();
+    const { plan, customerName: formCustomerName, customerIdNumber } = await req.json();
 
     if (!plan || !PLAN_PRICES[plan]) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
@@ -30,8 +30,9 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    const customerName = profile?.full_name || user.email?.split("@")[0] || "Customer";
+    const customerName = formCustomerName || profile?.full_name || user.email?.split("@")[0] || "Customer";
     const customerEmail = user.email || "";
+    const companyNumber = customerIdNumber || "";
     const price = PLAN_PRICES[plan];
 
     // Determine URLs
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
     const result = await createPaymentLink({
       customerName,
       customerEmail,
+      companyNumber,
       description: `FBM Studio - תוכנית ${planLabel}`,
       price,
       redirectUrl,

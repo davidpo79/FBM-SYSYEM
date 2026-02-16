@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import ConsultingCard from "@/components/ConsultingCard";
 import PaymentModal from "@/components/PaymentModal";
+import type { CustomerDetails } from "@/components/PaymentModal";
 
 interface PaywallProps {
   daysLeft?: number | null;
@@ -43,23 +44,32 @@ const plans = [
 ];
 
 export default function Paywall({ daysLeft, currentPlan, projectCount }: PaywallProps) {
-  const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [showPayment, setShowPayment] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
-  // Reset loading state when user navigates back
+  // Reset state when user navigates back
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        setLoading(null);
+        setPaymentLoading(false);
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
-  const handleSelectPlan = async (planKey: string) => {
-    setLoading(planKey);
+  const handleSelectPlan = (planKey: string) => {
+    setSelectedPlan(planKey);
+    setPaymentUrl(null);
+    setShowPayment(true);
+    setError("");
+  };
+
+  const handleSubmitDetails = async (details: CustomerDetails) => {
+    setPaymentLoading(true);
     setError("");
 
     try {
@@ -71,7 +81,11 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ plan: planKey }),
+        body: JSON.stringify({
+          plan: selectedPlan,
+          customerName: details.customerName,
+          customerIdNumber: details.customerIdNumber,
+        }),
       });
 
       const json = await res.json();
@@ -82,19 +96,24 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
       setPaymentUrl(json.paymentUrl);
     } catch (e) {
       setError(e instanceof Error ? e.message : "שגיאה ביצירת קישור תשלום");
-      setLoading(null);
+      setShowPayment(false);
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
   const handlePaymentComplete = useCallback(() => {
+    setShowPayment(false);
     setPaymentUrl(null);
-    setLoading(null);
+    setSelectedPlan(null);
     window.location.reload();
   }, []);
 
   const handlePaymentClose = useCallback(() => {
+    setShowPayment(false);
     setPaymentUrl(null);
-    setLoading(null);
+    setSelectedPlan(null);
+    setPaymentLoading(false);
   }, []);
 
   const isExpired = currentPlan === "expired" || daysLeft === 0;
@@ -182,7 +201,7 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
 
               <button
                 onClick={() => handleSelectPlan(plan.key)}
-                disabled={loading !== null}
+                disabled={showPayment}
                 className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-auto"
                 style={{
                   background: plan.highlight
@@ -195,7 +214,7 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
                     : "none",
                 }}
               >
-                {loading === plan.key ? "מעבד..." : "הפעל מנוי חודשי"}
+                הפעל מנוי חודשי
               </button>
             </div>
           </div>
@@ -213,9 +232,11 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
         יש שאלות? דברו איתנו בוואטסאפ
       </p>
 
-      {paymentUrl && (
+      {showPayment && (
         <PaymentModal
           url={paymentUrl}
+          onSubmitDetails={handleSubmitDetails}
+          loading={paymentLoading}
           onComplete={handlePaymentComplete}
           onClose={handlePaymentClose}
         />
