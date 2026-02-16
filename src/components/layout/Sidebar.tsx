@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { PLAN_LABELS } from "@/lib/plan-limits";
 
 interface SidebarProps {
   userEmail: string;
@@ -13,6 +14,7 @@ interface SidebarProps {
   albumCount?: number;
   isAdmin?: boolean;
   newSuggestionsCount?: number;
+  currentPlan?: string;
   onLogout: () => void;
 }
 
@@ -25,6 +27,7 @@ export default function Sidebar({
   albumCount = 0,
   isAdmin = false,
   newSuggestionsCount = 0,
+  currentPlan = "trial",
   onLogout,
 }: SidebarProps) {
   const pathname = usePathname();
@@ -58,6 +61,7 @@ export default function Sidebar({
     ? [
         { href: "/admin", label: "דשבורד אדמין", emoji: "\u{1F6E1}\uFE0F" },
         { href: "/admin/students", label: "ניהול תלמידים", emoji: "\u{1F393}" },
+        { href: "/admin/subscriptions", label: "מנויים ותשלומים", emoji: "\u{1F4B3}" },
         { href: "/admin/analytics", label: "אנליטיקס", emoji: "\u{1F4CA}" },
         { href: "/admin/suggestions", label: "הצעות ייעול", emoji: "\u{1F4AC}", badge: newSuggestionsCount > 0 ? newSuggestionsCount : undefined },
         { href: "/admin/settings", label: "הגדרות מערכת", emoji: "\u{1F527}" },
@@ -376,7 +380,7 @@ export default function Sidebar({
           <div className="flex-1 min-w-0">
             <p className="text-sm text-white font-medium truncate">{displayName}</p>
             <p className="text-[11px] truncate" style={{ color: "#9DA3B4" }}>
-              תוכנית Pro
+              תוכנית {PLAN_LABELS[currentPlan] || currentPlan}
             </p>
           </div>
           <button

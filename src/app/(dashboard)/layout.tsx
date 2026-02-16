@@ -7,6 +7,8 @@ import Sidebar from "@/components/layout/Sidebar";
 import FBMExpertPanel from "@/components/chat/FBMExpertPanel";
 import NotificationBell from "@/components/NotificationBell";
 import SuggestImprovementPanel from "@/components/SuggestImprovementPanel";
+import Paywall from "@/components/Paywall";
+import { PLAN_LABELS } from "@/lib/plan-limits";
 import Image from "next/image";
 import type { User } from "@supabase/supabase-js";
 
@@ -28,6 +30,9 @@ export default function DashboardLayout({
   const [userName, setUserName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [newSuggestionsCount, setNewSuggestionsCount] = useState(0);
+  const [billingPlan, setBillingPlan] = useState<string>("trial");
+  const [billingDaysLeft, setBillingDaysLeft] = useState<number | null>(null);
+  const [billingLoading, setBillingLoading] = useState(true);
 
   // Extract projectId from URL if on a project page
   const projectIdMatch = pathname.match(/\/project\/([^/]+)/);
@@ -78,6 +83,16 @@ export default function DashboardLayout({
                 .catch(() => {});
             }
           });
+
+        // Fetch billing status
+        fetch("/api/billing/status")
+          .then((r) => r.json())
+          .then((d) => {
+            setBillingPlan(d.plan || "trial");
+            setBillingDaysLeft(d.daysLeft ?? null);
+          })
+          .catch(() => {})
+          .finally(() => setBillingLoading(false));
       }
     });
   }, [router]);
@@ -197,6 +212,7 @@ export default function DashboardLayout({
         albumCount={albumCount}
         isAdmin={isAdmin}
         newSuggestionsCount={newSuggestionsCount}
+        currentPlan={billingPlan}
         onLogout={handleLogout}
       />
 
@@ -230,6 +246,7 @@ export default function DashboardLayout({
               projectName={projectName}
               projectCount={projectCount}
               albumCount={albumCount}
+              currentPlan={billingPlan}
               onLogout={handleLogout}
             />
           </aside>
@@ -244,7 +261,28 @@ export default function DashboardLayout({
           <NotificationBell />
         </div>
         <main className="p-6 lg:p-8 min-h-screen">
-          {children}
+          {/* Trial warning banner */}
+          {billingPlan === "trial" && billingDaysLeft !== null && billingDaysLeft <= 5 && billingDaysLeft > 0 && (
+            <div
+              className="mb-4 p-3 rounded-xl text-sm text-center font-medium"
+              style={{
+                background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)",
+                border: "1px solid rgba(245, 158, 11, 0.3)",
+                color: "#F59E0B",
+              }}
+            >
+              {billingDaysLeft === 1
+                ? "נשאר לך יום אחד של ניסיון! שדרג עכשיו כדי להמשיך."
+                : `נשארו לך ${billingDaysLeft} ימי ניסיון. שדרג את התוכנית שלך כדי להמשיך בלי הפרעות.`}
+            </div>
+          )}
+
+          {/* Show Paywall if plan expired, otherwise show content */}
+          {!billingLoading && billingPlan === "expired" ? (
+            <Paywall daysLeft={billingDaysLeft} currentPlan={billingPlan} />
+          ) : (
+            children
+          )}
         </main>
       </div>
 
@@ -283,6 +321,7 @@ function MobileSidebarContent({
   projectName,
   projectCount = 0,
   albumCount = 0,
+  currentPlan = "trial",
   onLogout,
 }: {
   userEmail: string;
@@ -290,11 +329,13 @@ function MobileSidebarContent({
   projectName?: string;
   projectCount?: number;
   albumCount?: number;
+  currentPlan?: string;
   onLogout: () => void;
 }) {
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href;
   const displayName = userEmail?.split("@")[0] || "";
+  const planLabel = PLAN_LABELS[currentPlan] || currentPlan;
 
   const mainNav = [
     { href: "/dashboard", label: "דשבורד", emoji: "\u{1F3E0}" },
@@ -437,7 +478,7 @@ function MobileSidebarContent({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm text-white font-medium truncate">{displayName}</p>
-            <p className="text-[11px] truncate" style={{ color: "#9DA3B4" }}>תוכנית Pro</p>
+            <p className="text-[11px] truncate" style={{ color: "#9DA3B4" }}>תוכנית {planLabel}</p>
           </div>
           <button onClick={onLogout} className="cursor-pointer" style={{ color: "#9DA3B4" }} title="יציאה">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
