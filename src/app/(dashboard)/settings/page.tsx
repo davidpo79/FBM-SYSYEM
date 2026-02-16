@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { PLAN_LABELS, PLAN_PRICES, CONSULTING_PRODUCT } from "@/lib/plan-limits";
+import PaymentModal from "@/components/PaymentModal";
 
 type Tab = "general" | "plan" | "invoices";
 
@@ -49,6 +50,20 @@ export default function SettingsPage() {
   const [currentPlan, setCurrentPlan] = useState<string>("trial");
   const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
   const [consultingLoading, setConsultingLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+
+  // Reset loading state when user navigates back
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        setUpgradeLoading(null);
+        setConsultingLoading(false);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
 
   useEffect(() => {
     async function loadProfile() {
@@ -95,7 +110,7 @@ export default function SettingsPage() {
       if (!res.ok || !json.paymentUrl) {
         throw new Error(json.error || "Failed to create checkout");
       }
-      window.location.href = json.paymentUrl;
+      setPaymentUrl(json.paymentUrl);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       console.error("handleUpgrade error:", msg);
@@ -117,7 +132,7 @@ export default function SettingsPage() {
       if (!res.ok || !json.paymentUrl) {
         throw new Error(json.error || "Failed to create checkout");
       }
-      window.location.href = json.paymentUrl;
+      setPaymentUrl(json.paymentUrl);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       console.error("handleConsulting error:", msg);
@@ -125,6 +140,46 @@ export default function SettingsPage() {
       setConsultingLoading(false);
     }
   };
+
+  const handleCancelSubscription = async () => {
+    if (!confirm("האם אתה בטוח שברצונך לבטל את המנוי? תוכל להמשיך להשתמש עד סוף תקופת החיוב הנוכחית.")) {
+      return;
+    }
+    setCancelLoading(true);
+    setError("");
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/billing/cancel", {
+        method: "POST",
+        headers,
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to cancel subscription");
+      }
+      setCurrentPlan("trial");
+      alert("המנוי בוטל בהצלחה.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      setError(`שגיאה בביטול המנוי: ${msg}`);
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handlePaymentComplete = useCallback(() => {
+    setPaymentUrl(null);
+    setUpgradeLoading(null);
+    setConsultingLoading(false);
+    // Reload to get updated plan status
+    window.location.reload();
+  }, []);
+
+  const handlePaymentClose = useCallback(() => {
+    setPaymentUrl(null);
+    setUpgradeLoading(null);
+    setConsultingLoading(false);
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -217,6 +272,8 @@ export default function SettingsPage() {
     { key: "invoices", label: "חשבוניות" },
   ];
 
+  const isActivePlan = currentPlan === "standard" || currentPlan === "premium";
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-6">הגדרות</h1>
@@ -306,10 +363,19 @@ export default function SettingsPage() {
           )}
 
           {/* Current plan info */}
-          <div className="card-static p-4 mb-6">
+          <div className="card-static p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
             <p className="text-sm text-[var(--text-secondary)]">
               התוכנית הנוכחית שלך: <span className="font-bold text-[var(--gold)]">{PLAN_LABELS[currentPlan] || currentPlan}</span>
             </p>
+            {isActivePlan && (
+              <button
+                onClick={handleCancelSubscription}
+                disabled={cancelLoading}
+                className="text-xs text-red-500 hover:text-red-700 underline cursor-pointer disabled:opacity-50"
+              >
+                {cancelLoading ? "מבטל..." : "בטל מנוי"}
+              </button>
+            )}
           </div>
 
           {/* Subscription plans */}
@@ -320,13 +386,8 @@ export default function SettingsPage() {
               return (
                 <div
                   key={plan.key}
-                  className={`bg-[var(--card-bg)] border rounded-[16px] p-6 relative ${
-                    isCurrent
-                      ? "border-[var(--gold)] gold-glow"
-                      : plan.key === "premium"
-                        ? "border-[var(--gold)]"
-                        : "border-[var(--card-border)]"
-                  }`}
+                  className="bg-[var(--card-bg)] border rounded-[16px] p-6 relative flex flex-col"
+                  style={{ minHeight: "380px" }}
                 >
                   {isCurrent && (
                     <span className="absolute -top-3 right-4 bg-[var(--gold)] text-white text-xs font-bold px-3 py-1 rounded-full">
@@ -339,11 +400,12 @@ export default function SettingsPage() {
                     </span>
                   )}
                   <h3 className="text-xl font-bold text-[var(--text-primary)] mb-1">{plan.name}</h3>
-                  <div className="flex items-baseline gap-1 mb-4">
+                  <div className="flex items-baseline gap-1 mb-1">
                     <span className="text-3xl font-bold text-[var(--text-primary)]">&#8362;{plan.price}</span>
                     <span className="text-sm text-[var(--text-muted)]">{plan.period}</span>
                   </div>
-                  <ul className="space-y-2 mb-6">
+                  <p className="text-[10px] text-[var(--text-muted)] mb-4">*המחירים לא כוללים מע&quot;מ</p>
+                  <ul className="space-y-2 mb-6 flex-1">
                     {plan.features.map((f, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isCurrent ? "var(--gold)" : "var(--success)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -356,13 +418,13 @@ export default function SettingsPage() {
                   <button
                     onClick={() => !isCurrent && handleUpgrade(plan.key)}
                     disabled={isCurrent || isHigher || upgradeLoading !== null}
-                    className={`w-full py-2.5 rounded-[10px] font-semibold text-sm transition-opacity cursor-pointer disabled:cursor-default ${
+                    className={`w-full py-2.5 rounded-[10px] font-semibold text-sm transition-opacity cursor-pointer disabled:cursor-default mt-auto ${
                       isCurrent
                         ? "bg-[var(--content-bg)] text-[var(--text-muted)]"
                         : "bg-[var(--gold)] text-white hover:opacity-90 disabled:opacity-50"
                     }`}
                   >
-                    {upgradeLoading === plan.key ? "מעבד..." : isCurrent ? "התוכנית הנוכחית" : "שדרג"}
+                    {upgradeLoading === plan.key ? "מעבד..." : isCurrent ? "התוכנית הנוכחית" : "הפעל מנוי חודשי"}
                   </button>
                 </div>
               );
@@ -406,6 +468,14 @@ export default function SettingsPage() {
             החשבוניות שלך יופיעו כאן לאחר ביצוע תשלום
           </p>
         </div>
+      )}
+
+      {paymentUrl && (
+        <PaymentModal
+          url={paymentUrl}
+          onComplete={handlePaymentComplete}
+          onClose={handlePaymentClose}
+        />
       )}
     </div>
   );

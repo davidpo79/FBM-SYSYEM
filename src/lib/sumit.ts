@@ -205,21 +205,24 @@ export async function chargePayment(params: {
 }
 
 /**
- * Create a recurring charge (standing order).
+ * Set up a recurring standing order for a customer after their first payment.
+ * Uses the customer's saved payment method from the initial redirect payment.
  */
-export async function createRecurringCharge(params: {
-  customerName: string;
+export async function setupRecurringCharge(params: {
   customerEmail: string;
   description: string;
   price: number;
-  token: string;
   intervalMonths?: number;
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<{ success: boolean; recurringId?: string; error?: string }> {
   try {
+    // Start the next charge 1 month from now (first payment already done via redirect)
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+
     const response = await sumitRequest("/billing/recurring/charge/", {
       Customer: {
-        Name: params.customerName,
         EmailAddress: params.customerEmail,
+        SearchMode: "AutoCreateOrUpdate",
       },
       Items: [
         {
@@ -231,23 +234,70 @@ export async function createRecurringCharge(params: {
           Quantity: 1,
           UnitPrice: params.price,
           Description: params.description,
+          DurationMonths: params.intervalMonths ?? 1,
+          Recurrence: 0, // 0 = indefinite
+          DateStart: nextMonth.toISOString(),
         },
       ],
-      CreditCardToken: params.token,
-      IntervalMonths: params.intervalMonths ?? 1,
+      UpdateCustomerByEmail: true,
       SendDocumentByEmail: true,
     });
 
     if (response.Status === 0 || response.Data?.StatusCode === 0) {
-      return { success: true };
+      const recurringId = response.Data?.RecurringPaymentID
+        || response.Data?.RecurringID
+        || response.Data?.TransactionID
+        || "";
+      return { success: true, recurringId: String(recurringId) };
     }
 
     return {
       success: false,
-      error: response.UserErrorMessage || "Recurring charge failed",
+      error: response.UserErrorMessage || "Failed to set up recurring charge",
     };
   } catch (e) {
-    console.error("Sumit createRecurringCharge error:", e);
+    console.error("Sumit setupRecurringCharge error:", e);
+    return { success: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+/**
+ * Cancel a customer's recurring charge / standing order.
+ */
+export async function cancelRecurringCharge(params: {
+  customerEmail: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    // First list active recurring items for this customer
+    const listResponse = await sumitRequest("/billing/recurring/listforcustomer/", {
+      Customer: {
+        EmailAddress: params.customerEmail,
+        SearchMode: "AutoCreateOrUpdate",
+      },
+    });
+
+    const items = listResponse.Data?.Items as Array<{ ID?: string; RecurringPaymentID?: string }> | undefined;
+    if (!items || items.length === 0) {
+      return { success: true }; // No active recurring items
+    }
+
+    // Cancel each active recurring item
+    for (const item of items) {
+      const itemId = item.ID || item.RecurringPaymentID;
+      if (!itemId) continue;
+
+      await sumitRequest("/billing/recurring/cancel/", {
+        Customer: {
+          EmailAddress: params.customerEmail,
+          SearchMode: "AutoCreateOrUpdate",
+        },
+        RecurringPaymentID: itemId,
+      });
+    }
+
+    return { success: true };
+  } catch (e) {
+    console.error("Sumit cancelRecurringCharge error:", e);
     return { success: false, error: e instanceof Error ? e.message : "Unknown error" };
   }
 }

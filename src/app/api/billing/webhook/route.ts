@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { PLAN_PRICES } from "@/lib/plan-limits";
+import { setupRecurringCharge } from "@/lib/sumit";
 
 /**
  * Sumit webhook handler.
  * Called by Sumit after a payment is completed.
- * Updates user plan in user_profiles.
+ * Updates user plan and sets up recurring monthly billing.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
       || "";
     const amount = body?.Amount
       || body?.Data?.Amount
+      || body?.Items?.[0]?.UnitPrice
       || body?.Items?.[0]?.Price
       || 0;
     const statusCode = body?.StatusCode ?? body?.Data?.StatusCode ?? body?.Status ?? -1;
@@ -58,8 +60,32 @@ export async function POST(req: NextRequest) {
 
     // Determine plan from amount
     let plan = "standard";
+    let planPrice = PLAN_PRICES.standard;
     if (amount >= PLAN_PRICES.premium) {
       plan = "premium";
+      planPrice = PLAN_PRICES.premium;
+    }
+
+    const planLabel = plan === "premium" ? "פרימיום" : "סטנדרט";
+
+    // Set up recurring monthly charge using customer's saved payment method
+    let recurringId = "";
+    try {
+      const recurringResult = await setupRecurringCharge({
+        customerEmail,
+        description: `FBM Studio - תוכנית ${planLabel} (מנוי חודשי)`,
+        price: planPrice,
+        intervalMonths: 1,
+      });
+
+      if (recurringResult.success) {
+        recurringId = recurringResult.recurringId || "";
+        console.log(`Sumit webhook: recurring charge set up for ${customerEmail}, ID: ${recurringId}`);
+      } else {
+        console.error("Sumit webhook: failed to set up recurring:", recurringResult.error);
+      }
+    } catch (recurringError) {
+      console.error("Sumit webhook: recurring charge setup error:", recurringError);
     }
 
     // Update user profile
@@ -72,6 +98,7 @@ export async function POST(req: NextRequest) {
           subscription_status: "active",
           plan_price: amount,
           sumit_customer_id: transactionId || undefined,
+          ...(recurringId ? { sumit_recurring_id: recurringId } : {}),
         },
         { onConflict: "user_id" },
       );
@@ -81,7 +108,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
     }
 
-    console.log(`Sumit webhook: updated user ${user.email} to plan ${plan}`);
+    console.log(`Sumit webhook: updated user ${user.email} to plan ${plan} (recurring: ${recurringId || "none"})`);
     return NextResponse.json({ received: true, processed: true });
   } catch (error) {
     console.error("Sumit webhook error:", error);

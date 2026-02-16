@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     // Determine URLs
     const origin = req.headers.get("origin") || "https://fbm-studio.com";
-    const redirectUrl = `${origin}/settings?payment=success&plan=${plan}`;
+    const redirectUrl = `${origin}/payment-complete?plan=${plan}`;
     const webhookUrl = `${origin}/api/billing/webhook`;
 
     // Verify Sumit credentials are configured

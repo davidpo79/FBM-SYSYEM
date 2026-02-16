@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     // Determine URLs
     const origin = req.headers.get("origin") || "https://fbm-studio.com";
-    const redirectUrl = `${origin}/settings?consultation=success`;
+    const redirectUrl = `${origin}/payment-complete?type=consulting`;
     const webhookUrl = `${origin}/api/billing/consultation-webhook`;
 
     const result = await createPaymentLink({
