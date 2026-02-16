@@ -28,10 +28,10 @@ export async function generateImage(
   const enhancedPrompt = prompt + dimensionHint;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-pro-image-preview",
+    model: "gemini-2.0-flash-preview-image-generation",
     contents: enhancedPrompt,
     config: {
-      responseModalities: ["TEXT", "IMAGE"],
+      responseModalities: ["IMAGE"],
       ...(aspectRatio ? { aspectRatio } : {}),
     },
   });

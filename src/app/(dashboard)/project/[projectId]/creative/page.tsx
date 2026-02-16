@@ -260,7 +260,7 @@ export default function CreativePage() {
   const readyCount = Object.values(scriptCreatives).filter((c) => c.state === "ready").length;
 
   return (
-    <div>
+    <div className="pb-20 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 animate-in">
         <h2 className="text-xl font-bold text-[var(--text-primary)]">
@@ -335,9 +335,9 @@ export default function CreativePage() {
               {creative.state === "ready" && (
                 <div className="p-5">
                   {/* Two column: Preview + Edit */}
-                  <div className="flex flex-col lg:flex-row gap-6">
+                  <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
                     {/* LEFT: Template Preview */}
-                    <div className="lg:w-[55%] flex-shrink-0">
+                    <div className="lg:w-[55%] flex-shrink-0 max-h-[65vh] lg:max-h-none overflow-hidden">
                       <TemplatePreview
                         template={template}
                         headline={creative.headline}
@@ -576,10 +576,10 @@ export default function CreativePage() {
             </p>
           )}
           <button
-            onClick={() => router.push(`/project/${projectId}/album`)}
+            onClick={() => router.push(`/project/${projectId}/copy`)}
             className="mt-4 btn-gold text-lg !px-8 !py-3"
           >
-            עבור לאלבום הקריאטיבים
+            המשך לקופי למודעות
           </button>
         </div>
       )}

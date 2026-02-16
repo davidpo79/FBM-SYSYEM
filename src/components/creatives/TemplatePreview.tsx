@@ -146,6 +146,7 @@ export default function TemplatePreview({
           aspectRatio: format === "story" ? "9 / 16" : "1 / 1",
           width: "100%",
           maxWidth: format === "story" ? "450px" : "500px",
+          maxHeight: "60vh",
         }}
       >
         {/* Layer 1: Background — custom image or template gradient */}
