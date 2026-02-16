@@ -224,7 +224,7 @@ export default function StudentDetailPage({
                   </p>
                 </div>
                 <Link
-                  href={`/project/${project.id}/strategy`}
+                  href={`/admin/students/${userId}/project/${project.id}`}
                   className="btn-outline text-xs !py-1.5 !px-3 !rounded-lg"
                 >
                   צפה בפרויקט
