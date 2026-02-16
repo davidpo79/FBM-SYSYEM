@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
 import TemplatePreview from "@/components/creatives/TemplatePreview";
+import type { TextStyleProps } from "@/components/creatives/TemplatePreview";
 import { TEMPLATES, suggestTemplate } from "@/components/creatives/templates";
 
 import type { CreativeSuggestion, FormatType } from "@/types";
@@ -84,6 +85,150 @@ const INITIAL_CHAT_MSG: ChatMessage = {
   role: "assistant",
   text: "שלום! אני מומחה קריאטיב ופרסום עם 15 שנות ניסיון.\nאני כאן לעזור לך עם כותרות, הצעת פיילוט 500 ₪, CTA, ורעיונות לרקע.\n\nהצעת הפיילוט ב-500 ₪ היא הלב של המודעה — זו ההצעה שגורמת לאנשים ללחוץ.\n\nאיך אוכל לעזור? למשל:\n- \"תציע הצעה חדשה לקריאטיב\"\n- \"שפר את הצעת הפיילוט של 500 ₪\"\n- \"תן רעיונות ל-CTA\"\n- \"הצע רעיון לרקע\"",
 };
+
+/* ── Hebrew Fonts ── */
+const HEBREW_FONTS = [
+  { value: "Rubik, sans-serif", label: "רוביק (Rubik)" },
+  { value: "Heebo, sans-serif", label: "חיבו (Heebo)" },
+  { value: "Assistant, sans-serif", label: "אסיסטנט (Assistant)" },
+  { value: "'Varela Round', sans-serif", label: "וארלה (Varela Round)" },
+  { value: "'David Libre', serif", label: "דוד (David Libre)" },
+  { value: "'Frank Ruhl Libre', serif", label: "פרנק רוהל (Frank Ruhl)" },
+  { value: "'Noto Sans Hebrew', sans-serif", label: "נוטו (Noto Sans)" },
+  { value: "'Secular One', sans-serif", label: "סקולר (Secular One)" },
+  { value: "Alef, sans-serif", label: "אלף (Alef)" },
+  { value: "Karantina, sans-serif", label: "קרנטינה (Karantina)" },
+];
+
+/* ── Text Style Panel ── */
+function TextStylePanel({
+  label,
+  style,
+  onChange,
+  collapsed,
+}: {
+  label: string;
+  style: TextStyleProps;
+  onChange: (s: TextStyleProps) => void;
+  collapsed?: boolean;
+}) {
+  if (collapsed) return null;
+
+  const isBold = style.fontWeight === "bold" || style.fontWeight === "800" || style.fontWeight === "700";
+  const isItalic = style.fontStyle === "italic";
+  const isUnderline = style.textDecoration === "underline";
+
+  return (
+    <div className="space-y-3 p-3 bg-[var(--content-bg)] dark:bg-gray-900/30 rounded-xl border border-[var(--card-border)]">
+      <p className="text-xs font-bold text-[var(--text-primary)]">{label}</p>
+
+      {/* Font Size Slider */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-[11px] text-[var(--text-muted)]">גודל פונט</label>
+          <span className="text-[11px] font-bold text-[var(--gold)] tabular-nums min-w-[32px] text-center">
+            {style.fontSize ?? 28}px
+          </span>
+        </div>
+        <input
+          type="range"
+          min={12}
+          max={60}
+          step={1}
+          value={style.fontSize ?? 28}
+          onChange={(e) => onChange({ ...style, fontSize: Number(e.target.value) })}
+          className="w-full h-2 rounded-full appearance-none cursor-pointer"
+          style={{
+            background: `linear-gradient(to left, var(--gold) ${((style.fontSize ?? 28) - 12) / 48 * 100}%, var(--card-border) ${((style.fontSize ?? 28) - 12) / 48 * 100}%)`,
+          }}
+        />
+        <div className="flex justify-between text-[10px] text-[var(--text-muted)] mt-0.5">
+          <span>12</span>
+          <span>60</span>
+        </div>
+      </div>
+
+      {/* Font Family */}
+      <div>
+        <label className="block text-[11px] text-[var(--text-muted)] mb-1">סוג פונט</label>
+        <select
+          value={style.fontFamily || "Rubik, sans-serif"}
+          onChange={(e) => onChange({ ...style, fontFamily: e.target.value })}
+          className="w-full px-3 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gold)] cursor-pointer"
+          style={{ fontFamily: style.fontFamily || "Rubik, sans-serif" }}
+        >
+          {HEBREW_FONTS.map((f) => (
+            <option key={f.value} value={f.value} style={{ fontFamily: f.value }}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Font Style Buttons (Bold, Italic, Underline) */}
+      <div>
+        <label className="block text-[11px] text-[var(--text-muted)] mb-1">עיצוב</label>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => onChange({ ...style, fontWeight: isBold ? "normal" : "bold" })}
+            className={`flex-1 py-2 rounded-lg border text-sm font-bold cursor-pointer transition-all ${
+              isBold
+                ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)]"
+                : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+            }`}
+            title="מודגש"
+          >
+            B
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ ...style, fontStyle: isItalic ? "normal" : "italic" })}
+            className={`flex-1 py-2 rounded-lg border text-sm cursor-pointer transition-all ${
+              isItalic
+                ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)]"
+                : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+            }`}
+            style={{ fontStyle: "italic" }}
+            title="נטוי"
+          >
+            I
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ ...style, textDecoration: isUnderline ? "none" : "underline" })}
+            className={`flex-1 py-2 rounded-lg border text-sm cursor-pointer transition-all ${
+              isUnderline
+                ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)]"
+                : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+            }`}
+            style={{ textDecoration: "underline" }}
+            title="קו תחתון"
+          >
+            U
+          </button>
+        </div>
+      </div>
+
+      {/* Preview */}
+      <div
+        className="p-3 rounded-lg bg-black/80 text-center overflow-hidden"
+        style={{
+          fontFamily: style.fontFamily || "Rubik, sans-serif",
+          fontSize: `${Math.min(style.fontSize ?? 28, 24)}px`,
+          fontWeight: style.fontWeight || "normal",
+          fontStyle: style.fontStyle || "normal",
+          textDecoration: style.textDecoration || "none",
+          color: "#fff",
+          direction: "rtl",
+          lineHeight: 1.4,
+        }}
+      >
+        טקסט לדוגמה
+      </div>
+    </div>
+  );
+}
 
 /* ── Creative Chat Modal ── */
 function CreativeChatModal({
@@ -302,6 +447,10 @@ interface ScriptCreative {
   ownerPhoto?: string;
   ownerName: string;
   ownerTitle: string;
+  // Text styling
+  headlineStyle?: TextStyleProps;
+  subtitleStyle?: TextStyleProps;
+  syncTextStyle: boolean; // when true, headline style applies to both
 }
 
 export default function CreativePage() {
@@ -379,6 +528,7 @@ export default function CreativePage() {
       showOwnerProfile: true,
       ownerName: "",
       ownerTitle: "",
+      syncTextStyle: true,
     };
   };
 
@@ -429,6 +579,7 @@ export default function CreativePage() {
             showOwnerProfile: true,
             ownerName: project?.user_name || "",
             ownerTitle: selectedNiche?.name || "",
+            syncTextStyle: true,
           },
         }));
 
@@ -503,6 +654,27 @@ export default function CreativePage() {
       ...prev,
       [scriptIdx]: { ...prev[scriptIdx], [field]: value },
     }));
+  }, []);
+
+  /* ── Update text style ── */
+  const updateTextStyle = useCallback((scriptIdx: number, target: "headline" | "subtitle", style: TextStyleProps) => {
+    setScriptCreatives((prev) => {
+      const creative = prev[scriptIdx];
+      if (!creative) return prev;
+      if (target === "headline") {
+        const update: Partial<ScriptCreative> = { headlineStyle: style };
+        // If synced, also apply to subtitle (with different default fontSize)
+        if (creative.syncTextStyle) {
+          update.subtitleStyle = {
+            ...style,
+            fontSize: style.fontSize ? Math.max(12, Math.round(style.fontSize * 0.6)) : undefined,
+          };
+        }
+        return { ...prev, [scriptIdx]: { ...creative, ...update } };
+      } else {
+        return { ...prev, [scriptIdx]: { ...creative, subtitleStyle: style } };
+      }
+    });
   }, []);
 
   /* ── Generate AI background ── */
@@ -700,6 +872,8 @@ export default function CreativePage() {
                         ownerPhoto={creative.showOwnerProfile ? creative.ownerPhoto : undefined}
                         ownerName={creative.showOwnerProfile ? creative.ownerName : ""}
                         ownerTitle={creative.showOwnerProfile ? creative.ownerTitle : ""}
+                        headlineStyle={creative.headlineStyle}
+                        subtitleStyle={creative.subtitleStyle}
                       />
                     </div>
 
@@ -788,6 +962,58 @@ export default function CreativePage() {
                             maxLength={45}
                             placeholder="שלח לי הודעה לתיאום שיחה"
                             className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
+                          />
+                        )}
+                      </div>
+
+                      {/* ── Text Styling Section ── */}
+                      <div className="border border-[var(--card-border)] rounded-xl p-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-bold text-[var(--text-primary)]">
+                            עיצוב טקסט
+                          </label>
+                        </div>
+
+                        {/* Headline style */}
+                        <TextStylePanel
+                          label="כותרת ראשית"
+                          style={creative.headlineStyle || { fontSize: template.headline.fontSize, fontWeight: template.headline.fontWeight, fontFamily: "Rubik, sans-serif", fontStyle: "normal", textDecoration: "none" }}
+                          onChange={(s) => updateTextStyle(idx, "headline", s)}
+                        />
+
+                        {/* Sync toggle */}
+                        <div className="flex items-center justify-between py-2 px-1">
+                          <label className="text-xs font-semibold text-[var(--text-secondary)]">
+                            עיצוב זהה לכותרת ותת-כותרת
+                          </label>
+                          <ToggleSwitch
+                            enabled={creative.syncTextStyle ?? true}
+                            onChange={(v) => {
+                              updateField(idx, "syncTextStyle", v);
+                              // When turning sync ON, apply headline style to subtitle
+                              if (v && creative.headlineStyle) {
+                                const subStyle: TextStyleProps = {
+                                  ...creative.headlineStyle,
+                                  fontSize: creative.headlineStyle.fontSize
+                                    ? Math.max(12, Math.round(creative.headlineStyle.fontSize * 0.6))
+                                    : undefined,
+                                };
+                                setScriptCreatives((prev) => ({
+                                  ...prev,
+                                  [idx]: { ...prev[idx], subtitleStyle: subStyle, syncTextStyle: true },
+                                }));
+                              }
+                            }}
+                            label="סנכרון עיצוב"
+                          />
+                        </div>
+
+                        {/* Subtitle style - only when NOT synced */}
+                        {!creative.syncTextStyle && (
+                          <TextStylePanel
+                            label="תת-כותרת"
+                            style={creative.subtitleStyle || { fontSize: template.subtitle.fontSize, fontWeight: template.subtitle.fontWeight || "normal", fontFamily: "Rubik, sans-serif", fontStyle: "normal", textDecoration: "none" }}
+                            onChange={(s) => updateTextStyle(idx, "subtitle", s)}
                           />
                         )}
                       </div>

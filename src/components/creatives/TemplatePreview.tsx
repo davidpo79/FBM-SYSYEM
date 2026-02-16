@@ -8,6 +8,14 @@ import DraggableCTA from "./DraggableCTA";
 import DraggableProfile from "./DraggableProfile";
 import { exportCanvasToPng, renderCanvasToBase64 } from "./CanvasExport";
 
+export interface TextStyleProps {
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  fontStyle?: string; // "normal" | "italic"
+  textDecoration?: string; // "none" | "underline"
+}
+
 interface TemplatePreviewProps {
   template: CreativeTemplate;
   headline: string;
@@ -20,6 +28,8 @@ interface TemplatePreviewProps {
   ownerPhoto?: string;
   ownerName?: string;
   ownerTitle?: string;
+  headlineStyle?: TextStyleProps;
+  subtitleStyle?: TextStyleProps;
 }
 
 export default function TemplatePreview({
@@ -34,6 +44,8 @@ export default function TemplatePreview({
   ownerPhoto,
   ownerName,
   ownerTitle,
+  headlineStyle,
+  subtitleStyle,
 }: TemplatePreviewProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -188,9 +200,12 @@ export default function TemplatePreview({
           text={headline}
           x={headlinePos.x}
           y={headlinePos.y}
-          fontSize={template.headline.fontSize}
+          fontSize={headlineStyle?.fontSize ?? template.headline.fontSize}
           color={template.headline.color}
-          fontWeight={template.headline.fontWeight}
+          fontWeight={headlineStyle?.fontWeight ?? template.headline.fontWeight}
+          fontFamily={headlineStyle?.fontFamily}
+          fontStyle={headlineStyle?.fontStyle}
+          textDecoration={headlineStyle?.textDecoration}
           visible={!!headline}
           onDragEnd={(nx, ny) => setHeadlinePos({ x: nx, y: ny })}
           maxWidth={template.headline.maxWidth}
@@ -204,9 +219,12 @@ export default function TemplatePreview({
           text={subtitle}
           x={subtitlePos.x}
           y={subtitlePos.y}
-          fontSize={template.subtitle.fontSize}
+          fontSize={subtitleStyle?.fontSize ?? template.subtitle.fontSize}
           color={template.subtitle.color}
-          fontWeight={template.subtitle.fontWeight || "normal"}
+          fontWeight={subtitleStyle?.fontWeight ?? (template.subtitle.fontWeight || "normal")}
+          fontFamily={subtitleStyle?.fontFamily}
+          fontStyle={subtitleStyle?.fontStyle}
+          textDecoration={subtitleStyle?.textDecoration}
           maxWidth={template.subtitle.maxWidth || "85%"}
           textShadow={template.subtitle.textShadow}
           textAlign={template.subtitle.textAlign || "center"}

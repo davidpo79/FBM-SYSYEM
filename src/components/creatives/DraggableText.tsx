@@ -9,6 +9,9 @@ export interface DraggableTextProps {
   fontSize: number; // px
   color: string;
   fontWeight?: string;
+  fontFamily?: string;
+  fontStyle?: string; // "normal" | "italic"
+  textDecoration?: string; // "none" | "underline"
   maxWidth?: string;
   textAlign?: CanvasTextAlign;
   textShadow?: string;
@@ -26,6 +29,9 @@ export default function DraggableText({
   fontSize,
   color,
   fontWeight = "bold",
+  fontFamily,
+  fontStyle = "normal",
+  textDecoration = "none",
   maxWidth = "85%",
   textAlign = "center",
   textShadow = "0 2px 8px rgba(0,0,0,0.8)",
@@ -163,6 +169,9 @@ export default function DraggableText({
           fontSize: `${fontSize}px`,
           color,
           fontWeight,
+          fontFamily: fontFamily || undefined,
+          fontStyle,
+          textDecoration,
           textShadow,
           direction: "rtl",
           ...(useFullWidth
