@@ -83,6 +83,7 @@ export default function SettingsPage() {
 
   const handleUpgrade = async (planKey: string) => {
     setUpgradeLoading(planKey);
+    setError("");
     try {
       const headers = await getAuthHeaders();
       const res = await fetch("/api/billing/create-checkout", {
@@ -95,14 +96,17 @@ export default function SettingsPage() {
         throw new Error(json.error || "Failed to create checkout");
       }
       window.location.href = json.paymentUrl;
-    } catch {
-      setError("שגיאה ביצירת קישור תשלום");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      console.error("handleUpgrade error:", msg);
+      setError(`שגיאה ביצירת קישור תשלום: ${msg}`);
       setUpgradeLoading(null);
     }
   };
 
   const handleConsulting = async () => {
     setConsultingLoading(true);
+    setError("");
     try {
       const headers = await getAuthHeaders();
       const res = await fetch("/api/billing/consulting-checkout", {
@@ -114,8 +118,10 @@ export default function SettingsPage() {
         throw new Error(json.error || "Failed to create checkout");
       }
       window.location.href = json.paymentUrl;
-    } catch {
-      setError("שגיאה ביצירת קישור תשלום לייעוץ");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      console.error("handleConsulting error:", msg);
+      setError(`שגיאה ביצירת קישור תשלום לייעוץ: ${msg}`);
       setConsultingLoading(false);
     }
   };
@@ -293,6 +299,12 @@ export default function SettingsPage() {
       {/* Plan tab */}
       {tab === "plan" && (
         <div>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-[10px] text-sm text-red-600 text-right">
+              {error}
+            </div>
+          )}
+
           {/* Current plan info */}
           <div className="card-static p-4 mb-6">
             <p className="text-sm text-[var(--text-secondary)]">

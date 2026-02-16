@@ -39,6 +39,15 @@ export async function POST(req: NextRequest) {
     const redirectUrl = `${origin}/settings?payment=success&plan=${plan}`;
     const webhookUrl = `${origin}/api/billing/webhook`;
 
+    // Verify Sumit credentials are configured
+    if (!process.env.SUMIT_COMPANY_ID || !process.env.SUMIT_API_KEY) {
+      console.error("create-checkout: SUMIT_COMPANY_ID or SUMIT_API_KEY not set");
+      return NextResponse.json(
+        { error: "Payment gateway not configured. Set SUMIT_COMPANY_ID and SUMIT_API_KEY in environment variables." },
+        { status: 500 },
+      );
+    }
+
     const planLabel = plan === "premium" ? "פרימיום" : "סטנדרט";
 
     const result = await createPaymentLink({

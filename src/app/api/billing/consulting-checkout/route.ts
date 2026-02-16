@@ -27,6 +27,15 @@ export async function POST(req: NextRequest) {
     const customerName = profile?.full_name || user.email?.split("@")[0] || "Customer";
     const customerEmail = user.email || "";
 
+    // Verify Sumit credentials are configured
+    if (!process.env.SUMIT_COMPANY_ID || !process.env.SUMIT_API_KEY) {
+      console.error("consulting-checkout: SUMIT_COMPANY_ID or SUMIT_API_KEY not set");
+      return NextResponse.json(
+        { error: "Payment gateway not configured. Set SUMIT_COMPANY_ID and SUMIT_API_KEY in environment variables." },
+        { status: 500 },
+      );
+    }
+
     // Determine URLs
     const origin = req.headers.get("origin") || "https://fbm-studio.com";
     const redirectUrl = `${origin}/settings?consultation=success`;
