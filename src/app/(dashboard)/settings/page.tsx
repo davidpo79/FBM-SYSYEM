@@ -72,12 +72,22 @@ export default function SettingsPage() {
     loadProfile();
   }, []);
 
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    return {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
   const handleUpgrade = async (planKey: string) => {
     setUpgradeLoading(planKey);
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch("/api/billing/create-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ plan: planKey }),
       });
       const json = await res.json();
@@ -94,9 +104,10 @@ export default function SettingsPage() {
   const handleConsulting = async () => {
     setConsultingLoading(true);
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch("/api/billing/consulting-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
       });
       const json = await res.json();
       if (!res.ok || !json.paymentUrl) {

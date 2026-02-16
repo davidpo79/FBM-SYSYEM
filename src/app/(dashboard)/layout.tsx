@@ -87,14 +87,19 @@ export default function DashboardLayout({
           });
 
         // Fetch billing status
-        fetch("/api/billing/status")
-          .then((r) => r.json())
-          .then((d) => {
-            setBillingPlan(d.plan || "trial");
-            setBillingDaysLeft(d.daysLeft ?? null);
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          const token = session?.access_token;
+          fetch("/api/billing/status", {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
           })
-          .catch(() => {})
-          .finally(() => setBillingLoading(false));
+            .then((r) => r.json())
+            .then((d) => {
+              setBillingPlan(d.plan || "trial");
+              setBillingDaysLeft(d.daysLeft ?? null);
+            })
+            .catch(() => {})
+            .finally(() => setBillingLoading(false));
+        });
       }
     });
   }, [router]);
