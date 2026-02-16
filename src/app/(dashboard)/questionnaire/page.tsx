@@ -411,14 +411,25 @@ export default function QuestionnairePage() {
             dir="rtl"
             className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-lg"
           />
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 flex items-center gap-1">
-            <span>💡</span>
-            <span>
-              {ownerNiche.trim()
-                ? `השאלון יותאם ל${ownerNiche.trim()} — מלא את התשובות כאילו בעל העסק מדבר`
-                : "השאלון יותאם למשווק FBM — ימולא בגוף ראשון"}
-            </span>
-          </p>
+
+          {/* FBM marketer hint */}
+          <div className="mt-4 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+            <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
+              למשווקי FBM
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
+              בתוכנית ההכשרה של דוד, יש להשאיר את השדה הזה ריק והשאלון יותאם עבורך
+            </p>
+          </div>
+
+          {ownerNiche.trim() && (
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 flex items-center gap-1">
+              <span>💡</span>
+              <span>
+                השאלון יותאם ל{ownerNiche.trim()} — מלא את התשובות כאילו בעל העסק מדבר
+              </span>
+            </p>
+          )}
 
           <div className="flex items-center justify-between mt-6">
             <button
