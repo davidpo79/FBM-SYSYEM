@@ -56,10 +56,10 @@ function ToggleSwitch({ enabled, onChange, label }: { enabled: boolean; onChange
 }
 
 /* ── Extract structured suggestion from AI chat response ── */
-function extractSuggestion(text: string): { headline?: string; subtitle?: string; cta?: string } {
-  const result: { headline?: string; subtitle?: string; cta?: string } = {};
+function extractSuggestion(text: string): { headline?: string; subtitle?: string; cta?: string; backgroundPrompt?: string } {
+  const result: { headline?: string; subtitle?: string; cta?: string; backgroundPrompt?: string } = {};
 
-  // Match headline: כותרת: "..." or **כותרת:** "..." or כותרת: ...
+  // Match headline: כותרת: "..." or **כותרת:** "..."
   const headlineMatch = text.match(/\*?\*?כותרת\*?\*?[:\s]+["״]([^"״]+)["״]/);
   if (headlineMatch) result.headline = headlineMatch[1].trim();
 
@@ -71,32 +71,46 @@ function extractSuggestion(text: string): { headline?: string; subtitle?: string
   const ctaMatch = text.match(/\*?\*?CTA\*?\*?[:\s]+["״]([^"״]+)["״]/);
   if (ctaMatch) result.cta = ctaMatch[1].trim();
 
+  // Match background prompt suggestion
+  const bgMatch = text.match(/\*?\*?(?:הנחיה לרקע|רקע|Background)[^:]*\*?\*?[:\s]+["״]([^"״]+)["״]/);
+  if (bgMatch) result.backgroundPrompt = bgMatch[1].trim();
+
   return result;
 }
+
+type ChatMessage = { role: "user" | "assistant"; text: string };
+
+const INITIAL_CHAT_MSG: ChatMessage = {
+  role: "assistant",
+  text: "שלום! אני מומחה קריאטיב ופרסום עם 15 שנות ניסיון.\nאני כאן לעזור לך עם כותרות, הצעות פיילוט, CTA, ורעיונות לרקע.\n\nאיך אוכל לעזור? למשל:\n- \"תציע הצעה חדשה לקריאטיב\"\n- \"שפר את הצעת הפיילוט\"\n- \"תן רעיונות ל-CTA\"\n- \"הצע רעיון לרקע\"",
+};
 
 /* ── Creative Chat Modal ── */
 function CreativeChatModal({
   open,
   onClose,
   onApplyAll,
+  messages,
+  setMessages,
   scriptText,
   currentHeadline,
   currentSubtitle,
   currentCta,
+  currentDesignVision,
   niche,
 }: {
   open: boolean;
   onClose: () => void;
-  onApplyAll: (data: { headline?: string; subtitle?: string; cta?: string }) => void;
+  onApplyAll: (data: { headline?: string; subtitle?: string; cta?: string; backgroundPrompt?: string }) => void;
+  messages: ChatMessage[];
+  setMessages: (msgs: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
   scriptText: string;
   currentHeadline: string;
   currentSubtitle: string;
   currentCta: string;
+  currentDesignVision: string;
   niche: string;
 }) {
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([
-    { role: "assistant", text: "שלום! אני מומחה קריאטיב ופרסום עם 15 שנות ניסיון.\nאני כאן לעזור לך עם כותרות, הצעות פיילוט ו-CTA שיביאו תוצאות.\n\nאיך אוכל לעזור? למשל:\n- \"תציע הצעה חדשה לקריאטיב\"\n- \"שפר את הצעת הפיילוט\"\n- \"תן רעיונות לכותרות ו-CTA\"" }
-  ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [appliedIdx, setAppliedIdx] = useState<number | null>(null);
@@ -112,7 +126,7 @@ function CreativeChatModal({
     if (!input.trim() || loading) return;
     const userMsg = input.trim();
     setInput("");
-    setMessages(prev => [...prev, { role: "user", text: userMsg }]);
+    setMessages((prev: ChatMessage[]) => [...prev, { role: "user", text: userMsg }]);
     setLoading(true);
     setAppliedIdx(null);
 
@@ -126,14 +140,15 @@ function CreativeChatModal({
           currentHeadline,
           currentSubtitle,
           currentCta,
+          currentDesignVision,
           niche,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setMessages(prev => [...prev, { role: "assistant", text: json.reply }]);
+      setMessages((prev: ChatMessage[]) => [...prev, { role: "assistant", text: json.reply }]);
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", text: "שגיאה בקבלת תשובה. נסה שוב." }]);
+      setMessages((prev: ChatMessage[]) => [...prev, { role: "assistant", text: "שגיאה בקבלת תשובה. נסה שוב." }]);
     } finally {
       setLoading(false);
     }
@@ -142,12 +157,11 @@ function CreativeChatModal({
   // Find the latest assistant message with extractable content
   const lastAssistantMsg = [...messages].reverse().find(m => m.role === "assistant");
   const extracted = lastAssistantMsg ? extractSuggestion(lastAssistantMsg.text) : {};
-  const hasExtracted = !!(extracted.headline || extracted.subtitle || extracted.cta);
+  const hasExtracted = !!(extracted.headline || extracted.subtitle || extracted.cta || extracted.backgroundPrompt);
 
   const handleApplyAll = () => {
     if (!hasExtracted) return;
     onApplyAll(extracted);
-    // Find the index of the last assistant message
     const idx = messages.length - 1 - [...messages].reverse().findIndex(m => m.role === "assistant");
     setAppliedIdx(idx);
   };
@@ -180,6 +194,7 @@ function CreativeChatModal({
                     ? "bg-[var(--gold)] text-white rounded-br-none"
                     : "bg-gray-100 dark:bg-gray-800 text-[var(--text-primary)] rounded-bl-none"
                 }`}
+                style={{ userSelect: "text" }}
               >
                 {msg.text}
               </div>
@@ -209,6 +224,9 @@ function CreativeChatModal({
               {extracted.cta && (
                 <p className="text-[var(--text-primary)]"><span className="font-semibold">CTA:</span> {extracted.cta}</p>
               )}
+              {extracted.backgroundPrompt && (
+                <p className="text-[var(--text-primary)]"><span className="font-semibold">הנחיה לרקע:</span> {extracted.backgroundPrompt}</p>
+              )}
             </div>
             <button
               type="button"
@@ -222,10 +240,24 @@ function CreativeChatModal({
             >
               {appliedIdx !== null
                 ? "הוחל בהצלחה!"
-                : "החל הכל — כותרת, הצעת פיילוט ו-CTA"}
+                : "החל הכל — כותרת, פיילוט, CTA ורקע"}
             </button>
           </div>
         )}
+
+        {/* Quick suggestion chips */}
+        <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800 flex gap-1.5 flex-wrap">
+          {["תציע הצעה חדשה", "שפר את הכותרת", "הצע רעיון לרקע"].map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => { setInput(q); }}
+              className="text-[11px] px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
 
         {/* Input */}
         <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2">
@@ -287,7 +319,22 @@ export default function CreativePage() {
   const [scriptCreatives, setScriptCreatives] = useState<Record<number, ScriptCreative>>({});
   const [isGeneratingBg, setIsGeneratingBg] = useState<Record<number, boolean>>({});
   const [chatOpen, setChatOpen] = useState<number | null>(null);
+  const [chatMessages, setChatMessages] = useState<Record<number, ChatMessage[]>>({});
   const autoCreatedRef = useRef(false);
+
+  /* ── Get or init chat messages for a script ── */
+  const getChatMessages = useCallback((idx: number): ChatMessage[] => {
+    return chatMessages[idx] || [INITIAL_CHAT_MSG];
+  }, [chatMessages]);
+
+  const setChatMessagesForScript = useCallback((idx: number) => {
+    return (msgs: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
+      setChatMessages(prev => ({
+        ...prev,
+        [idx]: typeof msgs === "function" ? msgs(prev[idx] || [INITIAL_CHAT_MSG]) : msgs,
+      }));
+    };
+  }, []);
 
   // Album
   const albumStorageKey = `album_${projectId}`;

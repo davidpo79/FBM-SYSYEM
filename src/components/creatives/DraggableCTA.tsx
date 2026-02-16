@@ -16,6 +16,8 @@ export interface DraggableCTAProps {
   onDragEnd: (x: number, y: number) => void;
 }
 
+const SNAP_THRESHOLD = 2.5; // % threshold for snapping
+
 export default function DraggableCTA({
   text,
   x,
@@ -31,6 +33,7 @@ export default function DraggableCTA({
 }: DraggableCTAProps) {
   const [pos, setPos] = useState({ x, y });
   const [isDragging, setIsDragging] = useState(false);
+  const [snapH, setSnapH] = useState(false);
   const dragRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef({ ox: 0, oy: 0 });
 
@@ -43,7 +46,7 @@ export default function DraggableCTA({
       const parent = dragRef.current?.parentElement;
       if (!parent) return { px: pos.x, py: pos.y };
       const rect = parent.getBoundingClientRect();
-      const px = Math.max(
+      let px = Math.max(
         0,
         Math.min(100, ((rect.right - clientX - offsetRef.current.ox) / rect.width) * 100),
       );
@@ -51,6 +54,21 @@ export default function DraggableCTA({
         0,
         Math.min(100, ((clientY - rect.top - offsetRef.current.oy) / rect.height) * 100),
       );
+
+      // Snap to horizontal center — approximate center for CTA
+      // CTA center ≈ when right edge is around 35-40% (varies by text length)
+      // Use element width measurement for accuracy
+      const el = dragRef.current;
+      if (el && parent) {
+        const elW = el.getBoundingClientRect().width;
+        const parentW = rect.width;
+        const elWidthPct = (elW / parentW) * 100;
+        const centerX = (100 - elWidthPct) / 2;
+        const isNearCenter = Math.abs(px - centerX) < SNAP_THRESHOLD;
+        setSnapH(isNearCenter);
+        if (isNearCenter) px = centerX;
+      }
+
       return { px, py };
     },
     [pos],
@@ -84,6 +102,7 @@ export default function DraggableCTA({
     (e: React.PointerEvent) => {
       if (!isDragging) return;
       setIsDragging(false);
+      setSnapH(false);
       const el = dragRef.current;
       if (el) el.releasePointerCapture(e.pointerId);
       onDragEnd(pos.x, pos.y);
@@ -94,39 +113,55 @@ export default function DraggableCTA({
   if (!visible) return null;
 
   return (
-    <div
-      ref={dragRef}
-      className="absolute select-none touch-none"
-      style={{
-        right: `${pos.x}%`,
-        top: `${pos.y}%`,
-        cursor: isDragging ? "grabbing" : "grab",
-        outline: isDragging ? "2px dashed rgba(212,168,67,0.8)" : "none",
-        outlineOffset: "4px",
-        borderRadius: "4px",
-        zIndex: isDragging ? 50 : "auto",
-        userSelect: "none",
-      }}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-    >
+    <>
+      {isDragging && snapH && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            left: "50%",
+            top: 0,
+            bottom: 0,
+            width: "1px",
+            backgroundColor: "#FF1493",
+            opacity: 0.7,
+            zIndex: 60,
+          }}
+        />
+      )}
       <div
+        ref={dragRef}
+        className="absolute select-none touch-none"
         style={{
-          backgroundColor: bgColor,
-          color: textColor,
-          borderRadius: `${borderRadius}px`,
-          padding,
-          fontSize: `${fontSize}px`,
-          fontWeight: "bold",
-          textAlign: "center",
-          whiteSpace: "nowrap",
-          boxShadow: shadow,
-          direction: "rtl",
+          right: `${pos.x}%`,
+          top: `${pos.y}%`,
+          cursor: isDragging ? "grabbing" : "grab",
+          outline: isDragging ? "2px dashed rgba(212,168,67,0.8)" : "none",
+          outlineOffset: "4px",
+          borderRadius: "4px",
+          zIndex: isDragging ? 50 : "auto",
+          userSelect: "none",
         }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
       >
-        {text}
+        <div
+          style={{
+            backgroundColor: bgColor,
+            color: textColor,
+            borderRadius: `${borderRadius}px`,
+            padding,
+            fontSize: `${fontSize}px`,
+            fontWeight: "bold",
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            boxShadow: shadow,
+            direction: "rtl",
+          }}
+        >
+          {text}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
