@@ -206,7 +206,11 @@ export default function TemplatePreview({
           y={subtitlePos.y}
           fontSize={template.subtitle.fontSize}
           color={template.subtitle.color}
-          fontWeight="normal"
+          fontWeight={template.subtitle.fontWeight || "normal"}
+          maxWidth={template.subtitle.maxWidth || "85%"}
+          textShadow={template.subtitle.textShadow}
+          textAlign={template.subtitle.textAlign || "center"}
+          lineHeight={template.subtitle.lineHeight || 1.3}
           visible={!!subtitle}
           onDragEnd={(nx, ny) => setSubtitlePos({ x: nx, y: ny })}
         />

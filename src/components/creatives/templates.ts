@@ -25,6 +25,11 @@ export interface CreativeTemplate {
     fontSize: number;
     x: number;
     y: number;
+    fontWeight?: string;
+    maxWidth?: string;
+    textShadow?: string;
+    textAlign?: "right" | "center";
+    lineHeight?: number;
   };
   // CTA button
   cta: {
@@ -49,6 +54,44 @@ type Decoration =
   | { type: "vignette"; intensity: number };
 
 export const TEMPLATES: CreativeTemplate[] = [
+  // 0. FBM Pilot — matches proven high-converting layout
+  {
+    id: "fbm-pilot",
+    name: "FBM פיילוט",
+    preview: "🚀",
+    background: "linear-gradient(160deg, #060610 0%, #0d1b2a 30%, #1b2838 60%, #0d1b2a 100%)",
+    overlay: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.1) 55%, rgba(0,0,0,0.6) 100%)",
+    headline: {
+      color: "#ffffff",
+      fontSize: 30,
+      fontWeight: "800",
+      x: 4, y: 8,
+      maxWidth: "92%",
+      textShadow: "0 3px 20px rgba(0,0,0,0.9)",
+      textAlign: "center",
+      lineHeight: 1.45,
+    },
+    subtitle: {
+      color: "#F5D565",
+      fontSize: 16,
+      x: 6, y: 45,
+      fontWeight: "bold",
+      maxWidth: "88%",
+      textShadow: "0 2px 12px rgba(0,0,0,0.9)",
+      textAlign: "center",
+      lineHeight: 1.5,
+    },
+    cta: {
+      bgColor: "#D4A843", textColor: "#0a0a0a",
+      x: 10, y: 82, borderRadius: 25, fontSize: 15,
+      padding: "14px 28px", shadow: "0 4px 24px rgba(212,168,67,0.5)",
+    },
+    decorations: [
+      { type: "vignette", intensity: 0.35 },
+      { type: "circle-glow", x: 85, y: 5, size: "140px", color: "#D4A843", opacity: 0.05 },
+    ],
+  },
+
   // 1. Dark + Gold — Classic FBM
   {
     id: "dark-gold",
@@ -279,8 +322,8 @@ export const TEMPLATES: CreativeTemplate[] = [
 // Map AI suggestion background to best template
 export function suggestTemplate(bgType: string, color: string): string {
   const map: Record<string, string> = {
-    lighthouse: "ocean",
-    mountain: "nature",
+    lighthouse: "fbm-pilot",
+    mountain: "fbm-pilot",
     path: "sunset",
     office: "premium-black",
     city: "studio",
@@ -288,5 +331,5 @@ export function suggestTemplate(bgType: string, color: string): string {
     forest: "nature",
     studio: "studio",
   };
-  return map[bgType] || (color === "gold" ? "dark-gold" : "ocean");
+  return map[bgType] || (color === "gold" ? "fbm-pilot" : "ocean");
 }

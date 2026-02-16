@@ -278,7 +278,7 @@ export default function CreativePage() {
     return scriptCreatives[idx] || {
       state: "idle",
       suggestion: null,
-      templateId: "dark-gold",
+      templateId: "fbm-pilot",
       headline: "",
       subtitle: "",
       cta: "",
@@ -319,6 +319,9 @@ export default function CreativePage() {
         const suggestion = json.suggestion as CreativeSuggestion;
         const templateId = suggestTemplate(suggestion.background, suggestion.color);
 
+        const pilotSubtitle = suggestion.pilot_subtitle
+          || `פיילוט ב-500 ₪ בלבד. גלה איך להגיע ללקוחות המדויקים ל${selectedNiche?.name || "הנישה שלך"}.`;
+
         setScriptCreatives((prev) => ({
           ...prev,
           [scriptIdx]: {
@@ -326,8 +329,8 @@ export default function CreativePage() {
             suggestion,
             templateId,
             headline: suggestion.main_text,
-            subtitle: `שיווק מבוסס תדר — לידים מדויקים ל${selectedNiche?.name || ""}`.slice(0, 80),
-            cta: suggestion.cta || "שלחו הודעה",
+            subtitle: pilotSubtitle,
+            cta: suggestion.cta || "שלח לי הודעה לתיאום שיחה",
             format: "story",
             showHeadline: true,
             showSubtitle: true,
@@ -644,26 +647,32 @@ export default function CreativePage() {
                         )}
                       </div>
 
-                      {/* Subtitle with toggle */}
+                      {/* Subtitle / Pilot Offer with toggle */}
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <label className="text-sm font-bold text-[var(--text-primary)]">
-                            תת-כותרת
+                            הצעת פיילוט (תת-כותרת)
                           </label>
                           <ToggleSwitch
                             enabled={creative.showSubtitle}
                             onChange={(v) => updateField(idx, "showSubtitle", v)}
-                            label="הצג תת-כותרת"
+                            label="הצג הצעת פיילוט"
                           />
                         </div>
                         {creative.showSubtitle && (
-                          <input
-                            type="text"
-                            value={creative.subtitle}
-                            onChange={(e) => updateField(idx, "subtitle", e.target.value)}
-                            maxLength={80}
-                            className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
-                          />
+                          <>
+                            <textarea
+                              value={creative.subtitle}
+                              onChange={(e) => updateField(idx, "subtitle", e.target.value)}
+                              maxLength={120}
+                              rows={2}
+                              placeholder="פיילוט ב-500 ₪ בלבד. גלה איך להגיע ללקוחות המדויקים..."
+                              className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
+                            />
+                            <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                              הצעת הפיילוט ב-500 ₪ היא מה שגורם לאנשים ללחוץ על המודעה
+                            </p>
+                          </>
                         )}
                       </div>
 
@@ -684,7 +693,8 @@ export default function CreativePage() {
                             type="text"
                             value={creative.cta}
                             onChange={(e) => updateField(idx, "cta", e.target.value)}
-                            maxLength={30}
+                            maxLength={45}
+                            placeholder="שלח לי הודעה לתיאום שיחה"
                             className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
                           />
                         )}

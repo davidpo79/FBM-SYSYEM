@@ -6,6 +6,7 @@ export type FormatType = "feed" | "story";
 
 export interface CreativeSuggestion {
   main_text: string;
+  pilot_subtitle?: string;
   cta: string;
   background: BackgroundType;
   color: ColorType;
