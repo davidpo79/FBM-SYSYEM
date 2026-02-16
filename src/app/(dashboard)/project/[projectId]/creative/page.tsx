@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
-import CanvasEditor from "@/components/creatives/CanvasEditor";
 import TemplatePreview from "@/components/creatives/TemplatePreview";
 import { TEMPLATES, suggestTemplate } from "@/components/creatives/templates";
 
@@ -47,7 +46,8 @@ interface ScriptCreative {
   subtitle: string;
   cta: string;
   format: FormatType;
-  customBackground?: string; // from upload or AI
+  customBackground?: string;
+  designVision?: string;
 }
 
 export default function CreativePage() {
@@ -63,7 +63,6 @@ export default function CreativePage() {
 
   const [creativeError, setCreativeError] = useState("");
   const [scriptCreatives, setScriptCreatives] = useState<Record<number, ScriptCreative>>({});
-  const [advancedOpenIdx, setAdvancedOpenIdx] = useState<number | null>(null);
   const [isGeneratingBg, setIsGeneratingBg] = useState<Record<number, boolean>>({});
 
   // Album
@@ -112,7 +111,6 @@ export default function CreativePage() {
       const scriptParts = splitScripts(scripts);
       const scriptText = scriptParts[scriptIdx] ?? "";
 
-      // Set analyzing state
       setScriptCreatives((prev) => ({
         ...prev,
         [scriptIdx]: {
@@ -133,8 +131,6 @@ export default function CreativePage() {
         if (!res.ok) throw new Error(json.error);
 
         const suggestion = json.suggestion as CreativeSuggestion;
-
-        // Auto-select template based on AI suggestion
         const templateId = suggestTemplate(suggestion.background, suggestion.color);
 
         setScriptCreatives((prev) => ({
@@ -171,14 +167,14 @@ export default function CreativePage() {
   }, []);
 
   /* ── Update text fields ── */
-  const updateField = useCallback((scriptIdx: number, field: "headline" | "subtitle" | "cta" | "format", value: string) => {
+  const updateField = useCallback((scriptIdx: number, field: "headline" | "subtitle" | "cta" | "format" | "designVision", value: string) => {
     setScriptCreatives((prev) => ({
       ...prev,
       [scriptIdx]: { ...prev[scriptIdx], [field]: value },
     }));
   }, []);
 
-  /* ── Generate AI background (advanced) ── */
+  /* ── Generate AI background ── */
   const handleGenerateBackground = useCallback(
     async (config: { background: string; format?: string; designVision?: string; imagePrompt?: string }, scriptIdx: number) => {
       setCreativeError("");
@@ -201,13 +197,11 @@ export default function CreativePage() {
 
         const bgSrc = json.imageBase64 || json.imageUrl || "";
 
-        // Set as custom background for this script
         setScriptCreatives((prev) => ({
           ...prev,
           [scriptIdx]: { ...prev[scriptIdx], customBackground: bgSrc },
         }));
 
-        // Also update generatedImages for pipeline compatibility
         const newImage = { url: json.imageUrl || "", base64: json.imageBase64 || "", scriptIdx };
         setGeneratedImages((prev) => {
           const filtered = prev.filter((img) => img.scriptIdx !== scriptIdx);
@@ -334,10 +328,15 @@ export default function CreativePage() {
               {/* ── State: READY ── */}
               {creative.state === "ready" && (
                 <div className="p-5">
-                  {/* Two column: Preview + Edit */}
+                  {/* Drag hint */}
+                  <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-[10px] text-xs text-blue-700 dark:text-blue-300 text-center">
+                    גרור את הטקסטים על התמונה כדי למקם אותם. ערוך טקסט בפאנל בצד.
+                  </div>
+
+                  {/* Two column layout */}
                   <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
                     {/* LEFT: Template Preview */}
-                    <div className="lg:w-[55%] flex-shrink-0 max-h-[65vh] lg:max-h-none overflow-hidden">
+                    <div className="lg:w-[55%] flex-shrink-0">
                       <TemplatePreview
                         template={template}
                         headline={creative.headline}
@@ -351,7 +350,7 @@ export default function CreativePage() {
                     </div>
 
                     {/* RIGHT: Edit panel */}
-                    <div className="lg:w-[45%] space-y-4 max-h-[70vh] lg:max-h-none overflow-y-auto">
+                    <div className="lg:w-[45%] space-y-4 lg:max-h-[80vh] lg:overflow-y-auto lg:pr-1">
                       {/* Headline */}
                       <div>
                         <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
@@ -442,110 +441,76 @@ export default function CreativePage() {
                         </div>
                       </div>
 
-                      {/* AI Background Button — prominent */}
+                      {/* Design Vision — AI prompt for background */}
                       <div>
-                        <button
-                          onClick={async () => {
-                            setIsGeneratingBg(prev => ({ ...prev, [idx]: true }));
-                            try {
-                              await handleGenerateBackground({
-                                background: creative.suggestion?.background || "lighthouse",
-                                format: creative.format,
-                                designVision: creative.suggestion?.look_and_feel || "",
-                                imagePrompt: creative.suggestion?.image_prompt || "",
-                              }, idx);
-                            } finally {
-                              setIsGeneratingBg(prev => ({ ...prev, [idx]: false }));
-                            }
-                          }}
-                          disabled={isGeneratingBg[idx]}
-                          style={{
-                            width: '100%',
-                            padding: '14px 0',
-                            borderRadius: 12,
-                            border: 'none',
-                            background: isGeneratingBg[idx] ? '#6B7084' : 'linear-gradient(135deg, #22C55E 0%, #16a34a 100%)',
-                            color: '#fff',
-                            fontWeight: 700,
-                            fontSize: 15,
-                            cursor: isGeneratingBg[idx] ? 'not-allowed' : 'pointer',
-                            boxShadow: isGeneratingBg[idx] ? 'none' : '0 4px 16px rgba(34,197,94,0.3)',
-                            transition: 'all 0.2s',
-                          }}
-                        >
-                          {isGeneratingBg[idx] ? '⏳ יוצר רקע AI... (~15 שניות)' : '✨ צור רקע AI (1 credit)'}
-                        </button>
+                        <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+                          הנחיה לרקע AI (אופציונלי)
+                        </label>
+                        <textarea
+                          value={creative.designVision || ""}
+                          onChange={(e) => updateField(idx, "designVision", e.target.value)}
+                          placeholder="למשל: אווירה חמה עם תאורה דרמטית, צבעים כהים עם הדגשות זהב..."
+                          rows={2}
+                          className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
+                        />
                       </div>
+
+                      {/* Generate AI Background */}
+                      <button
+                        onClick={async () => {
+                          setIsGeneratingBg(prev => ({ ...prev, [idx]: true }));
+                          try {
+                            await handleGenerateBackground({
+                              background: creative.suggestion?.background || "lighthouse",
+                              format: creative.format,
+                              designVision: creative.designVision || creative.suggestion?.look_and_feel || "",
+                              imagePrompt: creative.suggestion?.image_prompt || "",
+                            }, idx);
+                          } finally {
+                            setIsGeneratingBg(prev => ({ ...prev, [idx]: false }));
+                          }
+                        }}
+                        disabled={isGeneratingBg[idx]}
+                        className="w-full py-3.5 rounded-xl text-white font-bold text-[15px] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          background: isGeneratingBg[idx]
+                            ? '#6B7084'
+                            : creative.customBackground
+                              ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                              : 'linear-gradient(135deg, #22C55E 0%, #16a34a 100%)',
+                          boxShadow: isGeneratingBg[idx] ? 'none' : '0 4px 16px rgba(34,197,94,0.3)',
+                        }}
+                      >
+                        {isGeneratingBg[idx]
+                          ? '⏳ יוצר רקע AI... (~15 שניות)'
+                          : creative.customBackground
+                            ? '🔄 צור רקע מחדש (1 credit)'
+                            : '✨ צור רקע AI (1 credit)'}
+                      </button>
 
                       {/* Upload custom background */}
-                      <div>
-                        <label
-                          style={{
-                            display: 'block',
-                            width: '100%',
-                            padding: '12px 0',
-                            borderRadius: 12,
-                            border: '2px dashed var(--card-border)',
-                            background: 'transparent',
-                            color: 'var(--text-secondary)',
-                            fontWeight: 600,
-                            fontSize: 14,
-                            cursor: 'pointer',
-                            textAlign: 'center',
-                            transition: 'all 0.2s',
+                      <label className="block w-full py-3 rounded-xl border-2 border-dashed border-[var(--card-border)] text-center text-sm font-semibold text-[var(--text-secondary)] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-all cursor-pointer">
+                        📁 העלה רקע מותאם (0 credits)
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const base64 = reader.result as string;
+                              handleUploadBackground(base64, idx);
+                            };
+                            reader.readAsDataURL(file);
                           }}
-                        >
-                          📁 העלה רקע מותאם (0 credits)
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                const base64 = reader.result as string;
-                                handleUploadBackground(base64, idx);
-                              };
-                              reader.readAsDataURL(file);
-                            }}
-                          />
-                        </label>
-                      </div>
+                        />
+                      </label>
 
-                      {/* Advanced options (collapsed) */}
-                      <div className="border-t border-[var(--card-border)] pt-3">
-                        <button
-                          type="button"
-                          onClick={() => setAdvancedOpenIdx(advancedOpenIdx === idx ? null : idx)}
-                          className="text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
-                        >
-                          {advancedOpenIdx === idx ? "▼" : "▶"} אפשרויות מתקדמות
-                        </button>
-
-                        {advancedOpenIdx === idx && creative.suggestion && project && (
-                          <div className="mt-4">
-                            <CanvasEditor
-                              suggestion={creative.suggestion}
-                              userInfo={{
-                                name: project.user_name,
-                                role: selectedNiche?.name ?? "",
-                                niche: selectedNiche?.name ?? "",
-                              }}
-                              backgroundImage={creative.customBackground || null}
-                              onGenerateBackground={(config) =>
-                                handleGenerateBackground(config, idx)
-                              }
-                              onSaveToAlbum={handleSaveToAlbum}
-                              onUploadBackground={(base64) =>
-                                handleUploadBackground(base64, idx)
-                              }
-                              scriptIdx={idx}
-                            />
-                          </div>
-                        )}
-                      </div>
+                      <p className="text-xs text-[var(--text-muted)] text-center">
+                        שינוי טקסט, מיקום, תבנית — מיידי. רק &quot;צור רקע&quot; משתמש ב-AI.
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -15,24 +15,14 @@ export async function generateImage(
 ): Promise<{ base64: string; mimeType: string }> {
   const ai = getClient();
 
-  // Reinforce aspect ratio in the prompt
-  let dimensionHint = "";
-  if (aspectRatio === "9:16") {
-    dimensionHint =
-      "\n\nCRITICAL FORMAT REQUIREMENT: Generate a VERTICAL PORTRAIT image. The image must be TALLER than it is WIDE. Aspect ratio = 9:16 (like a phone screen standing up). Width=1080px, Height=1920px. This is NOT landscape. NOT square. It is PORTRAIT.";
-  } else if (aspectRatio === "1:1") {
-    dimensionHint =
-      "\n\nCRITICAL FORMAT REQUIREMENT: Generate a PERFECT SQUARE image. Width EQUALS height exactly. Aspect ratio = 1:1. NOT landscape. NOT portrait. SQUARE.";
-  }
-
-  const enhancedPrompt = prompt + dimensionHint;
-
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash-exp",
-    contents: enhancedPrompt,
+    model: "gemini-2.5-flash-image",
+    contents: prompt,
     config: {
-      responseModalities: ["TEXT", "IMAGE"],
-      ...(aspectRatio ? { aspectRatio } : {}),
+      responseModalities: ["IMAGE"],
+      imageConfig: {
+        ...(aspectRatio ? { aspectRatio } : {}),
+      },
     },
   });
 
