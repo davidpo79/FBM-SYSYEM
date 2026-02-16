@@ -54,40 +54,40 @@ type Decoration =
   | { type: "vignette"; intensity: number };
 
 export const TEMPLATES: CreativeTemplate[] = [
-  // 0. FBM Pilot — matches proven high-converting layout
+  // 0. FBM Pilot — matches proven high-converting layout (reference: dark dramatic bg, big headline, gold subtitle, owner bottom-left, CTA bottom)
   {
     id: "fbm-pilot",
     name: "FBM פיילוט",
     preview: "🚀",
     background: "linear-gradient(160deg, #060610 0%, #0d1b2a 30%, #1b2838 60%, #0d1b2a 100%)",
-    overlay: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.1) 55%, rgba(0,0,0,0.6) 100%)",
+    overlay: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 30%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.65) 100%)",
     headline: {
       color: "#ffffff",
-      fontSize: 30,
+      fontSize: 32,
       fontWeight: "800",
-      x: 4, y: 8,
+      x: 4, y: 6,
       maxWidth: "92%",
-      textShadow: "0 3px 20px rgba(0,0,0,0.9)",
+      textShadow: "0 3px 24px rgba(0,0,0,0.95), 0 1px 4px rgba(0,0,0,0.8)",
       textAlign: "center",
-      lineHeight: 1.45,
+      lineHeight: 1.4,
     },
     subtitle: {
       color: "#F5D565",
-      fontSize: 16,
-      x: 6, y: 45,
+      fontSize: 18,
+      x: 5, y: 33,
       fontWeight: "bold",
-      maxWidth: "88%",
-      textShadow: "0 2px 12px rgba(0,0,0,0.9)",
+      maxWidth: "90%",
+      textShadow: "0 2px 16px rgba(0,0,0,0.95), 0 1px 4px rgba(0,0,0,0.7)",
       textAlign: "center",
-      lineHeight: 1.5,
+      lineHeight: 1.55,
     },
     cta: {
       bgColor: "#D4A843", textColor: "#0a0a0a",
-      x: 10, y: 82, borderRadius: 25, fontSize: 15,
-      padding: "14px 28px", shadow: "0 4px 24px rgba(212,168,67,0.5)",
+      x: 15, y: 80, borderRadius: 25, fontSize: 15,
+      padding: "14px 32px", shadow: "0 4px 24px rgba(212,168,67,0.5)",
     },
     decorations: [
-      { type: "vignette", intensity: 0.35 },
+      { type: "vignette", intensity: 0.4 },
       { type: "circle-glow", x: 85, y: 5, size: "140px", color: "#D4A843", opacity: 0.05 },
     ],
   },

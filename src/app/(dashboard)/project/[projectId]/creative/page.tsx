@@ -82,7 +82,7 @@ type ChatMessage = { role: "user" | "assistant"; text: string };
 
 const INITIAL_CHAT_MSG: ChatMessage = {
   role: "assistant",
-  text: "שלום! אני מומחה קריאטיב ופרסום עם 15 שנות ניסיון.\nאני כאן לעזור לך עם כותרות, הצעות פיילוט, CTA, ורעיונות לרקע.\n\nאיך אוכל לעזור? למשל:\n- \"תציע הצעה חדשה לקריאטיב\"\n- \"שפר את הצעת הפיילוט\"\n- \"תן רעיונות ל-CTA\"\n- \"הצע רעיון לרקע\"",
+  text: "שלום! אני מומחה קריאטיב ופרסום עם 15 שנות ניסיון.\nאני כאן לעזור לך עם כותרות, הצעת פיילוט 500 ₪, CTA, ורעיונות לרקע.\n\nהצעת הפיילוט ב-500 ₪ היא הלב של המודעה — זו ההצעה שגורמת לאנשים ללחוץ.\n\nאיך אוכל לעזור? למשל:\n- \"תציע הצעה חדשה לקריאטיב\"\n- \"שפר את הצעת הפיילוט של 500 ₪\"\n- \"תן רעיונות ל-CTA\"\n- \"הצע רעיון לרקע\"",
 };
 
 /* ── Creative Chat Modal ── */
@@ -247,7 +247,7 @@ function CreativeChatModal({
 
         {/* Quick suggestion chips */}
         <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800 flex gap-1.5 flex-wrap">
-          {["תציע הצעה חדשה", "שפר את הכותרת", "הצע רעיון לרקע"].map((q) => (
+          {["תציע הצעה חדשה", "שפר את הצעת ה-500 ₪", "שפר את הכותרת", "הצע רעיון לרקע"].map((q) => (
             <button
               key={q}
               type="button"
@@ -411,7 +411,7 @@ export default function CreativePage() {
         const templateId = suggestTemplate(suggestion.background, suggestion.color);
 
         const pilotSubtitle = suggestion.pilot_subtitle
-          || `פיילוט ב-500 ₪ בלבד. גלה איך להגיע ללקוחות המדויקים ל${selectedNiche?.name || "הנישה שלך"}.`;
+          || `פיילוט ב-500 ₪ בלבד — הצעה שאי אפשר לסרב לה.\nגלה איך להגיע ללקוחות המדויקים ל${selectedNiche?.name || "הנישה שלך"} לפני כולם.`;
 
         setScriptCreatives((prev) => ({
           ...prev,
@@ -758,11 +758,11 @@ export default function CreativePage() {
                               onChange={(e) => updateField(idx, "subtitle", e.target.value)}
                               maxLength={120}
                               rows={2}
-                              placeholder="פיילוט ב-500 ₪ בלבד. גלה איך להגיע ללקוחות המדויקים..."
+                              placeholder="פיילוט ב-500 ₪ בלבד — הצעה שאי אפשר לסרב לה..."
                               className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
                             />
-                            <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                              הצעת הפיילוט ב-500 ₪ היא מה שגורם לאנשים ללחוץ על המודעה
+                            <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-medium">
+                              הצעת הפיילוט ב-500 ₪ היא הלב של המודעה — הצעה שאי אפשר לסרב לה
                             </p>
                           </>
                         )}
@@ -1042,11 +1042,15 @@ export default function CreativePage() {
           currentHeadline={getCreative(chatOpen).headline}
           currentSubtitle={getCreative(chatOpen).subtitle}
           currentCta={getCreative(chatOpen).cta}
+          currentDesignVision={getCreative(chatOpen).designVision || ""}
           niche={selectedNiche?.name || ""}
+          messages={getChatMessages(chatOpen)}
+          setMessages={setChatMessagesForScript(chatOpen)}
           onApplyAll={(data) => {
             if (data.headline) updateField(chatOpen, "headline", data.headline);
             if (data.subtitle) updateField(chatOpen, "subtitle", data.subtitle);
             if (data.cta) updateField(chatOpen, "cta", data.cta);
+            if (data.backgroundPrompt) updateField(chatOpen, "designVision", data.backgroundPrompt);
           }}
         />
       )}
