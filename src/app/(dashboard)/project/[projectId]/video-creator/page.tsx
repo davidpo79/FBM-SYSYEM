@@ -97,7 +97,7 @@ export default function VideoCreatorPage() {
             niche: selectedNiche?.name || "",
           }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({ error: `שגיאת שרת (${res.status})` }));
         if (!res.ok) throw new Error(data.error || "Failed to adapt script");
 
         updateVideo(scriptIdx, {
@@ -170,7 +170,7 @@ export default function VideoCreatorPage() {
           pitch: settings.pitch,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ error: `שגיאת שרת (${res.status})` }));
       if (!res.ok) throw new Error(data.error || "שגיאה ביצירת דוגמת קול");
 
       if (previewAudioRef.current) {
@@ -242,7 +242,7 @@ export default function VideoCreatorPage() {
 
         clearInterval(stepTimer);
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({ error: `שגיאת שרת (${res.status})` }));
         if (!res.ok) throw new Error(data.error || "Failed to generate video");
 
         updateVideo(scriptIdx, {
