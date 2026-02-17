@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 
 const TTS_API_URL = "https://texttospeech.googleapis.com/v1/text:synthesize";
 const FFMPEG_PATH = ffmpegInstaller.path;
@@ -17,7 +18,7 @@ async function tryCloudTTS(
   rate: number,
   pitch: number,
 ): Promise<Buffer | null> {
-  const apiKey = process.env.GOOGLE_TTS_API_KEY || process.env.GOOGLE_AI_API_KEY;
+  const apiKey = process.env.GOOGLE_TTS_API_KEY;
   if (!apiKey) return null;
 
   const voiceNames = [
@@ -50,13 +51,53 @@ async function tryCloudTTS(
       const err = await response.json().catch(() => ({}));
       const errMsg = err?.error?.message || `HTTP ${response.status}`;
       const errCode = err?.error?.code || response.status;
-      console.error(`Cloud TTS (${voiceName}) failed [${errCode}]: ${errMsg}`, JSON.stringify(err?.error || {}));
+      console.error(`Cloud TTS (${voiceName}) failed [${errCode}]: ${errMsg}`);
     } catch (e) {
       console.warn(`Cloud TTS (${voiceName}) error:`, e instanceof Error ? e.message : e);
     }
   }
 
   return null;
+}
+
+/**
+ * Try Microsoft Edge TTS (free, no API key needed).
+ * Returns MP3 Buffer on success, null on failure.
+ */
+async function tryEdgeTTS(
+  text: string,
+  voice: "male" | "female",
+  rate: number,
+): Promise<Buffer | null> {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "edge-tts-"));
+  try {
+    const tts = new MsEdgeTTS();
+    const voiceName = voice === "male" ? "he-IL-AvriNeural" : "he-IL-HilaNeural";
+    await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+
+    const { audioFilePath } = await tts.toFile(tmpDir, text, { rate });
+
+    tts.close();
+
+    if (!fs.existsSync(audioFilePath)) {
+      console.warn("Edge TTS: output file not found");
+      return null;
+    }
+
+    const audioBuffer = fs.readFileSync(audioFilePath);
+    if (audioBuffer.length < 100) {
+      console.warn("Edge TTS returned too small audio:", audioBuffer.length);
+      return null;
+    }
+
+    console.log(`Edge TTS success: ${audioBuffer.length} bytes for "${text.substring(0, 50)}..."`);
+    return audioBuffer;
+  } catch (e) {
+    console.error("Edge TTS error:", e instanceof Error ? e.message : e);
+    return null;
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
 }
 
 /**
@@ -75,31 +116,25 @@ function generateSilence(durationSec: number): Buffer {
     return fs.readFileSync(outPath);
   } catch (e) {
     console.error("generateSilence failed:", e instanceof Error ? e.message : e);
-    // Fallback: generate a valid WAV silence buffer manually
-    // WAV header (44 bytes) + PCM silence data (24000 Hz * 1 channel * 2 bytes * duration)
     const sampleRate = 24000;
     const numChannels = 1;
     const bitsPerSample = 16;
     const numSamples = sampleRate * durationSec;
     const dataSize = numSamples * numChannels * (bitsPerSample / 8);
     const buffer = Buffer.alloc(44 + dataSize);
-    // RIFF header
     buffer.write("RIFF", 0);
     buffer.writeUInt32LE(36 + dataSize, 4);
     buffer.write("WAVE", 8);
-    // fmt chunk
     buffer.write("fmt ", 12);
     buffer.writeUInt32LE(16, 16);
-    buffer.writeUInt16LE(1, 20); // PCM
+    buffer.writeUInt16LE(1, 20);
     buffer.writeUInt16LE(numChannels, 22);
     buffer.writeUInt32LE(sampleRate, 24);
     buffer.writeUInt32LE(sampleRate * numChannels * (bitsPerSample / 8), 28);
     buffer.writeUInt16LE(numChannels * (bitsPerSample / 8), 32);
     buffer.writeUInt16LE(bitsPerSample, 34);
-    // data chunk
     buffer.write("data", 36);
     buffer.writeUInt32LE(dataSize, 40);
-    // PCM data is already zero-filled (silence)
     return buffer;
   } finally {
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
@@ -112,7 +147,8 @@ export interface TTSResult {
 }
 
 /**
- * Generate Hebrew TTS audio. Falls back to silence if TTS APIs are unavailable.
+ * Generate Hebrew TTS audio.
+ * Pipeline: Google Cloud TTS → Microsoft Edge TTS → Silence fallback.
  */
 export async function generateTTS(
   text: string,
@@ -121,15 +157,23 @@ export async function generateTTS(
   pitch: number = 0,
   durationFallbackSec: number = 10,
 ): Promise<TTSResult> {
-  // Try Google Cloud TTS
+  // 1. Try Google Cloud TTS (requires GOOGLE_TTS_API_KEY)
   const cloudResult = await tryCloudTTS(text, voice, rate, pitch);
   if (cloudResult) {
+    console.log("TTS: Using Google Cloud TTS");
     return { audioBuffer: cloudResult, usedTTS: true };
   }
 
-  console.warn("TTS unavailable - generating silence. Enable Google Cloud Text-to-Speech API for voice-over.");
+  // 2. Try Microsoft Edge TTS (free, no API key needed)
+  const edgeResult = await tryEdgeTTS(text, voice, rate);
+  if (edgeResult) {
+    console.log("TTS: Using Microsoft Edge TTS");
+    return { audioBuffer: edgeResult, usedTTS: true };
+  }
 
-  // Fallback: generate silence matching scene duration
+  console.warn("All TTS engines failed - generating silence.");
+
+  // 3. Fallback: generate silence matching scene duration
   const silenceBuffer = generateSilence(durationFallbackSec);
   return { audioBuffer: silenceBuffer, usedTTS: false };
 }
@@ -149,32 +193,10 @@ export async function generateTTSBase64(
     return cloudResult.toString("base64");
   }
 
-  // Try to get the specific error for better feedback
-  const apiKey = process.env.GOOGLE_TTS_API_KEY || process.env.GOOGLE_AI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GOOGLE_TTS_API_KEY לא מוגדר. הוסף את המפתח בהגדרות Vercel.");
+  const edgeResult = await tryEdgeTTS(text, voice, rate);
+  if (edgeResult) {
+    return edgeResult.toString("base64");
   }
 
-  // One more attempt to get the exact error
-  try {
-    const testVoice = voice === "male" ? "he-IL-Standard-B" : "he-IL-Standard-A";
-    const res = await fetch(`${TTS_API_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        input: { text: "test" },
-        voice: { languageCode: "he-IL", name: testVoice },
-        audioConfig: { audioEncoding: "MP3" },
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `HTTP ${res.status}`);
-    }
-  } catch (e) {
-    const detail = e instanceof Error ? e.message : "unknown";
-    throw new Error(`שגיאת TTS: ${detail}`);
-  }
-
-  throw new Error("קריינות לא זמינה - בדוק שה-API key תקין ושה-Cloud Text-to-Speech API מופעל.");
+  throw new Error("קריינות לא זמינה - כל שירותי ה-TTS נכשלו. בדוק חיבור אינטרנט.");
 }
