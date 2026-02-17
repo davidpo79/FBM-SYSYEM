@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { startVideoGeneration, pollVideoOperation, downloadVeoVideo } from "@/lib/veo";
+import { startVideoGeneration, pollVideoOperation, downloadVeoVideo, generateImageClip } from "@/lib/veo";
 import { composeVideo } from "@/lib/video-compose";
 import { generateTTS } from "@/lib/tts";
 import { logApiCall } from "@/lib/api-log";
@@ -89,122 +89,153 @@ export async function POST(req: NextRequest) {
 
     const ttsResults = await Promise.all(ttsJobs);
 
-    // Start Veo generation in batches of 2 (respecting 2 RPM limit)
-    for (let batchStart = 0; batchStart < adaptedScript.scenes.length; batchStart += VEO_BATCH_SIZE) {
-      if (batchStart > 0) {
-        console.log(`Waiting ${VEO_BATCH_DELAY_MS / 1000}s before next Veo batch (RPM limit)...`);
-        await new Promise((r) => setTimeout(r, VEO_BATCH_DELAY_MS));
+    // ── Try Veo first, fallback to Imagen + Ken Burns ──
+    let useVeo = true;
+    const videoFiles: Record<number, string> = {};
+
+    // Try starting first Veo request to test if we have quota
+    try {
+      const testScene = adaptedScript.scenes[0];
+      const testPrompt = `Create a professional cinematic B-Roll video clip. SCENE: ${testScene.imagePrompt} STYLE: Photorealistic, cinematic lighting, smooth camera movement, no text.`;
+      const testOp = await startVideoGeneration(testPrompt, "16:9");
+      jobs.push({
+        sceneNumber: testScene.number,
+        operation: testOp,
+        audioPath: ttsResults[0].audioPath,
+        scene: testScene,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("חריגה")) {
+        console.warn("Veo rate limited — switching to Imagen + Ken Burns fallback");
+        useVeo = false;
+      } else {
+        throw e;
       }
-
-      const batchEnd = Math.min(batchStart + VEO_BATCH_SIZE, adaptedScript.scenes.length);
-      const batchPromises = [];
-
-      for (let i = batchStart; i < batchEnd; i++) {
-        const scene = adaptedScript.scenes[i];
-        const veoPrompt = `Create a professional cinematic B-Roll video clip.
-SCENE: ${scene.imagePrompt}
-STYLE: Photorealistic, cinematic lighting, smooth camera movement,
-professional color grading, no text or watermarks,
-high production value marketing video aesthetic.`;
-
-        batchPromises.push(
-          startVideoGeneration(veoPrompt, "16:9")
-            .then((operation) => ({
-              sceneNumber: scene.number,
-              operation,
-              audioPath: ttsResults[i].audioPath,
-              scene,
-            }))
-            .catch((err) => {
-              console.error(`Scene ${scene.number} Veo start failed:`, err);
-              // Check for rate limit error
-              const errMsg = err instanceof Error ? err.message : String(err);
-              if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
-                throw new Error(
-                  "חריגה ממגבלת Veo API (2 בקשות לדקה / 10 ביום). נסה שוב מאוחר יותר."
-                );
-              }
-              throw err;
-            }),
-        );
-      }
-
-      const batchResults = await Promise.all(batchPromises);
-      jobs.push(...batchResults);
     }
 
-    // ── Step 3: Poll Veo operations until all clips are ready ──
-    const MAX_POLL_TIME = 240000; // 4 minutes max
-    const POLL_INTERVAL = 10000;  // 10 seconds
-    const pollStart = Date.now();
-    const videoFiles: Record<number, string> = {};
-    const failedScenes: Record<number, string> = {};
-    const retried = new Set<number>();
+    if (useVeo) {
+      // Continue with Veo: start remaining scenes in batches (scene 0 already started)
+      for (let batchStart = 1; batchStart < adaptedScript.scenes.length; batchStart += VEO_BATCH_SIZE) {
+        // Wait between batches for RPM limit
+        console.log(`Waiting ${VEO_BATCH_DELAY_MS / 1000}s before next Veo batch (RPM limit)...`);
+        await new Promise((r) => setTimeout(r, VEO_BATCH_DELAY_MS));
 
-    while (
-      Object.keys(videoFiles).length + Object.keys(failedScenes).length < jobs.length
-    ) {
-      if (Date.now() - pollStart > MAX_POLL_TIME) {
-        // Don't throw - continue with whatever clips we have
-        console.error("Veo polling timed out. Completed:", Object.keys(videoFiles).length, "Failed:", Object.keys(failedScenes).length);
-        break;
+        const batchEnd = Math.min(batchStart + VEO_BATCH_SIZE, adaptedScript.scenes.length);
+        const batchPromises = [];
+
+        for (let i = batchStart; i < batchEnd; i++) {
+          const scene = adaptedScript.scenes[i];
+          const veoPrompt = `Create a professional cinematic B-Roll video clip. SCENE: ${scene.imagePrompt} STYLE: Photorealistic, cinematic lighting, smooth camera movement, no text.`;
+
+          batchPromises.push(
+            startVideoGeneration(veoPrompt, "16:9")
+              .then((operation) => ({
+                sceneNumber: scene.number,
+                operation,
+                audioPath: ttsResults[i].audioPath,
+                scene,
+              })),
+          );
+        }
+
+        try {
+          const batchResults = await Promise.all(batchPromises);
+          jobs.push(...batchResults);
+        } catch (e) {
+          // Rate limited mid-batch: remaining scenes will use Imagen fallback
+          const msg = e instanceof Error ? e.message : "";
+          if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("חריגה")) {
+            console.warn(`Veo rate limited at batch ${batchStart}. Remaining scenes will use Imagen.`);
+            break;
+          }
+          throw e;
+        }
       }
 
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+      // Poll Veo operations
+      const MAX_POLL_TIME = 240000;
+      const POLL_INTERVAL = 10000;
+      const pollStart = Date.now();
+      const failedScenes: Record<number, string> = {};
 
-      for (const job of jobs) {
-        if (videoFiles[job.sceneNumber] || failedScenes[job.sceneNumber]) continue;
-
-        const result = await pollVideoOperation(job.operation);
-
-        if (result.done && !result.error) {
-          try {
-            const clipPath = await downloadVeoVideo(result.operation);
-            const videoPath = path.join(tmpDir, `clip-${job.sceneNumber}.mp4`);
-            fs.copyFileSync(clipPath, videoPath);
-            videoFiles[job.sceneNumber] = videoPath;
-            try { fs.rmSync(path.dirname(clipPath), { recursive: true, force: true }); } catch {}
-          } catch (dlErr) {
-            console.error(`Scene ${job.sceneNumber} download failed:`, dlErr);
-            failedScenes[job.sceneNumber] = dlErr instanceof Error ? dlErr.message : "Download failed";
-          }
-        } else if (result.done && result.error) {
-          console.error(`Scene ${job.sceneNumber} Veo error: ${result.error}`);
-
-          // Retry once with simplified prompt
-          if (!retried.has(job.sceneNumber)) {
-            retried.add(job.sceneNumber);
-            console.log(`Retrying scene ${job.sceneNumber} with simplified prompt...`);
-            try {
-              const simplePrompt = `Professional cinematic B-Roll video clip: ${job.scene.imagePrompt.substring(0, 200)}. Photorealistic, cinematic lighting, no text.`;
-              const retryOp = await startVideoGeneration(simplePrompt, "16:9");
-              job.operation = retryOp;
-              // Don't mark as failed - will be polled again
-            } catch {
-              failedScenes[job.sceneNumber] = result.error;
+      while (
+        Object.keys(videoFiles).length + Object.keys(failedScenes).length < jobs.length
+      ) {
+        if (Date.now() - pollStart > MAX_POLL_TIME) {
+          console.error("Veo polling timed out.");
+          for (const job of jobs) {
+            if (!videoFiles[job.sceneNumber] && !failedScenes[job.sceneNumber]) {
+              failedScenes[job.sceneNumber] = "timeout";
             }
-          } else {
+          }
+          break;
+        }
+
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+
+        for (const job of jobs) {
+          if (videoFiles[job.sceneNumber] || failedScenes[job.sceneNumber]) continue;
+
+          const result = await pollVideoOperation(job.operation);
+
+          if (result.done && !result.error) {
+            try {
+              const clipPath = await downloadVeoVideo(result.operation);
+              const videoPath = path.join(tmpDir, `clip-${job.sceneNumber}.mp4`);
+              fs.copyFileSync(clipPath, videoPath);
+              videoFiles[job.sceneNumber] = videoPath;
+              try { fs.rmSync(path.dirname(clipPath), { recursive: true, force: true }); } catch {}
+            } catch (dlErr) {
+              failedScenes[job.sceneNumber] = dlErr instanceof Error ? dlErr.message : "Download failed";
+            }
+          } else if (result.done && result.error) {
             failedScenes[job.sceneNumber] = result.error;
           }
         }
       }
-    }
 
-    // Handle failed scenes: duplicate a successful clip
-    if (Object.keys(failedScenes).length > 0 && Object.keys(videoFiles).length > 0) {
-      const successClipPath = Object.values(videoFiles)[0];
-      for (const sceneNum of Object.keys(failedScenes).map(Number)) {
-        console.warn(`Scene ${sceneNum} failed, duplicating clip from another scene`);
-        const videoPath = path.join(tmpDir, `clip-${sceneNum}.mp4`);
-        fs.copyFileSync(successClipPath, videoPath);
-        videoFiles[sceneNum] = videoPath;
+      // Use Imagen fallback for any failed Veo scenes
+      for (const [sceneNumStr, err] of Object.entries(failedScenes)) {
+        const sceneNum = Number(sceneNumStr);
+        const scene = adaptedScript.scenes.find((s) => s.number === sceneNum);
+        if (!scene) continue;
+        console.warn(`Scene ${sceneNum} Veo failed (${err}), using Imagen fallback`);
+        try {
+          const clipPath = await generateImageClip(scene.imagePrompt, scene.duration, "16:9");
+          const videoPath = path.join(tmpDir, `clip-${sceneNum}.mp4`);
+          fs.copyFileSync(clipPath, videoPath);
+          videoFiles[sceneNum] = videoPath;
+          try { fs.rmSync(path.dirname(clipPath), { recursive: true, force: true }); } catch {}
+        } catch (imgErr) {
+          console.error(`Scene ${sceneNum} Imagen fallback also failed:`, imgErr);
+        }
       }
     }
 
-    // If ALL scenes failed, throw
+    // Imagen-only path (Veo completely rate-limited)
+    if (!useVeo) {
+      console.log("Using Imagen + Ken Burns for all scenes (Veo unavailable)");
+      const imagenJobs = adaptedScript.scenes.map(async (scene, i) => {
+        const clipPath = await generateImageClip(scene.imagePrompt, scene.duration, "16:9");
+        const videoPath = path.join(tmpDir, `clip-${scene.number}.mp4`);
+        fs.copyFileSync(clipPath, videoPath);
+        videoFiles[scene.number] = videoPath;
+        try { fs.rmSync(path.dirname(clipPath), { recursive: true, force: true }); } catch {}
+
+        jobs.push({
+          sceneNumber: scene.number,
+          operation: null as unknown as Awaited<ReturnType<typeof startVideoGeneration>>,
+          audioPath: ttsResults[i].audioPath,
+          scene,
+        });
+      });
+      await Promise.all(imagenJobs);
+    }
+
+    // If still no clips, throw
     if (Object.keys(videoFiles).length === 0) {
-      const errors = Object.entries(failedScenes).map(([k, v]) => `Scene ${k}: ${v}`).join("; ");
-      throw new Error(`כל הסצנות נכשלו ביצירת וידאו: ${errors}`);
+      throw new Error("כל הסצנות נכשלו ביצירת וידאו. נסה שוב מאוחר יותר.");
     }
 
     // ── Step 4: Compose final MP4 ──

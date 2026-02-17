@@ -1,4 +1,5 @@
 import { GoogleGenAI, type GenerateVideosOperation } from "@google/genai";
+import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -14,6 +15,7 @@ function getClient(): GoogleGenAI {
 
 // Veo 3.1 Fast (no audio) = $0.10/sec = cheapest option
 const VEO_MODEL = "veo-3.1-fast-generate-preview";
+const IMAGEN_MODEL = "imagen-3.0-generate-002";
 
 /**
  * Start generating a video clip with Veo 3.1 Fast.
@@ -113,4 +115,64 @@ export async function downloadVeoVideo(
   });
 
   return downloadPath;
+}
+
+// ═══════════════════════════════════════════════════════
+// Imagen 3 fallback: image → Ken Burns video clip
+// ═══════════════════════════════════════════════════════
+
+/**
+ * Generate an image with Imagen 3 and convert it to a video clip
+ * using FFmpeg Ken Burns effect (slow zoom/pan).
+ * No rate limit issues like Veo.
+ */
+export async function generateImageClip(
+  prompt: string,
+  durationSec: number = 10,
+  aspectRatio: "16:9" | "9:16" = "16:9",
+): Promise<string> {
+  const ai = getClient();
+
+  // 1. Generate image with Imagen 3
+  const response = await ai.models.generateImages({
+    model: IMAGEN_MODEL,
+    prompt,
+    config: {
+      numberOfImages: 1,
+      aspectRatio,
+    },
+  });
+
+  const imageBytes = response.generatedImages?.[0]?.image?.imageBytes;
+  if (!imageBytes) {
+    throw new Error("Imagen failed to generate image");
+  }
+
+  // 2. Save image to temp file
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "imagen-clip-"));
+  const imagePath = path.join(tmpDir, "scene.png");
+  fs.writeFileSync(imagePath, Buffer.from(imageBytes, "base64"));
+
+  // 3. Convert to video with Ken Burns effect (slow zoom)
+  const outputPath = path.join(tmpDir, "clip.mp4");
+  const fps = 30;
+  const totalFrames = durationSec * fps;
+
+  // Alternate between zoom-in and zoom-out for variety
+  const zoomEffect = `zoompan=z='min(zoom+0.0015,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${totalFrames}:s=1920x1080:fps=${fps}`;
+
+  try {
+    execSync(
+      `npx --yes @ffmpeg-installer/ffmpeg -loop 1 -i "${imagePath}" -vf "${zoomEffect}" -t ${durationSec} -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p "${outputPath}" -y`,
+      { stdio: "pipe", timeout: 30000 },
+    );
+  } catch (e) {
+    // Simpler fallback: just static image as video
+    execSync(
+      `npx --yes @ffmpeg-installer/ffmpeg -loop 1 -i "${imagePath}" -t ${durationSec} -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2" "${outputPath}" -y`,
+      { stdio: "pipe", timeout: 30000 },
+    );
+  }
+
+  return outputPath;
 }
