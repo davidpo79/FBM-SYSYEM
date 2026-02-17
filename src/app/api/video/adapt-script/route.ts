@@ -9,8 +9,8 @@ const ADAPTATION_PROMPT = (scriptText: string, niche: string) => `
 הסרטון מורכב מקליפי B-Roll (סטוק וידאו או וידאו ג'נרטיבי AI) עם Voice Over בעברית וכתוביות.
 
 כללים:
-- בדיוק 8 סצנות B-Roll (קצרות ודינמיות)
-- כל סצנה 7-8 שניות (סה"כ ~60 שניות)
+- בדיוק 10 סצנות B-Roll (קצרות ודינמיות, חיתוכים מהירים)
+- כל סצנה בדיוק 6 שניות (סה"כ = 60 שניות)
 - פורמט 9:16 (portrait / רילס)
 - לכל סצנה: searchQuery — 2-4 מילות מפתח באנגלית לחיפוש סטוק וידאו (Pexels)
   * כשיש דמויות אנושיות בסצנה, הוסף "mediterranean" למילות החיפוש
@@ -29,15 +29,17 @@ const ADAPTATION_PROMPT = (scriptText: string, niche: string) => `
 - סצנה אחרונה = CTA ברור
 - שפה ישירה, רגשית, אנרגטית, קצבית — עברית מדוברת טבעית
 
-מבנה מומלץ (8 סצנות):
-1. Hook (7s) — כאב/בעיה חזקה, תופס תשומת לב מיידית
-2. אגיטציה (7s) — מחריף את הכאב
-3. הזדהות (8s) — "גם אתה מכיר את זה..."
-4. ציפייה (7s) — "תארו לעצמכם ש..."
-5. פתרון (8s) — הצגת הפתרון/שיטה
-6. הוכחה (7s) — תוצאות/מספרים
-7. סמכות (8s) — למה אנחנו + הוכחה חברתית
-8. CTA (8s) — הנעה לפעולה ברורה
+מבנה מומלץ (10 סצנות x 6 שניות = 60 שניות):
+1. Hook (6s) — כאב/בעיה חזקה, תופס תשומת לב מיידית
+2. אגיטציה (6s) — מחריף את הכאב
+3. הזדהות (6s) — "גם אתה מכיר את זה..."
+4. ציפייה (6s) — "תארו לעצמכם ש..."
+5. מעבר (6s) — גשר רגשי, "ואז הגיע הרגע..."
+6. פתרון (6s) — הצגת הפתרון/שיטה
+7. הוכחה (6s) — תוצאות/מספרים
+8. סמכות (6s) — למה אנחנו + הוכחה חברתית
+9. דחיפות (6s) — "עכשיו או לעולם לא", FOMO
+10. CTA (6s) — הנעה לפעולה ברורה וחזקה
 
 התסריט המקורי:
 ${scriptText}
@@ -50,7 +52,7 @@ ${scriptText}
   "scenes": [
     {
       "number": 1,
-      "duration": 7,
+      "duration": 6,
       "searchQuery": "mediterranean frustrated business owner desk",
       "videoPromptEn": "Extreme close-up of a stressed business owner rubbing his temples at a cluttered desk, warm office lighting, shallow depth of field, cinematic color grading, slight camera push-in, photorealistic skin texture, 8K quality",
       "visualDescription": "בעל עסק מתוסכל ליד המחשב",
@@ -108,7 +110,7 @@ export async function POST(req: NextRequest) {
     adaptedScript.scenes = adaptedScript.scenes.map(
       (scene: Record<string, unknown>, i: number) => ({
         number: (scene.number as number) || i + 1,
-        duration: (scene.duration as number) || 12,
+        duration: (scene.duration as number) || 6,
         searchQuery: (scene.searchQuery as string) || "business professional",
         videoPromptEn: (scene.videoPromptEn as string) || (scene.searchQuery as string) || "Professional cinematic B-roll footage",
         visualDescription: (scene.visualDescription as string) || "",

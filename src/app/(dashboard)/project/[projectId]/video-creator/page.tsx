@@ -454,7 +454,7 @@ export default function VideoCreatorPage() {
           <div className="w-12 h-12 mx-auto mb-3 rounded-full border-4 border-[var(--gold)] border-t-transparent animate-spin" />
           <p className="text-sm font-medium text-[var(--text-primary)]">ממיר את התסריט לסצנות וידאו...</p>
           <p className="text-xs text-[var(--text-muted)] mt-1">
-            AI מפרק את התסריט ל-8 סצנות {videoSource === "runway" ? "+ prompts קולנועיים" : ""}
+            AI מפרק את התסריט ל-10 סצנות {videoSource === "runway" ? "+ prompts קולנועיים" : ""}
           </p>
         </div>
       )}
@@ -670,7 +670,7 @@ export default function VideoCreatorPage() {
             <div>
               <h4 className="font-bold text-[var(--text-primary)]">סרטון MP4 מוכן!</h4>
               <p className="text-xs text-[var(--text-secondary)]">
-                {adaptedScript?.scenes.length || 8} סצנות | {videoSource === "runway" ? "AI ג׳נרטיבי" : "Pexels B-Roll"} | קריינות בעברית | כתוביות
+                {adaptedScript?.scenes.length || 10} סצנות | {videoSource === "runway" ? "AI ג׳נרטיבי" : "Pexels B-Roll"} | קריינות בעברית | כתוביות
               </p>
             </div>
           </div>

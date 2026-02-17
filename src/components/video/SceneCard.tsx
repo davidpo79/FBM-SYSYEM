@@ -16,10 +16,12 @@ const SCENE_LABELS: Record<number, string> = {
   2: "אגיטציה",
   3: "הזדהות",
   4: "ציפייה",
-  5: "פתרון",
-  6: "הוכחה",
-  7: "סמכות",
-  8: "CTA",
+  5: "מעבר",
+  6: "פתרון",
+  7: "הוכחה",
+  8: "סמכות",
+  9: "דחיפות",
+  10: "CTA",
 };
 
 export default function SceneCard({

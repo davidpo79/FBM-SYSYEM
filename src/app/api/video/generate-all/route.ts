@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
             // Generate new clip with Runway
             debug.push(`Scene ${i + 1}: Generating AI clip with Runway...`);
             const cinematicPrompt = buildCinematicPrompt(scene.videoPromptEn || "");
-            const taskId = await startRunwayGeneration(cinematicPrompt, "9:16", 5);
+            const taskId = await startRunwayGeneration(cinematicPrompt, "9:16", 10);
             const clipUrl = await waitForRunwayVideo(taskId);
             await downloadFile(clipUrl, videoPath);
             debug.push(`Scene ${i + 1}: AI clip ready`);
