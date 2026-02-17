@@ -15,7 +15,7 @@ function getClient(): GoogleGenAI {
 
 // Veo 3.1 Fast (no audio) = $0.10/sec = cheapest option
 const VEO_MODEL = "veo-3.1-fast-generate-preview";
-const IMAGEN_MODEL = "imagen-3.0-generate-002";
+const IMAGEN_MODEL = "imagen-4.0-generate-001";
 
 /**
  * Start generating a video clip with Veo 3.1 Fast.
