@@ -132,8 +132,8 @@ export async function composeVideo(options: ComposeOptions): Promise<string> {
     const concatVideoPath = path.join(tmpDir, "concat-video.mp4");
     await concatFiles(trimmedPaths, concatVideoPath, "video");
 
-    // 4. Concatenate audio
-    const concatAudioPath = path.join(tmpDir, "concat-audio.mp3");
+    // 4. Concatenate audio (normalized to WAV for consistency)
+    const concatAudioPath = path.join(tmpDir, "concat-audio.wav");
     await concatFiles(
       scenes.map((s) => s.audioPath),
       concatAudioPath,
@@ -191,36 +191,87 @@ export async function composeVideo(options: ComposeOptions): Promise<string> {
 }
 
 /**
- * Concatenate files using the concat filter.
+ * Normalize an audio file to consistent WAV format (24kHz, mono).
+ * This ensures all audio files can be concatenated without format mismatches.
  */
-function concatFiles(
+function normalizeAudio(inputPath: string, outputPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .outputOptions([
+        "-ar", "24000",
+        "-ac", "1",
+        "-c:a", "pcm_s16le",
+        "-y",
+      ])
+      .output(outputPath)
+      .on("end", () => resolve())
+      .on("error", (err: Error) => reject(err))
+      .run();
+  });
+}
+
+/**
+ * Concatenate files. For audio, normalizes to consistent format first
+ * and uses the concat demuxer (more reliable than the concat filter for audio).
+ */
+async function concatFiles(
   inputPaths: string[],
   outputPath: string,
   type: "video" | "audio",
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (inputPaths.length === 0) {
-      return reject(new Error("No input files to concatenate"));
-    }
+  if (inputPaths.length === 0) {
+    throw new Error("No input files to concatenate");
+  }
 
-    if (inputPaths.length === 1) {
+  if (inputPaths.length === 1) {
+    if (type === "audio") {
+      // Still normalize even single files to ensure consistent format
+      await normalizeAudio(inputPaths[0], outputPath);
+    } else {
       fs.copyFileSync(inputPaths[0], outputPath);
-      return resolve();
+    }
+    return;
+  }
+
+  if (type === "audio") {
+    // Normalize all audio files to WAV first, then use concat demuxer
+    const normalizedPaths: string[] = [];
+    const dir = path.dirname(outputPath);
+
+    for (let i = 0; i < inputPaths.length; i++) {
+      const normPath = path.join(dir, `norm-audio-${i}.wav`);
+      await normalizeAudio(inputPaths[i], normPath);
+      normalizedPaths.push(normPath);
     }
 
+    // Create concat list file
+    const listPath = path.join(dir, "audio-list.txt");
+    const listContent = normalizedPaths.map((p) => `file '${p}'`).join("\n");
+    fs.writeFileSync(listPath, listContent, "utf-8");
+
+    // Concat using demuxer
+    return new Promise((resolve, reject) => {
+      ffmpeg()
+        .input(listPath)
+        .inputOptions(["-f", "concat", "-safe", "0"])
+        .outputOptions(["-c:a", "pcm_s16le", "-y"])
+        .output(outputPath)
+        .on("end", () => resolve())
+        .on("error", (err: Error) => reject(err))
+        .run();
+    });
+  }
+
+  // Video: use concat filter (all trimmed clips already have matching format)
+  return new Promise((resolve, reject) => {
     const cmd = ffmpeg();
     for (const p of inputPaths) {
       cmd.input(p);
     }
 
     const n = inputPaths.length;
-    const streamLabels = inputPaths.map((_, i) =>
-      type === "video" ? `[${i}:v]` : `[${i}:a]`,
-    );
-    const concatFilter =
-      type === "video"
-        ? `${streamLabels.join("")}concat=n=${n}:v=1:a=0[out]`
-        : `${streamLabels.join("")}concat=n=${n}:v=0:a=1[out]`;
+    const streamLabels = inputPaths.map((_, i) => `[${i}:v]`);
+    const concatFilter = `${streamLabels.join("")}concat=n=${n}:v=1:a=0[out]`;
 
     cmd
       .complexFilter([concatFilter])
