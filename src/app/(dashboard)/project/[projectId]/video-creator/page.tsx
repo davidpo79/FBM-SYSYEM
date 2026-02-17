@@ -5,45 +5,68 @@ import { useParams } from "next/navigation";
 import { useProject } from "../layout";
 import SceneCard from "@/components/video/SceneCard";
 import VoiceSettingsComponent from "@/components/video/VoiceSettings";
-import type { AdaptedScript, VoiceSettings, SceneResult } from "@/lib/video-types";
+import type { AdaptedScript, VoiceSettings, VideoScene } from "@/lib/video-types";
+import type { VideoFormat, RenderScene } from "@/lib/video-composer";
 
+/* ── helpers ── */
 function parseScripts(raw: string): string[] {
   if (!raw) return [];
-  const parts = raw.split(/(?=## תסריט \d)/);
-  return parts.map((p) => p.trim()).filter(Boolean);
+  return raw.split(/(?=## תסריט \d)/).map((p) => p.trim()).filter(Boolean);
 }
 
+function base64ToBlob(b64: string, mime = "image/png"): Blob {
+  const bytes = atob(b64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+interface SceneAssets {
+  imageUrl?: string;
+  imageBlob?: Blob;
+  imageLoading?: boolean;
+  voiceOverUrl?: string;
+  voiceOverBlob?: Blob;
+  voiceOverLoading?: boolean;
+  customAudioBlob?: Blob;
+  customAudioUrl?: string;
+}
+
+/* ── page ── */
 export default function VideoCreatorPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { scripts, selectedNiche } = useProject();
-
   const scriptsList = parseScripts(scripts);
 
+  // State
   const [selectedScriptIdx, setSelectedScriptIdx] = useState(0);
+  const [format, setFormat] = useState<VideoFormat>("9:16");
   const [adaptedScript, setAdaptedScript] = useState<AdaptedScript | null>(null);
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
     voice: "female",
     rate: 1.0,
     pitch: 0,
   });
-  const [sceneResults, setSceneResults] = useState<SceneResult[]>([]);
+  const [sceneAssets, setSceneAssets] = useState<Record<number, SceneAssets>>({});
 
   const [isAdapting, setIsAdapting] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [videoReady, setVideoReady] = useState(false);
+  const [isGeneratingAssets, setIsGeneratingAssets] = useState(false);
+  const [isRendering, setIsRendering] = useState(false);
+  const [renderProgress, setRenderProgress] = useState("");
+  const [renderProgressPct, setRenderProgressPct] = useState(0);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [generationProgress, setGenerationProgress] = useState("");
 
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  /* ── 1. Adapt script ── */
   const handleAdaptScript = useCallback(async () => {
     if (!scriptsList[selectedScriptIdx]) return;
     setIsAdapting(true);
     setError("");
     setAdaptedScript(null);
-    setVideoReady(false);
-    setSceneResults([]);
+    setVideoUrl(null);
+    setSceneAssets({});
 
     try {
       const res = await fetch("/api/video/adapt-script", {
@@ -55,24 +78,209 @@ export default function VideoCreatorPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to adapt script");
+      if (!res.ok) throw new Error(data.error);
       setAdaptedScript(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "שגיאה בהמרת תסריט");
+      setError(e instanceof Error ? e.message : "\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05D4\u05DE\u05E8\u05EA \u05EA\u05E1\u05E8\u05D9\u05D8");
     } finally {
       setIsAdapting(false);
     }
   }, [scriptsList, selectedScriptIdx, selectedNiche]);
 
-  const handlePreviewVoice = useCallback(async () => {
-    setIsPreviewLoading(true);
+  /* ── 2. Generate all assets (images + voice overs) ── */
+  const handleGenerateAssets = useCallback(async () => {
+    if (!adaptedScript) return;
+    setIsGeneratingAssets(true);
+    setError("");
+    setVideoUrl(null);
+
+    const brollScenes = adaptedScript.scenes.filter((s) => s.type === "b-roll");
+    const newAssets: Record<number, SceneAssets> = {};
+
+    // Initialize loading states
+    for (const scene of adaptedScript.scenes) {
+      newAssets[scene.number] = {
+        ...sceneAssets[scene.number],
+        imageLoading: scene.type === "b-roll",
+        voiceOverLoading: scene.type === "b-roll" && !!scene.voiceOverText,
+      };
+    }
+    setSceneAssets({ ...newAssets });
+
     try {
-      const sampleText = "שלום, זוהי דוגמה לקול שישמש בסרטון שלך. ניתן לשנות את סוג הקול, המהירות וגובה הקול.";
+      // Generate images and voice overs in parallel per scene
+      await Promise.all(
+        brollScenes.map(async (scene) => {
+          // Generate image
+          if (scene.imagePrompt) {
+            try {
+              const imgRes = await fetch("/api/video/generate-broll", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: scene.imagePrompt, format }),
+              });
+              const imgData = await imgRes.json();
+              if (imgRes.ok && imgData.imageBase64) {
+                const blob = base64ToBlob(imgData.imageBase64, imgData.mimeType || "image/png");
+                const url = URL.createObjectURL(blob);
+                newAssets[scene.number] = {
+                  ...newAssets[scene.number],
+                  imageUrl: url,
+                  imageBlob: blob,
+                  imageLoading: false,
+                };
+              } else {
+                newAssets[scene.number] = { ...newAssets[scene.number], imageLoading: false };
+              }
+            } catch {
+              newAssets[scene.number] = { ...newAssets[scene.number], imageLoading: false };
+            }
+            setSceneAssets((prev) => ({ ...prev, [scene.number]: { ...newAssets[scene.number] } }));
+          }
+
+          // Generate voice over
+          if (scene.voiceOverText) {
+            try {
+              const voRes = await fetch("/api/video/generate-voiceover", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  text: scene.voiceOverText,
+                  voice: voiceSettings.voice,
+                  speakingRate: voiceSettings.rate,
+                  pitch: voiceSettings.pitch,
+                }),
+              });
+              const voData = await voRes.json();
+              if (voRes.ok && voData.audioContent) {
+                const blob = base64ToBlob(voData.audioContent, "audio/mpeg");
+                const url = URL.createObjectURL(blob);
+                newAssets[scene.number] = {
+                  ...newAssets[scene.number],
+                  voiceOverUrl: url,
+                  voiceOverBlob: blob,
+                  voiceOverLoading: false,
+                };
+              } else {
+                newAssets[scene.number] = { ...newAssets[scene.number], voiceOverLoading: false };
+              }
+            } catch {
+              newAssets[scene.number] = { ...newAssets[scene.number], voiceOverLoading: false };
+            }
+            setSceneAssets((prev) => ({ ...prev, [scene.number]: { ...newAssets[scene.number] } }));
+          }
+        }),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05D9\u05E6\u05D9\u05E8\u05EA \u05E0\u05DB\u05E1\u05D9\u05DD");
+    } finally {
+      setIsGeneratingAssets(false);
+    }
+  }, [adaptedScript, format, voiceSettings, sceneAssets]);
+
+  /* ── 3. Regenerate single image ── */
+  const handleRegenerateImage = useCallback(
+    async (scene: VideoScene) => {
+      if (!scene.imagePrompt) return;
+      setSceneAssets((prev) => ({
+        ...prev,
+        [scene.number]: { ...prev[scene.number], imageLoading: true },
+      }));
+
+      try {
+        const res = await fetch("/api/video/generate-broll", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: scene.imagePrompt, format }),
+        });
+        const data = await res.json();
+        if (res.ok && data.imageBase64) {
+          const blob = base64ToBlob(data.imageBase64, data.mimeType || "image/png");
+          const url = URL.createObjectURL(blob);
+          setSceneAssets((prev) => ({
+            ...prev,
+            [scene.number]: { ...prev[scene.number], imageUrl: url, imageBlob: blob, imageLoading: false },
+          }));
+        } else {
+          setSceneAssets((prev) => ({
+            ...prev,
+            [scene.number]: { ...prev[scene.number], imageLoading: false },
+          }));
+        }
+      } catch {
+        setSceneAssets((prev) => ({
+          ...prev,
+          [scene.number]: { ...prev[scene.number], imageLoading: false },
+        }));
+      }
+    },
+    [format],
+  );
+
+  /* ── 4. Regenerate single voice over ── */
+  const handleRegenerateVoice = useCallback(
+    async (scene: VideoScene) => {
+      if (!scene.voiceOverText) return;
+      setSceneAssets((prev) => ({
+        ...prev,
+        [scene.number]: { ...prev[scene.number], voiceOverLoading: true },
+      }));
+
+      try {
+        const res = await fetch("/api/video/generate-voiceover", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: scene.voiceOverText,
+            voice: voiceSettings.voice,
+            speakingRate: voiceSettings.rate,
+            pitch: voiceSettings.pitch,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.audioContent) {
+          const blob = base64ToBlob(data.audioContent, "audio/mpeg");
+          const url = URL.createObjectURL(blob);
+          setSceneAssets((prev) => ({
+            ...prev,
+            [scene.number]: { ...prev[scene.number], voiceOverUrl: url, voiceOverBlob: blob, voiceOverLoading: false },
+          }));
+        } else {
+          setSceneAssets((prev) => ({
+            ...prev,
+            [scene.number]: { ...prev[scene.number], voiceOverLoading: false },
+          }));
+        }
+      } catch {
+        setSceneAssets((prev) => ({
+          ...prev,
+          [scene.number]: { ...prev[scene.number], voiceOverLoading: false },
+        }));
+      }
+    },
+    [voiceSettings],
+  );
+
+  /* ── 5. Handle recorded audio for a scene ── */
+  const handleRecordedAudio = useCallback(
+    (sceneNumber: number, blob: Blob) => {
+      const url = URL.createObjectURL(blob);
+      setSceneAssets((prev) => ({
+        ...prev,
+        [sceneNumber]: { ...prev[sceneNumber], customAudioBlob: blob, customAudioUrl: url },
+      }));
+    },
+    [],
+  );
+
+  /* ── 6. Preview voice sample ── */
+  const handlePreviewVoice = useCallback(async () => {
+    try {
       const res = await fetch("/api/video/generate-voiceover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: sampleText,
+          text: "\u05E9\u05DC\u05D5\u05DD, \u05D6\u05D5\u05D4\u05D9 \u05D3\u05D5\u05D2\u05DE\u05D4 \u05DC\u05E7\u05D5\u05DC \u05E9\u05D9\u05E9\u05DE\u05E9 \u05D1\u05E1\u05E8\u05D8\u05D5\u05DF. \u05E0\u05D9\u05EA\u05DF \u05DC\u05E9\u05E0\u05D5\u05EA \u05D0\u05EA \u05E1\u05D5\u05D2 \u05D4\u05E7\u05D5\u05DC \u05D5\u05D4\u05DE\u05D4\u05D9\u05E8\u05D5\u05EA.",
           voice: voiceSettings.voice,
           speakingRate: voiceSettings.rate,
           pitch: voiceSettings.pitch,
@@ -80,74 +288,102 @@ export default function VideoCreatorPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-
-      // Play the audio
-      if (previewAudioRef.current) {
-        previewAudioRef.current.pause();
-      }
+      if (previewAudioRef.current) previewAudioRef.current.pause();
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
       previewAudioRef.current = audio;
       audio.play();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "שגיאה ביצירת דוגמת קול");
-    } finally {
-      setIsPreviewLoading(false);
+      setError(e instanceof Error ? e.message : "\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05D9\u05E6\u05D9\u05E8\u05EA \u05D3\u05D5\u05D2\u05DE\u05D4");
     }
   }, [voiceSettings]);
 
-  const handleGenerateAll = useCallback(async () => {
+  /* ── 7. Render final video ── */
+  const handleRenderVideo = useCallback(async () => {
     if (!adaptedScript) return;
-    setIsGenerating(true);
+    setIsRendering(true);
     setError("");
-    setVideoReady(false);
-
-    const brollCount = adaptedScript.scenes.filter((s) => s.type === "b-roll").length;
-    setGenerationProgress(
-      `יוצר ${brollCount} תמונות B-Roll וקבצי Voice Over...`,
-    );
+    setRenderProgress("\u05D8\u05D5\u05E2\u05DF FFmpeg...");
+    setRenderProgressPct(0);
 
     try {
-      const res = await fetch("/api/video/generate-all", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId,
-          adaptedScript,
-          voiceSettings,
-          scriptIndex: selectedScriptIdx,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to generate assets");
+      // Dynamic import to avoid SSR issues
+      const { renderVideo, generateTitleCard } = await import("@/lib/video-composer");
 
-      setSceneResults(data.scenes || []);
-      setVideoReady(true);
-      setGenerationProgress("");
+      const renderScenes: RenderScene[] = [];
+
+      for (const scene of adaptedScript.scenes) {
+        const assets = sceneAssets[scene.number];
+
+        if (scene.type === "b-roll") {
+          // Use custom audio if available, else TTS
+          const audioBlob = assets?.customAudioBlob || assets?.voiceOverBlob;
+
+          renderScenes.push({
+            index: scene.number,
+            type: "b-roll",
+            duration: scene.duration,
+            imageBlob: assets?.imageBlob,
+            audioBlob: audioBlob,
+          });
+        } else {
+          // Selfie → generate title card
+          const titleBlob = await generateTitleCard(
+            scene.teleprompterText || "",
+            format,
+          );
+          renderScenes.push({
+            index: scene.number,
+            type: "selfie",
+            duration: scene.duration,
+            imageBlob: titleBlob,
+            titleText: scene.teleprompterText,
+          });
+        }
+      }
+
+      const videoBlob = await renderVideo(
+        renderScenes,
+        format,
+        (step, pct) => {
+          setRenderProgress(step);
+          setRenderProgressPct(pct);
+        },
+      );
+
+      const url = URL.createObjectURL(videoBlob);
+      if (videoUrl) URL.revokeObjectURL(videoUrl);
+      setVideoUrl(url);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "שגיאה ביצירת נכסי וידאו");
-      setGenerationProgress("");
+      console.error("Render error:", e);
+      setError(e instanceof Error ? e.message : "\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05D9\u05E6\u05D9\u05E8\u05EA \u05D4\u05E1\u05E8\u05D8\u05D5\u05DF");
     } finally {
-      setIsGenerating(false);
+      setIsRendering(false);
+      setRenderProgress("");
     }
-  }, [adaptedScript, projectId, voiceSettings, selectedScriptIdx]);
+  }, [adaptedScript, sceneAssets, format, videoUrl]);
 
-  // No scripts available
+  /* ── Check if all b-roll scenes have assets ── */
+  const allAssetsReady = adaptedScript?.scenes
+    .filter((s) => s.type === "b-roll")
+    .every((s) => {
+      const a = sceneAssets[s.number];
+      return a?.imageBlob && (a?.voiceOverBlob || a?.customAudioBlob);
+    }) ?? false;
+
+  /* ── No scripts ── */
   if (scriptsList.length === 0) {
     return (
       <div className="py-12 text-center" dir="rtl">
         <div
           className="rounded-xl p-8 max-w-md mx-auto"
-          style={{
-            backgroundColor: "var(--card-bg)",
-            border: "1px solid var(--card-border)",
-          }}
+          style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--card-border)" }}
         >
           <span className="text-4xl block mb-4">{"\u{1F3AC}"}</span>
           <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-            {"\u{05D9}\u{05E6}\u{05D9}\u{05E8}\u{05EA} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}"}
+            {"\u05D9\u05E6\u05D9\u05E8\u05EA \u05D5\u05D9\u05D3\u05D0\u05D5"}
           </h2>
           <p className="text-sm text-[var(--text-secondary)]">
-            {"\u{05E6}\u{05E8}\u{05D9}\u{05DA} \u{05E7}\u{05D5}\u{05D3}\u{05DD} \u{05DC}\u{05D9}\u{05E6}\u{05D5}\u{05E8} \u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}\u{05D9}\u{05DD} \u{05D1}\u{05E9}\u{05DC}\u{05D1} \u{05D4}\u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}\u{05D9}\u{05DD}"}
+            {"\u05E6\u05E8\u05D9\u05DA \u05E7\u05D5\u05D3\u05DD \u05DC\u05D9\u05E6\u05D5\u05E8 \u05EA\u05E1\u05E8\u05D9\u05D8\u05D9\u05DD \u05D1\u05E9\u05DC\u05D1 \u05D4\u05EA\u05E1\u05E8\u05D9\u05D8\u05D9\u05DD"}
           </p>
         </div>
       </div>
@@ -160,261 +396,242 @@ export default function VideoCreatorPage() {
       <div>
         <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-3">
           <span>{"\u{1F3AC}"}</span>
-          {"\u{05D9}\u{05E6}\u{05D9}\u{05E8}\u{05EA} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5} \u{05DE}\u{05D4}\u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}"}
+          {"\u05D9\u05E6\u05D9\u05E8\u05EA \u05D5\u05D9\u05D3\u05D0\u05D5 AI"}
         </h1>
         <p className="text-sm text-[var(--text-secondary)] mt-1">
-          {"\u{05D4}\u{05DE}\u{05E8} \u{05D0}\u{05EA} \u{05D4}\u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8} \u{05DC}\u{05D7}\u{05D1}\u{05D9}\u{05DC}\u{05EA} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5} \u{05DE}\u{05D5}\u{05DB}\u{05E0}\u{05EA} \u{05E2}\u{05DD} B-Roll, Voice Over \u{05D5}\u{05D4}\u{05E0}\u{05D7}\u{05D9}\u{05D5}\u{05EA} \u{05E6}\u{05D9}\u{05DC}\u{05D5}\u{05DD}"}
+          {"\u05D4\u05DE\u05E8 \u05D0\u05EA \u05D4\u05EA\u05E1\u05E8\u05D9\u05D8 \u05DC\u05E1\u05E8\u05D8\u05D5\u05DF \u05DE\u05D5\u05DB\u05DF \u05E2\u05DD B-Roll, Voice Over \u05D5\u05D4\u05E0\u05D7\u05D9\u05D5\u05EA \u05E6\u05D9\u05DC\u05D5\u05DD"}
         </p>
       </div>
 
-      {/* Error display */}
+      {/* Error */}
       {error && (
         <div
           className="rounded-lg p-4 text-sm"
-          style={{
-            backgroundColor: "rgba(239, 68, 68, 0.08)",
-            color: "#EF4444",
-            border: "1px solid rgba(239, 68, 68, 0.2)",
-          }}
+          style={{ backgroundColor: "rgba(239, 68, 68, 0.08)", color: "#EF4444", border: "1px solid rgba(239, 68, 68, 0.2)" }}
         >
           {error}
+          <button onClick={() => setError("")} className="mr-3 underline cursor-pointer">{"\u05E1\u05D2\u05D5\u05E8"}</button>
         </div>
       )}
 
-      {/* Step 1: Script Selection & Adaptation */}
+      {/* ── Step 1: Script + Format ── */}
       <section>
-        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-          <span
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-            style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}
-          >
-            1
-          </span>
-          {"\u{05D4}\u{05EA}\u{05D0}\u{05DE}\u{05EA} \u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8} \u{05DC}\u{05DE}\u{05D1}\u{05E0}\u{05D4} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}"}
-        </h2>
+        <SectionHeader num={1} title={"\u05D1\u05D7\u05D9\u05E8\u05EA \u05EA\u05E1\u05E8\u05D9\u05D8 \u05D5\u05E4\u05D5\u05E8\u05DE\u05D8"} />
 
         <div
-          className="rounded-xl p-5"
-          style={{
-            backgroundColor: "var(--card-bg)",
-            border: "1px solid var(--card-border)",
-          }}
+          className="rounded-xl p-5 space-y-4"
+          style={{ backgroundColor: "var(--card-bg)", border: "1px solid var(--card-border)" }}
         >
-          <label className="text-sm font-medium text-[var(--text-primary)] mb-2 block">
-            {"\u{05D1}\u{05D7}\u{05E8} \u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}"}:
-          </label>
-          <select
-            value={selectedScriptIdx}
-            onChange={(e) => {
-              setSelectedScriptIdx(Number(e.target.value));
-              setAdaptedScript(null);
-              setVideoReady(false);
-              setSceneResults([]);
-            }}
-            className="w-full px-4 py-3 rounded-lg text-sm mb-4"
-            style={{
-              backgroundColor: "var(--content-bg)",
-              border: "1px solid var(--card-border)",
-              color: "var(--text-primary)",
-            }}
-          >
-            {scriptsList.map((_, i) => (
-              <option key={i} value={i}>
-                {"\u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}"} {i + 1}
-              </option>
-            ))}
-          </select>
+          {/* Script selector */}
+          <div>
+            <label className="text-sm font-medium text-[var(--text-primary)] mb-2 block">
+              {"\u05EA\u05E1\u05E8\u05D9\u05D8"}:
+            </label>
+            <select
+              value={selectedScriptIdx}
+              onChange={(e) => {
+                setSelectedScriptIdx(Number(e.target.value));
+                setAdaptedScript(null);
+                setVideoUrl(null);
+                setSceneAssets({});
+              }}
+              className="w-full px-4 py-3 rounded-lg text-sm"
+              style={{ backgroundColor: "var(--content-bg)", border: "1px solid var(--card-border)", color: "var(--text-primary)" }}
+            >
+              {scriptsList.map((_, i) => (
+                <option key={i} value={i}>{`\u05EA\u05E1\u05E8\u05D9\u05D8 ${i + 1}`}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Format selector */}
+          <div>
+            <label className="text-sm font-medium text-[var(--text-primary)] mb-2 block">
+              {"\u05D2\u05D5\u05D3\u05DC \u05E1\u05E8\u05D8\u05D5\u05DF"}:
+            </label>
+            <div className="flex gap-3">
+              {(["9:16", "1:1"] as VideoFormat[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => {
+                    setFormat(f);
+                    if (adaptedScript) {
+                      setSceneAssets({});
+                      setVideoUrl(null);
+                    }
+                  }}
+                  className="flex-1 flex flex-col items-center gap-2 px-4 py-4 rounded-lg cursor-pointer transition-all"
+                  style={{
+                    backgroundColor: format === f ? "rgba(212, 168, 67, 0.12)" : "var(--content-bg)",
+                    border: format === f ? "2px solid #D4A843" : "2px solid var(--card-border)",
+                    color: format === f ? "#D4A843" : "var(--text-secondary)",
+                  }}
+                >
+                  <div
+                    className="rounded border-2"
+                    style={{
+                      width: f === "9:16" ? 28 : 40,
+                      height: f === "9:16" ? 50 : 40,
+                      borderColor: format === f ? "#D4A843" : "var(--card-border)",
+                    }}
+                  />
+                  <span className="text-sm font-medium">
+                    {f === "9:16" ? "Story / Reels (9:16)" : "Feed (1:1)"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Script preview */}
           <div
-            className="rounded-lg p-3 mb-4 max-h-40 overflow-y-auto text-sm text-[var(--text-secondary)]"
+            className="rounded-lg p-3 max-h-32 overflow-y-auto text-sm text-[var(--text-secondary)]"
             style={{ backgroundColor: "var(--content-bg)" }}
           >
             {scriptsList[selectedScriptIdx]?.substring(0, 300)}
             {(scriptsList[selectedScriptIdx]?.length || 0) > 300 && "..."}
           </div>
 
-          <button
-            onClick={handleAdaptScript}
-            disabled={isAdapting}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-sm font-bold cursor-pointer transition-all"
-            style={{
-              background: isAdapting
-                ? "var(--card-border)"
-                : "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
-              color: isAdapting ? "var(--text-muted)" : "#0F1117",
-              boxShadow: isAdapting
-                ? "none"
-                : "0 2px 12px rgba(212, 168, 67, 0.3)",
-              opacity: isAdapting ? 0.7 : 1,
-            }}
-          >
-            {isAdapting ? (
-              <>
-                <span className="w-4 h-4 border-2 border-[#0F1117]/30 border-t-[#0F1117] rounded-full animate-spin" />
-                {"\u{05DE}\u{05E2}\u{05D1}\u{05D3} \u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}"}...
-              </>
-            ) : (
-              <>
-                <span>{"\u{1F504}"}</span>
-                {"\u{05D4}\u{05DE}\u{05E8} \u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8} \u{05DC}\u{05DE}\u{05D1}\u{05E0}\u{05D4} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}"}
-              </>
-            )}
-          </button>
+          {/* Adapt button */}
+          <GoldButton onClick={handleAdaptScript} loading={isAdapting} label={"\u05D4\u05DE\u05E8 \u05EA\u05E1\u05E8\u05D9\u05D8 \u05DC\u05DE\u05D1\u05E0\u05D4 \u05D5\u05D9\u05D3\u05D0\u05D5"} loadingLabel={"\u05DE\u05E2\u05D1\u05D3 \u05EA\u05E1\u05E8\u05D9\u05D8..."} icon={"\u{1F504}"} />
         </div>
       </section>
 
-      {/* Step 2: Scene Preview */}
+      {/* ── Step 2: Voice Settings ── */}
       {adaptedScript && (
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-            <span
-              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}
-            >
-              2
-            </span>
-            {"\u{05EA}\u{05E6}\u{05D5}\u{05D2}\u{05D4} \u{05DE}\u{05E7}\u{05D3}\u{05D9}\u{05DE}\u{05D4} \u{05E9}\u{05DC} \u{05D4}\u{05DE}\u{05D1}\u{05E0}\u{05D4}"}
-          </h2>
+          <SectionHeader num={2} title={"\u05D4\u05D2\u05D3\u05E8\u05D5\u05EA Voice Over"} />
+          <VoiceSettingsComponent
+            settings={voiceSettings}
+            onChange={setVoiceSettings}
+            onPreview={handlePreviewVoice}
+          />
+        </section>
+      )}
+
+      {/* ── Step 3: Generate Assets ── */}
+      {adaptedScript && (
+        <section>
+          <SectionHeader num={3} title={"\u05D9\u05E6\u05D9\u05E8\u05EA \u05EA\u05DE\u05D5\u05E0\u05D5\u05EA \u05D5\u05E7\u05D5\u05DC"} />
+
+          <GoldButton
+            onClick={handleGenerateAssets}
+            loading={isGeneratingAssets}
+            label={"\u05E6\u05D5\u05E8 \u05EA\u05DE\u05D5\u05E0\u05D5\u05EA B-Roll + Voice Over"}
+            loadingLabel={"\u05D9\u05D5\u05E6\u05E8 \u05E0\u05DB\u05E1\u05D9\u05DD..."}
+            icon={"\u{1F3A8}"}
+          />
 
           {/* Stats bar */}
-          <div
-            className="rounded-lg px-4 py-3 mb-4 flex items-center gap-6 text-sm"
-            style={{
-              backgroundColor: "rgba(212, 168, 67, 0.06)",
-              border: "1px solid rgba(212, 168, 67, 0.15)",
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-[var(--text-primary)]">
-                {adaptedScript.scenes.length}
-              </span>
-              <span className="text-[var(--text-muted)]">{"\u{05E1}\u{05E6}\u{05E0}\u{05D5}\u{05EA}"}</span>
+          {Object.keys(sceneAssets).length > 0 && (
+            <div
+              className="rounded-lg px-4 py-3 mt-4 flex items-center gap-6 text-sm"
+              style={{ backgroundColor: "rgba(212, 168, 67, 0.06)", border: "1px solid rgba(212, 168, 67, 0.15)" }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-[var(--text-primary)]">{adaptedScript.scenes.length}</span>
+                <span className="text-[var(--text-muted)]">{"\u05E1\u05E6\u05E0\u05D5\u05EA"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-[var(--text-primary)]">{`~${adaptedScript.totalDuration}`}</span>
+                <span className="text-[var(--text-muted)]">{"\u05E9\u05E0\u05D9\u05D5\u05EA"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium" style={{ color: "#3B82F6" }}>
+                  {adaptedScript.scenes.filter((s) => s.type === "b-roll").length}
+                </span>
+                <span className="text-[var(--text-muted)]">B-Roll</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium" style={{ color: "#22C55E" }}>
+                  {adaptedScript.scenes.filter((s) => s.type === "selfie").length}
+                </span>
+                <span className="text-[var(--text-muted)]">Selfie</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-[var(--text-primary)]">
-                {adaptedScript.totalDuration}
-              </span>
-              <span className="text-[var(--text-muted)]">{"\u{05E9}\u{05E0}\u{05D9}\u{05D5}\u{05EA}"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium" style={{ color: "#3B82F6" }}>
-                {adaptedScript.scenes.filter((s) => s.type === "b-roll").length}
-              </span>
-              <span className="text-[var(--text-muted)]">B-Roll</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium" style={{ color: "#22C55E" }}>
-                {adaptedScript.scenes.filter((s) => s.type === "selfie").length}
-              </span>
-              <span className="text-[var(--text-muted)]">Selfie</span>
-            </div>
-          </div>
+          )}
 
           {/* Scene cards */}
-          {adaptedScript.scenes.map((scene) => {
-            const result = sceneResults.find((r) => r.number === scene.number);
-            return (
-              <SceneCard
-                key={scene.number}
-                scene={scene}
-                imageUrl={result?.imageUrl}
-                voiceOverUrl={result?.voiceOverUrl}
-              />
-            );
-          })}
+          <div className="mt-4 space-y-0">
+            {adaptedScript.scenes.map((scene) => {
+              const assets = sceneAssets[scene.number] || {};
+              return (
+                <SceneCard
+                  key={scene.number}
+                  scene={scene}
+                  format={format}
+                  imageUrl={assets.imageUrl}
+                  imageLoading={assets.imageLoading}
+                  voiceOverUrl={assets.voiceOverUrl}
+                  voiceOverLoading={assets.voiceOverLoading}
+                  customAudioUrl={assets.customAudioUrl}
+                  onRegenerateImage={() => handleRegenerateImage(scene)}
+                  onRegenerateVoice={() => handleRegenerateVoice(scene)}
+                  onRecordedAudio={(blob) => handleRecordedAudio(scene.number, blob)}
+                />
+              );
+            })}
+          </div>
 
           {/* Filming instructions */}
           {adaptedScript.filmingInstructions && (
             <div
               className="rounded-lg p-4 mt-4"
-              style={{
-                backgroundColor: "rgba(59, 130, 246, 0.06)",
-                border: "1px solid rgba(59, 130, 246, 0.15)",
-              }}
+              style={{ backgroundColor: "rgba(59, 130, 246, 0.06)", border: "1px solid rgba(59, 130, 246, 0.15)" }}
             >
               <div className="flex items-center gap-2 mb-2">
                 <span>{"\u{1F4F7}"}</span>
-                <strong className="text-sm text-[var(--text-primary)]">
-                  {"\u{05D4}\u{05E0}\u{05D7}\u{05D9}\u{05D5}\u{05EA} \u{05E6}\u{05D9}\u{05DC}\u{05D5}\u{05DD}"}:
-                </strong>
+                <strong className="text-sm text-[var(--text-primary)]">{"\u05D4\u05E0\u05D7\u05D9\u05D5\u05EA \u05E6\u05D9\u05DC\u05D5\u05DD"}</strong>
               </div>
-              <p className="text-sm text-[var(--text-secondary)]">
-                {adaptedScript.filmingInstructions}
+              <p className="text-sm text-[var(--text-secondary)]">{adaptedScript.filmingInstructions}</p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── Step 4: Render Video ── */}
+      {adaptedScript && allAssetsReady && !videoUrl && (
+        <section>
+          <SectionHeader num={4} title={"\u05D9\u05E6\u05D9\u05E8\u05EA \u05E1\u05E8\u05D8\u05D5\u05DF"} />
+
+          <GoldButton
+            onClick={handleRenderVideo}
+            loading={isRendering}
+            label={"\u05E6\u05D5\u05E8 \u05E1\u05E8\u05D8\u05D5\u05DF MP4"}
+            loadingLabel={renderProgress || "\u05DE\u05E2\u05D1\u05D3..."}
+            icon={"\u{1F3AC}"}
+            large
+          />
+
+          {isRendering && (
+            <div className="mt-3">
+              <div
+                className="h-2 rounded-full overflow-hidden"
+                style={{ backgroundColor: "var(--card-border)" }}
+              >
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${Math.round(renderProgressPct * 100)}%`,
+                    background: "linear-gradient(90deg, #D4A843, #C49A38)",
+                  }}
+                />
+              </div>
+              <p className="text-center text-xs text-[var(--text-muted)] mt-2">
+                {"\u05D4\u05EA\u05D4\u05DC\u05D9\u05DA \u05E2\u05E9\u05D5\u05D9 \u05DC\u05E7\u05D7\u05EA \u05DB\u05D3\u05E7\u05D4 \u05D0\u05D7\u05EA \u05E2\u05D3 \u05E9\u05DC\u05D5\u05E9"}
               </p>
             </div>
           )}
         </section>
       )}
 
-      {/* Step 3: Voice Settings */}
-      {adaptedScript && (
-        <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-            <span
-              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}
-            >
-              3
-            </span>
-            {"\u{05D4}\u{05D2}\u{05D3}\u{05E8}\u{05D5}\u{05EA} Voice Over"}
-          </h2>
-          <VoiceSettingsComponent
-            settings={voiceSettings}
-            onChange={setVoiceSettings}
-            onPreview={handlePreviewVoice}
-            isPreviewLoading={isPreviewLoading}
-          />
-        </section>
-      )}
-
-      {/* Step 4: Generate */}
-      {adaptedScript && !videoReady && (
-        <section>
-          <button
-            onClick={handleGenerateAll}
-            disabled={isGenerating}
-            className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-base font-bold cursor-pointer transition-all"
-            style={{
-              background: isGenerating
-                ? "var(--card-border)"
-                : "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
-              color: isGenerating ? "var(--text-muted)" : "#0F1117",
-              boxShadow: isGenerating
-                ? "none"
-                : "0 4px 16px rgba(212, 168, 67, 0.35)",
-              opacity: isGenerating ? 0.7 : 1,
-            }}
-          >
-            {isGenerating ? (
-              <>
-                <span className="w-5 h-5 border-2 border-[#0F1117]/30 border-t-[#0F1117] rounded-full animate-spin" />
-                {generationProgress || "\u{05D9}\u{05D5}\u{05E6}\u{05E8} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}..."}
-              </>
-            ) : (
-              <>
-                <span>{"\u{1F3AC}"}</span>
-                {"\u{05E6}\u{05D5}\u{05E8} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}"}
-              </>
-            )}
-          </button>
-          {isGenerating && (
-            <p className="text-center text-xs text-[var(--text-muted)] mt-2">
-              {"\u{05D4}\u{05EA}\u{05D4}\u{05DC}\u{05D9}\u{05DA} \u{05E2}\u{05E9}\u{05D5}\u{05D9} \u{05DC}\u{05E7}\u{05D7}\u{05EA} \u{05DB}\u{05D3}\u{05E7}\u{05D4} \u{05D0}\u{05D7}\u{05EA} \u{05E2}\u{05D3} \u{05E9}\u{05DC}\u{05D5}\u{05E9}"}
-            </p>
-          )}
-        </section>
-      )}
-
-      {/* Step 5: Download */}
-      {videoReady && (
+      {/* ── Step 5: Video Ready ── */}
+      {videoUrl && (
         <section>
           <div
             className="rounded-xl p-6"
-            style={{
-              backgroundColor: "rgba(34, 197, 94, 0.06)",
-              border: "1px solid rgba(34, 197, 94, 0.2)",
-            }}
+            style={{ backgroundColor: "rgba(34, 197, 94, 0.06)", border: "1px solid rgba(34, 197, 94, 0.2)" }}
           >
             <div className="flex items-center gap-3 mb-4">
               <span
@@ -424,47 +641,29 @@ export default function VideoCreatorPage() {
                 {"\u2705"}
               </span>
               <div>
-                <h3 className="font-bold text-[var(--text-primary)]">
-                  {"\u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5} \u{05DE}\u{05D5}\u{05DB}\u{05DF}!"}
-                </h3>
+                <h3 className="font-bold text-[var(--text-primary)]">{"\u05D4\u05E1\u05E8\u05D8\u05D5\u05DF \u05DE\u05D5\u05DB\u05DF!"}</h3>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  {"\u{05DB}\u{05DC} \u{05D4}\u{05E0}\u{05DB}\u{05E1}\u{05D9}\u{05DD} \u{05E0}\u{05D5}\u{05E6}\u{05E8}\u{05D5} \u{05D1}\u{05D4}\u{05E6}\u{05DC}\u{05D7}\u{05D4}"}
+                  {format === "9:16" ? "Story / Reels (1080x1920)" : "Feed (1080x1080)"} - MP4
                 </p>
               </div>
             </div>
 
-            {/* Summary */}
-            <div className="space-y-2 mb-5">
-              {sceneResults.filter((s) => s.imageUrl).length > 0 && (
-                <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                  <span style={{ color: "#22C55E" }}>{"\u2713"}</span>
-                  {sceneResults.filter((s) => s.imageUrl).length}{" "}
-                  {"\u{05EA}\u{05DE}\u{05D5}\u{05E0}\u{05D5}\u{05EA} B-Roll (PNG, 1920x1080)"}
-                </div>
-              )}
-              {sceneResults.filter((s) => s.voiceOverUrl).length > 0 && (
-                <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                  <span style={{ color: "#22C55E" }}>{"\u2713"}</span>
-                  {sceneResults.filter((s) => s.voiceOverUrl).length}{" "}
-                  {"\u{05E7}\u{05D8}\u{05E2}\u{05D9} Voice Over (MP3)"}
-                </div>
-              )}
-              <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                <span style={{ color: "#22C55E" }}>{"\u2713"}</span>
-                {"\u{05DE}\u{05D3}\u{05E8}\u{05D9}\u{05DA} \u{05DC}\u{05E6}\u{05D9}\u{05DC}\u{05D5}\u{05DD} \u{05E1}\u{05DC}\u{05E4}\u{05D9}-\u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}"}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                <span style={{ color: "#22C55E" }}>{"\u2713"}</span>
-                Timeline JSON {"\u{05DC}\u{05E2}\u{05E8}\u{05D9}\u{05DB}\u{05D4}"}
-              </div>
+            {/* Video player */}
+            <div className="rounded-lg overflow-hidden mb-4 flex justify-center bg-black">
+              <video
+                controls
+                src={videoUrl}
+                className="max-h-[400px]"
+                style={{ aspectRatio: format === "9:16" ? "9/16" : "1/1" }}
+              />
             </div>
 
-            {/* Download buttons */}
+            {/* Download + Re-render */}
             <div className="flex gap-3">
               <a
-                href={`/api/video/download-package?projectId=${projectId}`}
-                download
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-sm font-bold cursor-pointer transition-all"
+                href={videoUrl}
+                download={`video-${format.replace(":", "x")}-${Date.now()}.mp4`}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-sm font-bold cursor-pointer"
                 style={{
                   background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
                   color: "#0F1117",
@@ -472,24 +671,78 @@ export default function VideoCreatorPage() {
                 }}
               >
                 <span>{"\u{1F4E5}"}</span>
-                {"\u{05D4}\u{05D5}\u{05E8}\u{05D3} \u{05D4}\u{05DB}\u{05DC} (ZIP)"}
+                {"\u05D4\u05D5\u05E8\u05D3 MP4"}
               </a>
               <button
-                onClick={handleGenerateAll}
+                onClick={() => { setVideoUrl(null); }}
                 className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium cursor-pointer"
-                style={{
-                  backgroundColor: "var(--content-bg)",
-                  color: "var(--text-secondary)",
-                  border: "1px solid var(--card-border)",
-                }}
+                style={{ backgroundColor: "var(--content-bg)", color: "var(--text-secondary)", border: "1px solid var(--card-border)" }}
               >
                 <span>{"\u{1F504}"}</span>
-                {"\u{05E6}\u{05D5}\u{05E8} \u{05DE}\u{05D7}\u{05D3}\u{05E9}"}
+                {"\u05E2\u05E8\u05D5\u05DA \u05DE\u05D7\u05D3\u05E9"}
               </button>
             </div>
           </div>
         </section>
       )}
     </div>
+  );
+}
+
+/* ── Reusable sub-components ── */
+
+function SectionHeader({ num, title }: { num: number; title: string }) {
+  return (
+    <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+      <span
+        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+        style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}
+      >
+        {num}
+      </span>
+      {title}
+    </h2>
+  );
+}
+
+function GoldButton({
+  onClick,
+  loading,
+  label,
+  loadingLabel,
+  icon,
+  large,
+}: {
+  onClick: () => void;
+  loading: boolean;
+  label: string;
+  loadingLabel: string;
+  icon: string;
+  large?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className={`w-full flex items-center justify-center gap-2 ${large ? "px-6 py-4 rounded-xl text-base" : "px-6 py-3 rounded-lg text-sm"} font-bold cursor-pointer transition-all`}
+      style={{
+        background: loading ? "var(--card-border)" : "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
+        color: loading ? "var(--text-muted)" : "#0F1117",
+        boxShadow: loading ? "none" : large ? "0 4px 16px rgba(212, 168, 67, 0.35)" : "0 2px 12px rgba(212, 168, 67, 0.3)",
+        opacity: loading ? 0.7 : 1,
+      }}
+    >
+      {loading ? (
+        <>
+          <span className="w-4 h-4 border-2 border-[#0F1117]/30 border-t-[#0F1117] rounded-full animate-spin" />
+          {loadingLabel}
+        </>
+      ) : (
+        <>
+          <span>{icon}</span>
+          {label}
+        </>
+      )}
+    </button>
   );
 }
