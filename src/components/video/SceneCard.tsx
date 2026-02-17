@@ -29,16 +29,16 @@ export default function SceneCard({ scene, imageUrl, voiceOverUrl }: SceneCardPr
             color: scene.type === "b-roll" ? "#3B82F6" : "#22C55E",
           }}
         >
-          {scene.type === "b-roll" ? "\u{1F3A5}" : "\u{1F4F9}"}
+          {scene.type === "b-roll" ? "🎥" : "📹"}
         </span>
         <div className="flex-1">
           <h3 className="font-semibold text-[var(--text-primary)]">
             {scene.type === "b-roll"
-              ? `B-Roll \u{05E1}\u{05E6}\u{05E0}\u{05D4} ${scene.number}`
-              : `\u{05E1}\u{05DC}\u{05E4}\u{05D9}-\u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5} \u{05E1}\u{05E6}\u{05E0}\u{05D4} ${scene.number}`}
+              ? `B-Roll סצנה ${scene.number}`
+              : `סלפי-וידאו סצנה ${scene.number}`}
           </h3>
           <span className="text-xs text-[var(--text-muted)]">
-            {`${scene.duration} שניות`}
+            {scene.duration} שניות
           </span>
         </div>
         <span
@@ -64,9 +64,9 @@ export default function SceneCard({ scene, imageUrl, voiceOverUrl }: SceneCardPr
             style={{ backgroundColor: "rgba(59, 130, 246, 0.04)" }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm">{"\u{1F4F8}"}</span>
+              <span className="text-sm">📸</span>
               <strong className="text-sm text-[var(--text-primary)]">
-                {"\u{05EA}\u{05DE}\u{05D5}\u{05E0}\u{05D4}"}:
+                תמונה:
               </strong>
             </div>
             {imageUrl ? (
@@ -89,7 +89,7 @@ export default function SceneCard({ scene, imageUrl, voiceOverUrl }: SceneCardPr
             style={{ backgroundColor: "rgba(212, 168, 67, 0.06)" }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm">{"\u{1F399}\uFE0F"}</span>
+              <span className="text-sm">🎙️</span>
               <strong className="text-sm text-[var(--text-primary)]">
                 Voice Over:
               </strong>
@@ -114,9 +114,9 @@ export default function SceneCard({ scene, imageUrl, voiceOverUrl }: SceneCardPr
             style={{ backgroundColor: "rgba(34, 197, 94, 0.04)" }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm">{"\u{1F4F9}"}</span>
+              <span className="text-sm">📹</span>
               <strong className="text-sm text-[var(--text-primary)]">
-                {"\u{05DB}\u{05D0}\u{05DF} \u{05EA}\u{05E6}\u{05DC}\u{05DD} \u{05D0}\u{05EA} \u{05E2}\u{05E6}\u{05DE}\u{05DA} \u{05DE}\u{05D3}\u{05D1}\u{05E8}"}
+                כאן תצלם את עצמך מדבר
               </strong>
             </div>
           </div>
@@ -128,9 +128,9 @@ export default function SceneCard({ scene, imageUrl, voiceOverUrl }: SceneCardPr
             }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm">{"\u{1F4DD}"}</span>
+              <span className="text-sm">📝</span>
               <strong className="text-sm text-[var(--text-primary)]">
-                {"\u{05D8}\u{05E7}\u{05E1}\u{05D8} \u{05DC}\u{05E7}\u{05E8}\u{05D9}\u{05D0}\u{05D4}"}:
+                טקסט לקריאה:
               </strong>
             </div>
             <p className="text-sm leading-relaxed text-[var(--text-primary)]">
@@ -143,7 +143,7 @@ export default function SceneCard({ scene, imageUrl, voiceOverUrl }: SceneCardPr
       {/* Notes */}
       {scene.notes && (
         <div className="mt-3 flex items-start gap-2">
-          <span className="text-xs mt-0.5">{"\u{1F4A1}"}</span>
+          <span className="text-xs mt-0.5">💡</span>
           <p className="text-xs text-[var(--text-muted)]">{scene.notes}</p>
         </div>
       )}

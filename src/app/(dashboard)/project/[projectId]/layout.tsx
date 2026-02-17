@@ -110,7 +110,8 @@ export default function ProjectLayout({
         .single();
 
       if (dbErr || !data) {
-        setError("הפרויקט לא נמצא");
+        console.error("Project load error:", dbErr);
+        setError(dbErr?.message || "הפרויקט לא נמצא");
         setLoading(false);
         return;
       }
@@ -253,6 +254,7 @@ export default function ProjectLayout({
     { key: "creative", label: "קריאייטיב", href: `/project/${projectId}/creative` },
     { key: "copy", label: "קופי", href: `/project/${projectId}/copy` },
     { key: "album", label: "אלבום", href: `/project/${projectId}/album` },
+    { key: "video-creator", label: "וידאו", href: `/project/${projectId}/video-creator` },
   ];
 
   const completedSteps: string[] = [];

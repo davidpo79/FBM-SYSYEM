@@ -66,6 +66,7 @@ export default function VideoCreatorPage() {
 
   const handlePreviewVoice = useCallback(async () => {
     setIsPreviewLoading(true);
+    setError("");
     try {
       const sampleText = "שלום, זוהי דוגמה לקול שישמש בסרטון שלך. ניתן לשנות את סוג הקול, המהירות וגובה הקול.";
       const res = await fetch("/api/video/generate-voiceover", {
@@ -79,15 +80,16 @@ export default function VideoCreatorPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || "שגיאה ביצירת דוגמת קול");
 
-      // Play the audio
+      // Stop previous audio if playing
       if (previewAudioRef.current) {
         previewAudioRef.current.pause();
+        previewAudioRef.current = null;
       }
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
       previewAudioRef.current = audio;
-      audio.play();
+      await audio.play();
     } catch (e) {
       setError(e instanceof Error ? e.message : "שגיאה ביצירת דוגמת קול");
     } finally {
@@ -142,12 +144,12 @@ export default function VideoCreatorPage() {
             border: "1px solid var(--card-border)",
           }}
         >
-          <span className="text-4xl block mb-4">{"\u{1F3AC}"}</span>
+          <span className="text-4xl block mb-4">🎬</span>
           <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-            {"\u{05D9}\u{05E6}\u{05D9}\u{05E8}\u{05EA} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}"}
+            יצירת וידאו
           </h2>
           <p className="text-sm text-[var(--text-secondary)]">
-            {"\u{05E6}\u{05E8}\u{05D9}\u{05DA} \u{05E7}\u{05D5}\u{05D3}\u{05DD} \u{05DC}\u{05D9}\u{05E6}\u{05D5}\u{05E8} \u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}\u{05D9}\u{05DD} \u{05D1}\u{05E9}\u{05DC}\u{05D1} \u{05D4}\u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}\u{05D9}\u{05DD}"}
+            צריך קודם ליצור תסריטים בשלב התסריטים
           </p>
         </div>
       </div>
@@ -159,11 +161,11 @@ export default function VideoCreatorPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-3">
-          <span>{"\u{1F3AC}"}</span>
-          {"\u{05D9}\u{05E6}\u{05D9}\u{05E8}\u{05EA} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5} \u{05DE}\u{05D4}\u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}"}
+          <span>🎬</span>
+          יצירת וידאו מהתסריט
         </h1>
         <p className="text-sm text-[var(--text-secondary)] mt-1">
-          {"\u{05D4}\u{05DE}\u{05E8} \u{05D0}\u{05EA} \u{05D4}\u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8} \u{05DC}\u{05D7}\u{05D1}\u{05D9}\u{05DC}\u{05EA} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5} \u{05DE}\u{05D5}\u{05DB}\u{05E0}\u{05EA} \u{05E2}\u{05DD} B-Roll, Voice Over \u{05D5}\u{05D4}\u{05E0}\u{05D7}\u{05D9}\u{05D5}\u{05EA} \u{05E6}\u{05D9}\u{05DC}\u{05D5}\u{05DD}"}
+          המר את התסריט לחבילת וידאו מוכנת עם B-Roll, Voice Over והנחיות צילום
         </p>
       </div>
 
@@ -190,7 +192,7 @@ export default function VideoCreatorPage() {
           >
             1
           </span>
-          {"\u{05D4}\u{05EA}\u{05D0}\u{05DE}\u{05EA} \u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8} \u{05DC}\u{05DE}\u{05D1}\u{05E0}\u{05D4} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}"}
+          התאמת תסריט למבנה וידאו
         </h2>
 
         <div
@@ -201,7 +203,7 @@ export default function VideoCreatorPage() {
           }}
         >
           <label className="text-sm font-medium text-[var(--text-primary)] mb-2 block">
-            {"\u{05D1}\u{05D7}\u{05E8} \u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}"}:
+            בחר תסריט:
           </label>
           <select
             value={selectedScriptIdx}
@@ -220,7 +222,7 @@ export default function VideoCreatorPage() {
           >
             {scriptsList.map((_, i) => (
               <option key={i} value={i}>
-                {"\u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}"} {i + 1}
+                תסריט {i + 1}
               </option>
             ))}
           </select>
@@ -252,12 +254,12 @@ export default function VideoCreatorPage() {
             {isAdapting ? (
               <>
                 <span className="w-4 h-4 border-2 border-[#0F1117]/30 border-t-[#0F1117] rounded-full animate-spin" />
-                {"\u{05DE}\u{05E2}\u{05D1}\u{05D3} \u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8}"}...
+                מעבד תסריט...
               </>
             ) : (
               <>
-                <span>{"\u{1F504}"}</span>
-                {"\u{05D4}\u{05DE}\u{05E8} \u{05EA}\u{05E1}\u{05E8}\u{05D9}\u{05D8} \u{05DC}\u{05DE}\u{05D1}\u{05E0}\u{05D4} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}"}
+                <span>🔄</span>
+                המר תסריט למבנה וידאו
               </>
             )}
           </button>
@@ -274,7 +276,7 @@ export default function VideoCreatorPage() {
             >
               2
             </span>
-            {"\u{05EA}\u{05E6}\u{05D5}\u{05D2}\u{05D4} \u{05DE}\u{05E7}\u{05D3}\u{05D9}\u{05DE}\u{05D4} \u{05E9}\u{05DC} \u{05D4}\u{05DE}\u{05D1}\u{05E0}\u{05D4}"}
+            תצוגה מקדימה של המבנה
           </h2>
 
           {/* Stats bar */}
@@ -289,13 +291,13 @@ export default function VideoCreatorPage() {
               <span className="font-medium text-[var(--text-primary)]">
                 {adaptedScript.scenes.length}
               </span>
-              <span className="text-[var(--text-muted)]">{"\u{05E1}\u{05E6}\u{05E0}\u{05D5}\u{05EA}"}</span>
+              <span className="text-[var(--text-muted)]">סצנות</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="font-medium text-[var(--text-primary)]">
                 {adaptedScript.totalDuration}
               </span>
-              <span className="text-[var(--text-muted)]">{"\u{05E9}\u{05E0}\u{05D9}\u{05D5}\u{05EA}"}</span>
+              <span className="text-[var(--text-muted)]">שניות</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="font-medium" style={{ color: "#3B82F6" }}>
@@ -334,9 +336,9 @@ export default function VideoCreatorPage() {
               }}
             >
               <div className="flex items-center gap-2 mb-2">
-                <span>{"\u{1F4F7}"}</span>
+                <span>📷</span>
                 <strong className="text-sm text-[var(--text-primary)]">
-                  {"\u{05D4}\u{05E0}\u{05D7}\u{05D9}\u{05D5}\u{05EA} \u{05E6}\u{05D9}\u{05DC}\u{05D5}\u{05DD}"}:
+                  הנחיות צילום:
                 </strong>
               </div>
               <p className="text-sm text-[var(--text-secondary)]">
@@ -357,7 +359,7 @@ export default function VideoCreatorPage() {
             >
               3
             </span>
-            {"\u{05D4}\u{05D2}\u{05D3}\u{05E8}\u{05D5}\u{05EA} Voice Over"}
+            הגדרות Voice Over
           </h2>
           <VoiceSettingsComponent
             settings={voiceSettings}
@@ -389,18 +391,18 @@ export default function VideoCreatorPage() {
             {isGenerating ? (
               <>
                 <span className="w-5 h-5 border-2 border-[#0F1117]/30 border-t-[#0F1117] rounded-full animate-spin" />
-                {generationProgress || "\u{05D9}\u{05D5}\u{05E6}\u{05E8} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}..."}
+                {generationProgress || "יוצר וידאו..."}
               </>
             ) : (
               <>
-                <span>{"\u{1F3AC}"}</span>
-                {"\u{05E6}\u{05D5}\u{05E8} \u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}"}
+                <span>🎬</span>
+                צור וידאו
               </>
             )}
           </button>
           {isGenerating && (
             <p className="text-center text-xs text-[var(--text-muted)] mt-2">
-              {"\u{05D4}\u{05EA}\u{05D4}\u{05DC}\u{05D9}\u{05DA} \u{05E2}\u{05E9}\u{05D5}\u{05D9} \u{05DC}\u{05E7}\u{05D7}\u{05EA} \u{05DB}\u{05D3}\u{05E7}\u{05D4} \u{05D0}\u{05D7}\u{05EA} \u{05E2}\u{05D3} \u{05E9}\u{05DC}\u{05D5}\u{05E9}"}
+              התהליך עשוי לקחת כדקה אחת עד שלוש
             </p>
           )}
         </section>
@@ -421,14 +423,14 @@ export default function VideoCreatorPage() {
                 className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
                 style={{ backgroundColor: "rgba(34, 197, 94, 0.15)" }}
               >
-                {"\u2705"}
+                ✅
               </span>
               <div>
                 <h3 className="font-bold text-[var(--text-primary)]">
-                  {"\u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5} \u{05DE}\u{05D5}\u{05DB}\u{05DF}!"}
+                  וידאו מוכן!
                 </h3>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  {"\u{05DB}\u{05DC} \u{05D4}\u{05E0}\u{05DB}\u{05E1}\u{05D9}\u{05DD} \u{05E0}\u{05D5}\u{05E6}\u{05E8}\u{05D5} \u{05D1}\u{05D4}\u{05E6}\u{05DC}\u{05D7}\u{05D4}"}
+                  כל הנכסים נוצרו בהצלחה
                 </p>
               </div>
             </div>
@@ -437,25 +439,25 @@ export default function VideoCreatorPage() {
             <div className="space-y-2 mb-5">
               {sceneResults.filter((s) => s.imageUrl).length > 0 && (
                 <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                  <span style={{ color: "#22C55E" }}>{"\u2713"}</span>
+                  <span style={{ color: "#22C55E" }}>✓</span>
                   {sceneResults.filter((s) => s.imageUrl).length}{" "}
-                  {"\u{05EA}\u{05DE}\u{05D5}\u{05E0}\u{05D5}\u{05EA} B-Roll (PNG, 1920x1080)"}
+                  תמונות B-Roll (PNG, 1920x1080)
                 </div>
               )}
               {sceneResults.filter((s) => s.voiceOverUrl).length > 0 && (
                 <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                  <span style={{ color: "#22C55E" }}>{"\u2713"}</span>
+                  <span style={{ color: "#22C55E" }}>✓</span>
                   {sceneResults.filter((s) => s.voiceOverUrl).length}{" "}
-                  {"\u{05E7}\u{05D8}\u{05E2}\u{05D9} Voice Over (MP3)"}
+                  קטעי Voice Over (MP3)
                 </div>
               )}
               <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                <span style={{ color: "#22C55E" }}>{"\u2713"}</span>
-                {"\u{05DE}\u{05D3}\u{05E8}\u{05D9}\u{05DA} \u{05DC}\u{05E6}\u{05D9}\u{05DC}\u{05D5}\u{05DD} \u{05E1}\u{05DC}\u{05E4}\u{05D9}-\u{05D5}\u{05D9}\u{05D3}\u{05D0}\u{05D5}"}
+                <span style={{ color: "#22C55E" }}>✓</span>
+                מדריך לצילום סלפי-וידאו
               </div>
               <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                <span style={{ color: "#22C55E" }}>{"\u2713"}</span>
-                Timeline JSON {"\u{05DC}\u{05E2}\u{05E8}\u{05D9}\u{05DB}\u{05D4}"}
+                <span style={{ color: "#22C55E" }}>✓</span>
+                Timeline JSON לעריכה
               </div>
             </div>
 
@@ -471,8 +473,8 @@ export default function VideoCreatorPage() {
                   boxShadow: "0 2px 12px rgba(212, 168, 67, 0.3)",
                 }}
               >
-                <span>{"\u{1F4E5}"}</span>
-                {"\u{05D4}\u{05D5}\u{05E8}\u{05D3} \u{05D4}\u{05DB}\u{05DC} (ZIP)"}
+                <span>📥</span>
+                הורד הכל (ZIP)
               </a>
               <button
                 onClick={handleGenerateAll}
@@ -483,8 +485,8 @@ export default function VideoCreatorPage() {
                   border: "1px solid var(--card-border)",
                 }}
               >
-                <span>{"\u{1F504}"}</span>
-                {"\u{05E6}\u{05D5}\u{05E8} \u{05DE}\u{05D7}\u{05D3}\u{05E9}"}
+                <span>🔄</span>
+                צור מחדש
               </button>
             </div>
           </div>

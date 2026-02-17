@@ -26,7 +26,7 @@ export default function VoiceSettingsComponent({
       {/* Voice selection */}
       <div className="mb-5">
         <label className="font-semibold text-sm text-[var(--text-primary)] mb-3 block">
-          {"\u{05E1}\u{05D5}\u{05D2} \u{05E7}\u{05D5}\u{05DC}"}:
+          סוג קול:
         </label>
         <div className="flex gap-3">
           <button
@@ -48,8 +48,8 @@ export default function VoiceSettingsComponent({
                   : "2px solid var(--card-border)",
             }}
           >
-            <span>{"\u{1F468}"}</span>
-            <span>{"\u{05D2}\u{05D1}\u{05E8}"}</span>
+            <span>👨</span>
+            <span>גבר</span>
           </button>
           <button
             type="button"
@@ -70,8 +70,8 @@ export default function VoiceSettingsComponent({
                   : "2px solid var(--card-border)",
             }}
           >
-            <span>{"\u{1F469}"}</span>
-            <span>{"\u{05D0}\u{05D9}\u{05E9}\u{05D4}"}</span>
+            <span>👩</span>
+            <span>אישה</span>
           </button>
         </div>
       </div>
@@ -79,7 +79,7 @@ export default function VoiceSettingsComponent({
       {/* Speaking rate */}
       <div className="mb-5">
         <label className="font-semibold text-sm text-[var(--text-primary)] mb-2 block">
-          {"\u{05DE}\u{05D4}\u{05D9}\u{05E8}\u{05D5}\u{05EA} \u{05D3}\u{05D9}\u{05D1}\u{05D5}\u{05E8}"}: {settings.rate.toFixed(1)}x
+          מהירות דיבור: {settings.rate.toFixed(1)}x
         </label>
         <input
           type="range"
@@ -93,16 +93,16 @@ export default function VoiceSettingsComponent({
           className="w-full accent-[#D4A843]"
         />
         <div className="flex justify-between text-xs text-[var(--text-muted)] mt-1">
-          <span>{"\u{05D0}\u{05D9}\u{05D8}\u{05D9}"}</span>
-          <span>{"\u{05E8}\u{05D2}\u{05D9}\u{05DC}"}</span>
-          <span>{"\u{05DE}\u{05D4}\u{05D9}\u{05E8}"}</span>
+          <span>איטי</span>
+          <span>רגיל</span>
+          <span>מהיר</span>
         </div>
       </div>
 
       {/* Pitch */}
       <div className="mb-5">
         <label className="font-semibold text-sm text-[var(--text-primary)] mb-2 block">
-          {"\u{05D2}\u{05D5}\u{05D1}\u{05D4} \u{05D4}\u{05E7}\u{05D5}\u{05DC}"}: {settings.pitch > 0 ? "+" : ""}
+          גובה הקול: {settings.pitch > 0 ? "+" : ""}
           {settings.pitch}
         </label>
         <input
@@ -117,9 +117,9 @@ export default function VoiceSettingsComponent({
           className="w-full accent-[#D4A843]"
         />
         <div className="flex justify-between text-xs text-[var(--text-muted)] mt-1">
-          <span>{"\u{05E0}\u{05DE}\u{05D5}\u{05DA}"}</span>
-          <span>{"\u{05E8}\u{05D2}\u{05D9}\u{05DC}"}</span>
-          <span>{"\u{05D2}\u{05D1}\u{05D5}\u{05D4}"}</span>
+          <span>נמוך</span>
+          <span>רגיל</span>
+          <span>גבוה</span>
         </div>
       </div>
 
@@ -139,13 +139,13 @@ export default function VoiceSettingsComponent({
         >
           {isPreviewLoading ? (
             <>
-              <span className="w-4 h-4 border-2 border-[var(--text-muted)] border-t-[var(--gold)] rounded-full animate-spin" />
-              {"\u{05D9}\u{05D5}\u{05E6}\u{05E8} \u{05D3}\u{05D5}\u{05D2}\u{05DE}\u{05D4}"}...
+              <span className="w-4 h-4 border-2 border-[var(--text-muted)] border-t-[#D4A843] rounded-full animate-spin" />
+              יוצר דוגמה...
             </>
           ) : (
             <>
-              <span>{"\u{1F3A4}"}</span>
-              {"\u{05E9}\u{05DE}\u{05E2} \u{05D3}\u{05D5}\u{05D2}\u{05DE}\u{05D4}"}
+              <span>🎤</span>
+              שמע דוגמה
             </>
           )}
         </button>
