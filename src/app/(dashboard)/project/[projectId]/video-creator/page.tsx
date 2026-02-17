@@ -251,6 +251,10 @@ export default function VideoCreatorPage() {
           finalVideoUrl: data.videoUrl,
         });
         setVideoCount((c) => c + 1);
+
+        if (data.warning) {
+          setGlobalError(data.warning);
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "שגיאה ביצירת הסרטון";
         updateVideo(scriptIdx, {

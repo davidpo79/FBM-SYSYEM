@@ -33,18 +33,19 @@ ${scriptText}
 
 נישה: ${niche}
 
-פורמט התשובה (JSON בלבד, ללא טקסט נוסף):
+החזר JSON בלבד עם המבנה הבא. חשוב: אל תשתמש בגרשיים כפולים בתוך ערכי טקסט, השתמש בגרש בודד במקום.
+
 {
-  "title": "כותרת קצרה לסרטון בעברית",
+  "title": "כותרת הסרטון בעברית",
   "scenes": [
     {
       "number": 1,
       "type": "b-roll",
       "duration": 10,
-      "imagePrompt": "Detailed cinematic description in English for AI video generation. Include: camera angle, lighting, subject, environment, mood, color palette. Example: Close-up shot of a frustrated business owner looking at empty analytics dashboard, warm office lighting, shallow depth of field, cinematic color grading...",
-      "imagePromptHe": "תיאור ויזואלי בעברית — תרגום קצר ומדויק של מה שרואים בסצנה. לדוגמה: צילום קלוז-אפ של בעל עסק מתוסכל מביט בדשבורד אנליטיקס ריק",
-      "voiceOverText": "טקסט Voice Over בעברית — קצר, חזק, רגשי",
-      "notes": "הערות על הסצנה"
+      "imagePrompt": "Cinematic English description for Veo AI. Camera angle, lighting, subject, environment, mood.",
+      "imagePromptHe": "תיאור ויזואלי בעברית של הסצנה",
+      "voiceOverText": "טקסט קריינות בעברית",
+      "notes": "הערות קצרות"
     }
   ],
   "totalDuration": 60
@@ -64,19 +65,30 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = ADAPTATION_PROMPT(scriptText, niche || "כללי");
-    const result = await callAI("", prompt);
+    const result = await callAI("", prompt, 8000, { jsonMode: true });
 
-    // Extract JSON from response
-    const jsonMatch = result.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("adapt-script: No JSON found in response:", result.substring(0, 500));
-      return NextResponse.json(
-        { error: "Failed to parse AI response" },
-        { status: 500 },
+    // Parse JSON response (Gemini JSON mode ensures valid JSON)
+    let adaptedScript;
+    try {
+      adaptedScript = JSON.parse(result);
+    } catch {
+      // Fallback: try to extract JSON from response
+      const jsonMatch = result.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error("adapt-script: No JSON found in response:", result.substring(0, 500));
+        return NextResponse.json(
+          { error: "Failed to parse AI response" },
+          { status: 500 },
+        );
+      }
+      // Clean common JSON issues: trailing commas, unescaped newlines
+      let cleaned = jsonMatch[0];
+      cleaned = cleaned.replace(/,\s*([\]}])/g, "$1");
+      cleaned = cleaned.replace(/[\x00-\x1f]/g, (ch) =>
+        ch === "\n" ? "\\n" : ch === "\r" ? "\\r" : ch === "\t" ? "\\t" : ""
       );
+      adaptedScript = JSON.parse(cleaned);
     }
-
-    const adaptedScript = JSON.parse(jsonMatch[0]);
 
     // Validate structure
     if (!adaptedScript.scenes || !Array.isArray(adaptedScript.scenes)) {

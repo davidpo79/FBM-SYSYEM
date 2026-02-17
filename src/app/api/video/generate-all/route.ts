@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { startVideoGeneration, pollVideoOperation, downloadVeoVideo } from "@/lib/veo";
 import { composeVideo } from "@/lib/video-compose";
+import { generateTTS } from "@/lib/tts";
 import { logApiCall } from "@/lib/api-log";
 import type { AdaptedScript, VoiceSettings } from "@/lib/video-types";
 import fs from "fs";
@@ -10,45 +11,6 @@ import os from "os";
 
 // Allow up to 5 minutes for the full pipeline
 export const maxDuration = 300;
-
-const TTS_API_URL = "https://texttospeech.googleapis.com/v1/text:synthesize";
-
-async function generateTTS(
-  text: string,
-  settings: VoiceSettings,
-): Promise<Buffer> {
-  const apiKey = process.env.GOOGLE_TTS_API_KEY || process.env.GOOGLE_AI_API_KEY;
-  if (!apiKey) throw new Error("Google TTS API key not configured");
-
-  const voiceNames = {
-    neural2: settings.voice === "male" ? "he-IL-Neural2-B" : "he-IL-Neural2-A",
-    wavenet: settings.voice === "male" ? "he-IL-Wavenet-B" : "he-IL-Wavenet-A",
-    standard: settings.voice === "male" ? "he-IL-Standard-B" : "he-IL-Standard-A",
-  };
-
-  for (const voiceName of Object.values(voiceNames)) {
-    const response = await fetch(`${TTS_API_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        input: { text },
-        voice: { languageCode: "he-IL", name: voiceName },
-        audioConfig: {
-          audioEncoding: "MP3",
-          speakingRate: settings.rate ?? 1.0,
-          pitch: settings.pitch ?? 0.0,
-        },
-      }),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return Buffer.from(data.audioContent, "base64");
-    }
-  }
-
-  throw new Error("Failed to generate TTS");
-}
 
 async function ensureBucket() {
   const { data: buckets } = await supabaseAdmin.storage.listBuckets();
@@ -97,6 +59,8 @@ export async function POST(req: NextRequest) {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fbm-pipeline-"));
 
     // ── Step 1 + 2: Start Veo + TTS for all scenes in parallel ──
+    let ttsAvailable = true;
+
     const sceneJobs = adaptedScript.scenes.map(async (scene, i) => {
       const veoPrompt = `Create a professional cinematic B-Roll video clip.
 SCENE: ${scene.imagePrompt}
@@ -105,14 +69,22 @@ professional color grading, no text or watermarks,
 high production value marketing video aesthetic.`;
 
       // Start Veo and generate TTS concurrently
-      const [operation, ttsBuffer] = await Promise.all([
+      const [operation, ttsResult] = await Promise.all([
         startVideoGeneration(veoPrompt, "16:9"),
-        generateTTS(scene.voiceOverText, voiceSettings),
+        generateTTS(
+          scene.voiceOverText,
+          voiceSettings.voice,
+          voiceSettings.rate,
+          voiceSettings.pitch,
+          scene.duration,
+        ),
       ]);
 
-      // Write TTS to temp file
+      if (!ttsResult.usedTTS) ttsAvailable = false;
+
+      // Write TTS/silence to temp file
       const audioPath = path.join(tmpDir, `vo-${i}.mp3`);
-      fs.writeFileSync(audioPath, ttsBuffer);
+      fs.writeFileSync(audioPath, ttsResult.audioBuffer);
 
       return { sceneNumber: scene.number, operation, audioPath, scene };
     });
@@ -223,6 +195,10 @@ high production value marketing video aesthetic.`;
     return NextResponse.json({
       success: true,
       videoUrl: urlData.publicUrl,
+      ttsAvailable,
+      warning: !ttsAvailable
+        ? "הסרטון נוצר ללא קריינות. יש להגדיר GOOGLE_TTS_API_KEY ולהפעיל את Cloud Text-to-Speech API."
+        : undefined,
     });
   } catch (error) {
     console.error("generate-all error:", error);

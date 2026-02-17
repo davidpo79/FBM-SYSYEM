@@ -6,6 +6,7 @@ export async function callAI(
   systemPrompt: string,
   userMessage: string,
   _maxTokens = 8000,
+  options?: { jsonMode?: boolean },
 ): Promise<string> {
   const response = await ai.models.generateContent({
     model: "gemini-2.0-flash",
@@ -13,6 +14,7 @@ export async function callAI(
     config: {
       temperature: 0.7,
       ...(systemPrompt ? { systemInstruction: systemPrompt } : {}),
+      ...(options?.jsonMode ? { responseMimeType: "application/json" } : {}),
     },
   });
 
