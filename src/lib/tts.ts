@@ -6,7 +6,79 @@ import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 
 const TTS_API_URL = "https://texttospeech.googleapis.com/v1/text:synthesize";
+const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech";
 const FFMPEG_PATH = ffmpegInstaller.path;
+
+// ElevenLabs premade multilingual voices
+const ELEVENLABS_VOICES = {
+  female: "EXAVITQu4vr4xnSDxMaL", // Sarah
+  male: "onwK4e9ZLuTAKqWW03F9",   // Daniel
+};
+
+/**
+ * Try ElevenLabs TTS (best quality, requires ELEVEN_LABS_API_KEY).
+ * Uses multilingual v2 model with Hebrew language code.
+ * Returns MP3 Buffer on success, null on failure.
+ */
+async function tryElevenLabsTTS(
+  text: string,
+  voice: "male" | "female",
+  rate: number,
+): Promise<Buffer | null> {
+  const apiKey = process.env.ELEVEN_LABS_API_KEY;
+  if (!apiKey) return null;
+
+  const voiceId = ELEVENLABS_VOICES[voice];
+
+  try {
+    const response = await fetch(
+      `${ELEVENLABS_API_URL}/${voiceId}?output_format=mp3_44100_128`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_multilingual_v2",
+          language_code: "he",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0.0,
+            use_speaker_boost: true,
+          },
+        }),
+        signal: AbortSignal.timeout(30000),
+      },
+    );
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err?.detail?.message || err?.detail || JSON.stringify(err);
+      console.error(`ElevenLabs TTS failed [${response.status}]: ${detail}`);
+
+      // If rate limited (429), log but don't retry
+      if (response.status === 429) {
+        console.warn("ElevenLabs rate limited - falling back to next TTS engine");
+      }
+      return null;
+    }
+
+    const audioBuffer = Buffer.from(await response.arrayBuffer());
+    if (audioBuffer.length < 100) {
+      console.warn("ElevenLabs returned too small audio:", audioBuffer.length);
+      return null;
+    }
+
+    console.log(`ElevenLabs TTS success: ${audioBuffer.length} bytes for "${text.substring(0, 50)}..."`);
+    return audioBuffer;
+  } catch (e) {
+    console.error("ElevenLabs TTS error:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
 
 /**
  * Try Google Cloud TTS with Neural2 → Wavenet → Standard fallback.
@@ -148,7 +220,7 @@ export interface TTSResult {
 
 /**
  * Generate Hebrew TTS audio.
- * Pipeline: Google Cloud TTS → Microsoft Edge TTS → Silence fallback.
+ * Pipeline: ElevenLabs → Google Cloud TTS → Microsoft Edge TTS → Silence fallback.
  */
 export async function generateTTS(
   text: string,
@@ -157,14 +229,21 @@ export async function generateTTS(
   pitch: number = 0,
   durationFallbackSec: number = 10,
 ): Promise<TTSResult> {
-  // 1. Try Google Cloud TTS (requires GOOGLE_TTS_API_KEY)
+  // 1. Try ElevenLabs (best quality, requires ELEVEN_LABS_API_KEY)
+  const elevenResult = await tryElevenLabsTTS(text, voice, rate);
+  if (elevenResult) {
+    console.log("TTS: Using ElevenLabs");
+    return { audioBuffer: elevenResult, usedTTS: true };
+  }
+
+  // 2. Try Google Cloud TTS (requires GOOGLE_TTS_API_KEY)
   const cloudResult = await tryCloudTTS(text, voice, rate, pitch);
   if (cloudResult) {
     console.log("TTS: Using Google Cloud TTS");
     return { audioBuffer: cloudResult, usedTTS: true };
   }
 
-  // 2. Try Microsoft Edge TTS (free, no API key needed)
+  // 3. Try Microsoft Edge TTS (free, no API key needed)
   const edgeResult = await tryEdgeTTS(text, voice, rate);
   if (edgeResult) {
     console.log("TTS: Using Microsoft Edge TTS");
@@ -173,7 +252,7 @@ export async function generateTTS(
 
   console.warn("All TTS engines failed - generating silence.");
 
-  // 3. Fallback: generate silence matching scene duration
+  // 4. Fallback: generate silence matching scene duration
   const silenceBuffer = generateSilence(durationFallbackSec);
   return { audioBuffer: silenceBuffer, usedTTS: false };
 }
@@ -188,6 +267,11 @@ export async function generateTTSBase64(
   rate: number = 1.0,
   pitch: number = 0,
 ): Promise<string> {
+  const elevenResult = await tryElevenLabsTTS(text, voice, rate);
+  if (elevenResult) {
+    return elevenResult.toString("base64");
+  }
+
   const cloudResult = await tryCloudTTS(text, voice, rate, pitch);
   if (cloudResult) {
     return cloudResult.toString("base64");
