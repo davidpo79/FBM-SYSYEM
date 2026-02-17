@@ -5,18 +5,17 @@ import { logApiCall } from "@/lib/api-log";
 const ADAPTATION_PROMPT = (scriptText: string, niche: string) => `
 אתה מומחה לייצור וידאו ועריכת תוכן.
 
-משימה: המר את התסריט הבא למבנה וידאו שמשלב:
-1. B-Roll (תמונות AI או קטעי וידאו) - למקומות שבהם מדברים על נושאים כלליים
-2. Selfie Video (צילום עצמי) - למקומות שבהם בעל העסק צריך לדבר ישירות למצלמה
+משימה: המר את התסריט הבא למבנה וידאו שמורכב כולו מ-B-Roll (תמונות AI) עם Voice Over.
+המטרה: ליצור סרטון AI מוכן לפרסום - בלי שבעל העסק צריך לחשוף את הפנים שלו.
 
 כללים:
-- התסריט מיועד לבעל עסק שיצלם את עצמו
-- חלק תמיד את התסריט ל-5-8 סצנות
+- כל הסצנות הן B-Roll בלבד - תמונות AI עם קריינות (Voice Over)
+- אין סלפי, אין צילום עצמי, אין הנחיות צילום
+- חלק את התסריט ל-5-8 סצנות
 - כל סצנה צריכה להיות 10-20 שניות
-- סמן בבירור איזה חלקים ל-B-Roll ואיזה ל-Selfie Video
-- לכל B-Roll תן תיאור מפורט לתמונה באנגלית (עבור AI image generation)
-- לכל Selfie Video תן את הטקסט המדויק שבעל העסק צריך לקרוא
-- ל-B-Roll תן טקסט Voice Over בעברית שייקרא מעל התמונה
+- לכל סצנה תן תיאור מפורט לתמונה באנגלית (עבור AI image generation)
+- לכל סצנה תן טקסט Voice Over בעברית שייקרא מעל התמונה
+- התמונות צריכות להיות מקצועיות, קולנועיות, ורלוונטיות לנישה
 
 התסריט המקורי:
 ${scriptText}
@@ -33,17 +32,9 @@ ${scriptText}
       "imagePrompt": "Detailed English description for AI image generation...",
       "voiceOverText": "הטקסט בעברית שייקרא ב-voice over...",
       "notes": "הערות למשתמש"
-    },
-    {
-      "number": 2,
-      "type": "selfie",
-      "duration": 15,
-      "teleprompterText": "הטקסט שבעל העסק יקרא למצלמה...",
-      "notes": "הערות למשתמש"
     }
   ],
-  "totalDuration": 90,
-  "filmingInstructions": "הנחיות כלליות לצילום הסלפי-וידאו בעברית"
+  "totalDuration": 90
 }
 `;
 
@@ -81,6 +72,15 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
+
+    // Ensure all scenes are b-roll type
+    adaptedScript.scenes = adaptedScript.scenes.map((s: Record<string, unknown>) => ({
+      ...s,
+      type: "b-roll",
+    }));
+
+    // Remove filmingInstructions if AI still returns it
+    delete adaptedScript.filmingInstructions;
 
     logApiCall({
       endpoint: "/api/video/adapt-script",

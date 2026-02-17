@@ -1,17 +1,15 @@
 export interface VideoScene {
   number: number;
-  type: "b-roll" | "selfie";
+  type: "b-roll";
   duration: number;
   imagePrompt?: string;
   voiceOverText?: string;
-  teleprompterText?: string;
   notes: string;
 }
 
 export interface AdaptedScript {
   scenes: VideoScene[];
   totalDuration: number;
-  filmingInstructions: string;
 }
 
 export interface VoiceSettings {
@@ -22,7 +20,7 @@ export interface VoiceSettings {
 
 export interface SceneResult {
   number: number;
-  type: "b-roll" | "selfie";
+  type: "b-roll";
   imageUrl?: string;
   voiceOverUrl?: string;
 }

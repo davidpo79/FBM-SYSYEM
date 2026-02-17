@@ -1,5 +1,5 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { toBlobURL, fetchFile } from "@ffmpeg/util";
+import { toBlobURL } from "@ffmpeg/util";
 
 let ffmpegInstance: FFmpeg | null = null;
 
@@ -7,11 +7,10 @@ export type VideoFormat = "9:16" | "1:1";
 
 export interface RenderScene {
   index: number;
-  type: "b-roll" | "selfie";
+  type: "b-roll";
   duration: number;
   imageBlob?: Blob;
   audioBlob?: Blob;
-  titleText?: string;
 }
 
 export type ProgressCallback = (step: string, progress: number) => void;
@@ -42,99 +41,7 @@ export async function loadFFmpeg(
   return ff;
 }
 
-/** Generate a title card image for selfie scenes using Canvas */
-export function generateTitleCard(
-  text: string,
-  format: VideoFormat,
-): Promise<Blob> {
-  const { w, h } = FORMAT_DIMS[format];
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d")!;
-
-  // Dark background
-  ctx.fillStyle = "#0F1117";
-  ctx.fillRect(0, 0, w, h);
-
-  // Subtle gradient overlay
-  const grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, "rgba(212, 168, 67, 0.08)");
-  grad.addColorStop(0.5, "rgba(0,0,0,0)");
-  grad.addColorStop(1, "rgba(212, 168, 67, 0.05)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, w, h);
-
-  // Gold line
-  const lineY = h * 0.38;
-  ctx.strokeStyle = "#D4A843";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(w * 0.15, lineY);
-  ctx.lineTo(w * 0.85, lineY);
-  ctx.stroke();
-
-  // Camera emoji text
-  const emojiSize = Math.min(w, h) * 0.07;
-  ctx.font = `${emojiSize}px Arial`;
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillText("\u{1F4F9}", w / 2, h * 0.3);
-
-  // "Film yourself here" title
-  const titleSize = Math.min(w, h) * 0.03;
-  ctx.font = `bold ${titleSize}px Arial, sans-serif`;
-  ctx.fillStyle = "#D4A843";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.direction = "rtl";
-  ctx.fillText("\u05DB\u05D0\u05DF \u05EA\u05E6\u05DC\u05DD \u05D0\u05EA \u05E2\u05E6\u05DE\u05DA", w / 2, h * 0.43);
-
-  // Teleprompter text (word-wrapped)
-  const textSize = Math.min(w, h) * 0.022;
-  ctx.font = `${textSize}px Arial, sans-serif`;
-  ctx.fillStyle = "#FFFFFF";
-  ctx.textAlign = "center";
-
-  const maxWidth = w * 0.7;
-  const lineHeight = textSize * 1.6;
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let currentLine = "";
-
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    if (ctx.measureText(testLine).width > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
-    }
-  }
-  if (currentLine) lines.push(currentLine);
-
-  const startY = h * 0.52;
-  for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], w / 2, startY + i * lineHeight);
-  }
-
-  // Gold line bottom
-  ctx.strokeStyle = "#D4A843";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(w * 0.15, h * 0.62 + lines.length * lineHeight);
-  ctx.lineTo(w * 0.85, h * 0.62 + lines.length * lineHeight);
-  ctx.stroke();
-
-  return new Promise((resolve) => {
-    canvas.toBlob(
-      (blob) => resolve(blob!),
-      "image/png",
-    );
-  });
-}
-
-/** Create a short silent MP3 buffer (~1 second) used for padding */
+/** Create a short silent audio buffer used for padding */
 async function createSilentAudio(ff: FFmpeg, durationSec: number, filename: string) {
   await ff.exec([
     "-f", "lavfi",
