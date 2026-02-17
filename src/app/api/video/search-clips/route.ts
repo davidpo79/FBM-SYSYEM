@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
           const clips = await searchVideos(
             scene.searchQuery,
             6,
-            "landscape",
+            "portrait",
             Math.max(3, scene.duration - 2), // min duration slightly less than needed
           );
           return { number: scene.number, clips };

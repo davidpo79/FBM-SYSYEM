@@ -412,7 +412,7 @@ export default function VideoCreatorPage() {
           >
             <span><strong>{adaptedScript.scenes.length}</strong> סצנות</span>
             <span><strong>{adaptedScript.totalDuration}</strong> שניות</span>
-            <span>16:9</span>
+            <span>9:16</span>
             <span>Pexels B-Roll</span>
           </div>
 

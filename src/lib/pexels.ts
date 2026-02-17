@@ -9,7 +9,7 @@ const PEXELS_BASE = "https://api.pexels.com/videos/search";
 export async function searchVideos(
   query: string,
   perPage = 6,
-  orientation: "landscape" | "portrait" | "square" = "landscape",
+  orientation: "landscape" | "portrait" | "square" = "portrait",
   minDuration = 5,
 ): Promise<PexelsVideo[]> {
   const apiKey = process.env.PEXELS_API_KEY;

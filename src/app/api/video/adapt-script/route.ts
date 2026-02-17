@@ -11,7 +11,7 @@ const ADAPTATION_PROMPT = (scriptText: string, niche: string) => `
 כללים:
 - בדיוק 5 סצנות B-Roll
 - כל סצנה 10-14 שניות (סה"כ ~60 שניות)
-- פורמט 16:9 (landscape)
+- פורמט 9:16 (portrait / רילס)
 - לכל סצנה: searchQuery — 2-4 מילות מפתח באנגלית לחיפוש סטוק וידאו (Pexels). דוגמאות טובות: "business meeting office", "frustrated person computer", "happy customer shopping", "money growth success"
 - לכל סצנה: visualDescription — תיאור ויזואלי קצר בעברית של מה שנראה בקליפ
 - לכל סצנה: voiceOverText — טקסט קריינות בעברית, מקסימום 2-3 משפטים קצרים

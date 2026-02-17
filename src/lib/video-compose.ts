@@ -83,7 +83,7 @@ function trimClip(
       .inputOptions(["-stream_loop", "-1"]) // loop if shorter
       .outputOptions([
         "-t", String(duration),
-        "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1",
+        "-vf", "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2,setsar=1",
         "-an", // strip audio from stock clips
         "-c:v", "libx264",
         "-preset", "ultrafast",
