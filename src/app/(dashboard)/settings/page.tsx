@@ -144,6 +144,13 @@ export default function SettingsPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
+  // Invoices state
+  const [invoices, setInvoices] = useState<Array<{
+    id: string; date: string; description: string;
+    amount: number; number: string; url: string;
+  }>>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+
   // Cancel flow state
   const [cancelStep, setCancelStep] = useState<CancelStep>(null);
   const [discountLoading, setDiscountLoading] = useState(false);
@@ -178,6 +185,26 @@ export default function SettingsPage() {
       }
     } catch {
       // ignore
+    }
+  }, []);
+
+  const fetchInvoices = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+    setInvoicesLoading(true);
+    try {
+      const res = await fetch("/api/billing/invoices", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.invoices) {
+        setInvoices(data.invoices);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setInvoicesLoading(false);
     }
   }, []);
 
@@ -481,7 +508,7 @@ export default function SettingsPage() {
         {tabs.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => { setTab(t.key); if (t.key === "invoices") fetchInvoices(); }}
             className={`px-5 py-2 text-sm font-medium rounded-[8px] transition-all cursor-pointer ${
               tab === t.key
                 ? "bg-[var(--gold)] text-white"
@@ -669,10 +696,58 @@ export default function SettingsPage() {
 
       {/* Invoices tab */}
       {tab === "invoices" && (
-        <div className="card-static p-8 text-center">
-          <p className="text-[var(--text-muted)] text-sm">
-            החשבוניות שלך יופיעו כאן לאחר ביצוע תשלום
-          </p>
+        <div>
+          {invoicesLoading ? (
+            <div className="card-static p-8 text-center">
+              <p className="text-[var(--text-muted)] text-sm">טוען חשבוניות...</p>
+            </div>
+          ) : invoices.length > 0 ? (
+            <div className="card-static overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--card-border)]">
+                    <th className="text-right py-3 px-4 font-medium text-[var(--text-secondary)]">מספר</th>
+                    <th className="text-right py-3 px-4 font-medium text-[var(--text-secondary)]">תאריך</th>
+                    <th className="text-right py-3 px-4 font-medium text-[var(--text-secondary)]">תיאור</th>
+                    <th className="text-right py-3 px-4 font-medium text-[var(--text-secondary)]">סכום</th>
+                    <th className="text-right py-3 px-4 font-medium text-[var(--text-secondary)]"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((inv, idx) => (
+                    <tr key={inv.id || idx} className="border-b border-[var(--card-border)] last:border-0">
+                      <td className="py-3 px-4 text-[var(--text-primary)]">{inv.number || "-"}</td>
+                      <td className="py-3 px-4 text-[var(--text-secondary)]">
+                        {inv.date ? new Date(inv.date).toLocaleDateString("he-IL") : "-"}
+                      </td>
+                      <td className="py-3 px-4 text-[var(--text-secondary)]">{inv.description || "תשלום"}</td>
+                      <td className="py-3 px-4 text-[var(--text-primary)] font-medium">
+                        {inv.amount ? `₪${Number(inv.amount).toLocaleString()}` : "-"}
+                      </td>
+                      <td className="py-3 px-4">
+                        {inv.url && (
+                          <a
+                            href={inv.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-[var(--gold)] hover:underline"
+                          >
+                            צפה
+                          </a>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="card-static p-8 text-center">
+              <p className="text-[var(--text-muted)] text-sm">
+                אין חשבוניות עדיין. חשבוניות נשלחות אוטומטית למייל לאחר כל תשלום.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

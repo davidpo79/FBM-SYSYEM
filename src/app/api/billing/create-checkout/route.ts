@@ -35,10 +35,10 @@ export async function POST(req: NextRequest) {
     const companyNumber = customerIdNumber || "";
     const price = PLAN_PRICES[plan];
 
-    // Determine URLs
+    // Determine URLs - pass userId and plan in webhook URL for reliable identification
     const origin = req.headers.get("origin") || "https://fbm-studio.com";
     const redirectUrl = `${origin}/payment-complete?plan=${plan}`;
-    const webhookUrl = `${origin}/api/billing/webhook`;
+    const webhookUrl = `${origin}/api/billing/webhook?userId=${user.id}&plan=${plan}`;
 
     // Verify Sumit credentials are configured
     if (!process.env.SUMIT_COMPANY_ID || !process.env.SUMIT_API_KEY) {
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       customerName,
       customerEmail,
       companyNumber,
-      description: `FBM Studio - תוכנית ${planLabel}`,
+      description: `ייעוץ עסקי - FBM Studio תוכנית ${planLabel}`,
       price,
       redirectUrl,
       webhookUrl,
