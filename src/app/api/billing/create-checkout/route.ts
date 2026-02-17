@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
       price,
       redirectUrl,
       webhookUrl,
+      creditCardOnly: true,
     });
 
     if (!result.success) {

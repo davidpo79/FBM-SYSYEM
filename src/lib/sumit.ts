@@ -87,6 +87,7 @@ export async function createPaymentLink(params: {
   price: number;
   redirectUrl: string;
   webhookUrl?: string;
+  creditCardOnly?: boolean;
 }): Promise<{ success: boolean; paymentUrl?: string; error?: string }> {
   try {
     const response = await sumitRequest("/billing/payments/beginredirect/", {
@@ -112,6 +113,7 @@ export async function createPaymentLink(params: {
       MaximumPayments: 1,
       DocumentDescription: `ייעוץ עסקי - ${params.description}`,
       SendDocumentByEmail: true,
+      ...(params.creditCardOnly ? { AllowOnlycreditCardPayment: true } : {}),
     });
 
     if (response.Data?.RedirectURL) {
