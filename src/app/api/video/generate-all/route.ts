@@ -160,22 +160,22 @@ REQUIREMENTS:
       fps: 30,
       resolution: "1920x1080",
       scenes: adaptedScript.scenes.map((scene) => {
-        const entry = {
+        const entry: Record<string, unknown> = {
           number: scene.number,
           type: scene.type,
           startTime: currentTime,
           endTime: currentTime + scene.duration,
-          ...(scene.type === "b-roll"
-            ? {
-                image: `scene-${scene.number}-broll.png`,
-                audio: `scene-${scene.number}-vo.mp3`,
-                voiceOverText: scene.voiceOverText,
-              }
-            : {
-                teleprompter: scene.teleprompterText,
-              }),
           notes: scene.notes,
         };
+
+        if (scene.type === "b-roll") {
+          entry.image = `scene-${scene.number}-broll.png`;
+          entry.audio = `scene-${scene.number}-vo.mp3`;
+          entry.voiceOverText = scene.voiceOverText;
+        } else {
+          entry.teleprompter = scene.teleprompterText;
+        }
+
         currentTime += scene.duration;
         return entry;
       }),
