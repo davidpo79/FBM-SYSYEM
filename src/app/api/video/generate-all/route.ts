@@ -96,31 +96,73 @@ high production value marketing video aesthetic.`;
     const POLL_INTERVAL = 10000;  // 10 seconds
     const pollStart = Date.now();
     const videoFiles: Record<number, string> = {};
+    const failedScenes: Record<number, string> = {};
+    const retried = new Set<number>();
 
-    while (Object.keys(videoFiles).length < jobs.length) {
+    while (
+      Object.keys(videoFiles).length + Object.keys(failedScenes).length < jobs.length
+    ) {
       if (Date.now() - pollStart > MAX_POLL_TIME) {
-        throw new Error("Video generation timed out after 4 minutes");
+        // Don't throw - continue with whatever clips we have
+        console.error("Veo polling timed out. Completed:", Object.keys(videoFiles).length, "Failed:", Object.keys(failedScenes).length);
+        break;
       }
 
       await new Promise((r) => setTimeout(r, POLL_INTERVAL));
 
       for (const job of jobs) {
-        if (videoFiles[job.sceneNumber]) continue; // Already done
+        if (videoFiles[job.sceneNumber] || failedScenes[job.sceneNumber]) continue;
 
         const result = await pollVideoOperation(job.operation);
 
         if (result.done && !result.error) {
-          // Download video clip to temp path
-          const clipPath = await downloadVeoVideo(result.operation);
-          const videoPath = path.join(tmpDir, `clip-${job.sceneNumber}.mp4`);
-          fs.copyFileSync(clipPath, videoPath);
-          videoFiles[job.sceneNumber] = videoPath;
-          // Clean up Veo download temp dir
-          try { fs.rmSync(path.dirname(clipPath), { recursive: true, force: true }); } catch {}
+          try {
+            const clipPath = await downloadVeoVideo(result.operation);
+            const videoPath = path.join(tmpDir, `clip-${job.sceneNumber}.mp4`);
+            fs.copyFileSync(clipPath, videoPath);
+            videoFiles[job.sceneNumber] = videoPath;
+            try { fs.rmSync(path.dirname(clipPath), { recursive: true, force: true }); } catch {}
+          } catch (dlErr) {
+            console.error(`Scene ${job.sceneNumber} download failed:`, dlErr);
+            failedScenes[job.sceneNumber] = dlErr instanceof Error ? dlErr.message : "Download failed";
+          }
         } else if (result.done && result.error) {
-          throw new Error(`Scene ${job.sceneNumber} failed: ${result.error}`);
+          console.error(`Scene ${job.sceneNumber} Veo error: ${result.error}`);
+
+          // Retry once with simplified prompt
+          if (!retried.has(job.sceneNumber)) {
+            retried.add(job.sceneNumber);
+            console.log(`Retrying scene ${job.sceneNumber} with simplified prompt...`);
+            try {
+              const simplePrompt = `Professional cinematic B-Roll video clip: ${job.scene.imagePrompt.substring(0, 200)}. Photorealistic, cinematic lighting, no text.`;
+              const retryOp = await startVideoGeneration(simplePrompt, "16:9");
+              job.operation = retryOp;
+              // Don't mark as failed - will be polled again
+            } catch {
+              failedScenes[job.sceneNumber] = result.error;
+            }
+          } else {
+            failedScenes[job.sceneNumber] = result.error;
+          }
         }
       }
+    }
+
+    // Handle failed scenes: duplicate a successful clip
+    if (Object.keys(failedScenes).length > 0 && Object.keys(videoFiles).length > 0) {
+      const successClipPath = Object.values(videoFiles)[0];
+      for (const sceneNum of Object.keys(failedScenes).map(Number)) {
+        console.warn(`Scene ${sceneNum} failed, duplicating clip from another scene`);
+        const videoPath = path.join(tmpDir, `clip-${sceneNum}.mp4`);
+        fs.copyFileSync(successClipPath, videoPath);
+        videoFiles[sceneNum] = videoPath;
+      }
+    }
+
+    // If ALL scenes failed, throw
+    if (Object.keys(videoFiles).length === 0) {
+      const errors = Object.entries(failedScenes).map(([k, v]) => `Scene ${k}: ${v}`).join("; ");
+      throw new Error(`כל הסצנות נכשלו ביצירת וידאו: ${errors}`);
     }
 
     // ── Step 4: Compose final MP4 ──

@@ -46,7 +46,9 @@ async function tryCloudTTS(
       }
 
       const err = await response.json().catch(() => ({}));
-      console.warn(`Cloud TTS (${voiceName}) failed:`, err?.error?.message || response.status);
+      const errMsg = err?.error?.message || `HTTP ${response.status}`;
+      const errCode = err?.error?.code || response.status;
+      console.error(`Cloud TTS (${voiceName}) failed [${errCode}]: ${errMsg}`, JSON.stringify(err?.error || {}));
     } catch (e) {
       console.warn(`Cloud TTS (${voiceName}) error:`, e instanceof Error ? e.message : e);
     }
@@ -123,8 +125,32 @@ export async function generateTTSBase64(
     return cloudResult.toString("base64");
   }
 
-  throw new Error(
-    "קריינות לא זמינה. יש להפעיל את Google Cloud Text-to-Speech API בפרויקט Google Cloud שלך. " +
-    "ניתן להפעיל בכתובת: https://console.cloud.google.com/apis/library/texttospeech.googleapis.com"
-  );
+  // Try to get the specific error for better feedback
+  const apiKey = process.env.GOOGLE_TTS_API_KEY || process.env.GOOGLE_AI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GOOGLE_TTS_API_KEY לא מוגדר. הוסף את המפתח בהגדרות Vercel.");
+  }
+
+  // One more attempt to get the exact error
+  try {
+    const testVoice = voice === "male" ? "he-IL-Standard-B" : "he-IL-Standard-A";
+    const res = await fetch(`${TTS_API_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        input: { text: "test" },
+        voice: { languageCode: "he-IL", name: testVoice },
+        audioConfig: { audioEncoding: "MP3" },
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${res.status}`);
+    }
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : "unknown";
+    throw new Error(`שגיאת TTS: ${detail}`);
+  }
+
+  throw new Error("קריינות לא זמינה - בדוק שה-API key תקין ושה-Cloud Text-to-Speech API מופעל.");
 }
