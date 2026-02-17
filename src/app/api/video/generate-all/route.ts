@@ -19,7 +19,7 @@ async function generateVoiceOver(
     standard: settings.voice === "male" ? "he-IL-Standard-B" : "he-IL-Standard-A",
   };
 
-  // Try voices in order: Neural2 → Wavenet → Standard
+  // Try voices in order: Neural2 -> Wavenet -> Standard
   for (const voiceName of Object.values(voiceNames)) {
     const response = await fetch(`${TTS_API_URL}?key=${apiKey}`, {
       method: "POST",
@@ -81,14 +81,13 @@ export async function POST(req: NextRequest) {
     for (const scene of adaptedScript.scenes) {
       const result: SceneResult = {
         number: scene.number,
-        type: scene.type,
+        type: "b-roll",
       };
 
-      if (scene.type === "b-roll") {
-        // Generate B-Roll image
-        if (scene.imagePrompt) {
-          try {
-            const fullPrompt = `Create a professional, high-quality, cinematic background image for a video B-Roll scene.
+      // Generate B-Roll image
+      if (scene.imagePrompt) {
+        try {
+          const fullPrompt = `Create a professional, high-quality, cinematic background image for a video B-Roll scene.
 SCENE: ${scene.imagePrompt}
 REQUIREMENTS:
 - Photorealistic, ultra high quality, 16:9 landscape format
@@ -96,56 +95,55 @@ REQUIREMENTS:
 - NO text, words, letters, or watermarks
 - Rich color grading, professional atmosphere`;
 
-            const { base64, mimeType } = await generateImage(fullPrompt, "16:9");
+          const { base64, mimeType } = await generateImage(fullPrompt, "16:9");
 
-            const imgFileName = `${storagePath}/scene-${scene.number}-broll.png`;
-            const { error: uploadErr } = await supabaseAdmin.storage
+          const imgFileName = `${storagePath}/scene-${scene.number}-broll.png`;
+          const { error: uploadErr } = await supabaseAdmin.storage
+            .from("videos")
+            .upload(imgFileName, Buffer.from(base64, "base64"), {
+              contentType: mimeType || "image/png",
+              upsert: true,
+            });
+
+          if (uploadErr) {
+            console.error(`Upload error for scene ${scene.number} image:`, uploadErr);
+          } else {
+            const { data: urlData } = supabaseAdmin.storage
               .from("videos")
-              .upload(imgFileName, Buffer.from(base64, "base64"), {
-                contentType: mimeType || "image/png",
-                upsert: true,
-              });
-
-            if (uploadErr) {
-              console.error(`Upload error for scene ${scene.number} image:`, uploadErr);
-            } else {
-              const { data: urlData } = supabaseAdmin.storage
-                .from("videos")
-                .getPublicUrl(imgFileName);
-              result.imageUrl = urlData.publicUrl;
-            }
-          } catch (e) {
-            console.error(`Image generation error for scene ${scene.number}:`, e);
+              .getPublicUrl(imgFileName);
+            result.imageUrl = urlData.publicUrl;
           }
+        } catch (e) {
+          console.error(`Image generation error for scene ${scene.number}:`, e);
         }
+      }
 
-        // Generate Voice Over
-        if (scene.voiceOverText) {
-          try {
-            const audioBuffer = await generateVoiceOver(
-              scene.voiceOverText,
-              voiceSettings,
-            );
+      // Generate Voice Over
+      if (scene.voiceOverText) {
+        try {
+          const audioBuffer = await generateVoiceOver(
+            scene.voiceOverText,
+            voiceSettings,
+          );
 
-            const audioFileName = `${storagePath}/scene-${scene.number}-vo.mp3`;
-            const { error: uploadErr } = await supabaseAdmin.storage
+          const audioFileName = `${storagePath}/scene-${scene.number}-vo.mp3`;
+          const { error: uploadErr } = await supabaseAdmin.storage
+            .from("videos")
+            .upload(audioFileName, audioBuffer, {
+              contentType: "audio/mpeg",
+              upsert: true,
+            });
+
+          if (uploadErr) {
+            console.error(`Upload error for scene ${scene.number} audio:`, uploadErr);
+          } else {
+            const { data: urlData } = supabaseAdmin.storage
               .from("videos")
-              .upload(audioFileName, audioBuffer, {
-                contentType: "audio/mpeg",
-                upsert: true,
-              });
-
-            if (uploadErr) {
-              console.error(`Upload error for scene ${scene.number} audio:`, uploadErr);
-            } else {
-              const { data: urlData } = supabaseAdmin.storage
-                .from("videos")
-                .getPublicUrl(audioFileName);
-              result.voiceOverUrl = urlData.publicUrl;
-            }
-          } catch (e) {
-            console.error(`Voice over error for scene ${scene.number}:`, e);
+              .getPublicUrl(audioFileName);
+            result.voiceOverUrl = urlData.publicUrl;
           }
+        } catch (e) {
+          console.error(`Voice over error for scene ${scene.number}:`, e);
         }
       }
 
@@ -159,27 +157,22 @@ REQUIREMENTS:
       totalDuration: adaptedScript.totalDuration,
       fps: 30,
       resolution: "1920x1080",
+      format: "16:9",
       scenes: adaptedScript.scenes.map((scene) => {
-        const entry: Record<string, unknown> = {
+        const entry = {
           number: scene.number,
-          type: scene.type,
+          type: "b-roll" as const,
           startTime: currentTime,
           endTime: currentTime + scene.duration,
+          image: `scene-${scene.number}-broll.png`,
+          audio: `scene-${scene.number}-vo.mp3`,
+          voiceOverText: scene.voiceOverText,
           notes: scene.notes,
         };
-
-        if (scene.type === "b-roll") {
-          entry.image = `scene-${scene.number}-broll.png`;
-          entry.audio = `scene-${scene.number}-vo.mp3`;
-          entry.voiceOverText = scene.voiceOverText;
-        } else {
-          entry.teleprompter = scene.teleprompterText;
-        }
 
         currentTime += scene.duration;
         return entry;
       }),
-      filmingInstructions: adaptedScript.filmingInstructions,
     };
 
     // Upload timeline
@@ -209,7 +202,6 @@ REQUIREMENTS:
 
     if (dbError) {
       console.error("DB save error:", dbError);
-      // Non-fatal: files were still generated
     }
 
     logApiCall({

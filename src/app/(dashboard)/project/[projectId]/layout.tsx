@@ -252,9 +252,9 @@ export default function ProjectLayout({
     { key: "pains", label: "ניתוח כאבים", href: `/project/${projectId}/pains` },
     { key: "scripts", label: "תסריטים", href: `/project/${projectId}/scripts` },
     { key: "creative", label: "קריאייטיב", href: `/project/${projectId}/creative` },
+    { key: "video-creator", label: "וידאו", href: `/project/${projectId}/video-creator` },
     { key: "copy", label: "קופי", href: `/project/${projectId}/copy` },
     { key: "album", label: "אלבום", href: `/project/${projectId}/album` },
-    { key: "video-creator", label: "וידאו", href: `/project/${projectId}/video-creator` },
   ];
 
   const completedSteps: string[] = [];

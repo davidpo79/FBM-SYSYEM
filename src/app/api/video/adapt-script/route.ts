@@ -3,20 +3,29 @@ import { callAI } from "@/lib/ai";
 import { logApiCall } from "@/lib/api-log";
 
 const ADAPTATION_PROMPT = (scriptText: string, niche: string) => `
-אתה מומחה לייצור וידאו ועריכת תוכן.
+אתה מומחה לייצור וידאו שיווקי ותסריטאי AI.
 
-משימה: המר את התסריט הבא למבנה וידאו שמשלב:
-1. B-Roll (תמונות AI או קטעי וידאו) - למקומות שבהם מדברים על נושאים כלליים
-2. Selfie Video (צילום עצמי) - למקומות שבהם בעל העסק צריך לדבר ישירות למצלמה
+משימה: המר את תסריט ה-FBM הארוך הבא לתסריט וידאו קצר של 60 שניות.
+הסרטון מופק לגמרי באמצעות AI — אין סלפי, אין צילום עצמי.
+כל הסצנות הן B-Roll (קליפי וידאו AI) עם Voice Over בעברית.
 
 כללים:
-- התסריט מיועד לבעל עסק שיצלם את עצמו
-- חלק תמיד את התסריט ל-5-8 סצנות
-- כל סצנה צריכה להיות 10-20 שניות
-- סמן בבירור איזה חלקים ל-B-Roll ואיזה ל-Selfie Video
-- לכל B-Roll תן תיאור מפורט לתמונה באנגלית (עבור AI image generation)
-- לכל Selfie Video תן את הטקסט המדויק שבעל העסק צריך לקרוא
-- ל-B-Roll תן טקסט Voice Over בעברית שייקרא מעל התמונה
+- בדיוק 5 סצנות B-Roll
+- כל סצנה 10-14 שניות (סה"כ 60 שניות)
+- פורמט 16:9 (landscape)
+- לכל סצנה: תיאור ויזואלי מפורט באנגלית עבור AI video generation (Veo)
+- לכל סצנה: טקסט Voice Over בעברית — מקסימום 2-3 משפטים קצרים וחזקים
+- טקסט ה-VO חייב להתאים בצורה מושלמת לוויזואל — מה שרואים = מה ששומעים
+- הסצנה הראשונה = hook חזק שתופס תשומת לב ב-3 שניות
+- הסצנה האחרונה = CTA ברור עם הצעת פיילוט 500 ₪
+- השתמש בשפה ישירה, רגשית, ובעלת אנרגיה גבוהה
+
+מבנה מומלץ:
+1. Hook (10s) — בעיה/כאב חזק שתופס תשומת לב
+2. הזדהות (12s) — "גם אתה מרגיש ש..." + אגיטציה
+3. פתרון (12s) — הצגת הפתרון/שיטה
+4. הוכחה (12s) — תוצאות/מספרים/סמכות
+5. CTA (14s) — הצעת פיילוט 500 ₪ + הנעה לפעולה
 
 התסריט המקורי:
 ${scriptText}
@@ -25,25 +34,18 @@ ${scriptText}
 
 פורמט התשובה (JSON בלבד, ללא טקסט נוסף):
 {
+  "title": "כותרת קצרה לסרטון בעברית",
   "scenes": [
     {
       "number": 1,
       "type": "b-roll",
-      "duration": 15,
-      "imagePrompt": "Detailed English description for AI image generation...",
-      "voiceOverText": "הטקסט בעברית שייקרא ב-voice over...",
-      "notes": "הערות למשתמש"
-    },
-    {
-      "number": 2,
-      "type": "selfie",
-      "duration": 15,
-      "teleprompterText": "הטקסט שבעל העסק יקרא למצלמה...",
-      "notes": "הערות למשתמש"
+      "duration": 10,
+      "imagePrompt": "Detailed cinematic description in English for AI video generation. Include: camera angle, lighting, subject, environment, mood, color palette. Example: Close-up shot of a frustrated business owner looking at empty analytics dashboard, warm office lighting, shallow depth of field, cinematic color grading...",
+      "voiceOverText": "טקסט Voice Over בעברית — קצר, חזק, רגשי",
+      "notes": "הערות על הסצנה"
     }
   ],
-  "totalDuration": 90,
-  "filmingInstructions": "הנחיות כלליות לצילום הסלפי-וידאו בעברית"
+  "totalDuration": 60
 }
 `;
 
@@ -80,6 +82,21 @@ export async function POST(req: NextRequest) {
         { error: "Invalid response structure: missing scenes array" },
         { status: 500 },
       );
+    }
+
+    // Ensure all scenes are b-roll type and have required fields
+    adaptedScript.scenes = adaptedScript.scenes.map((scene: Record<string, unknown>, i: number) => ({
+      number: scene.number || i + 1,
+      type: "b-roll" as const,
+      duration: scene.duration || 12,
+      imagePrompt: scene.imagePrompt || "",
+      voiceOverText: scene.voiceOverText || "",
+      notes: scene.notes || "",
+    }));
+
+    // Ensure title exists
+    if (!adaptedScript.title) {
+      adaptedScript.title = "סרטון שיווקי";
     }
 
     logApiCall({

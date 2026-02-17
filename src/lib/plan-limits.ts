@@ -6,6 +6,7 @@ export interface PlanLimits {
   scriptsPerProject: number;
   chatMessages: number;       // daily chat messages with FBM expert
   copyVariations: number;
+  videoGenerations: number;   // total AI video generations allowed
   clientReport: boolean;
   scriptBank: boolean;
 }
@@ -17,6 +18,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     scriptsPerProject: 3,
     chatMessages: 20,          // 20 daily chats with FBM expert
     copyVariations: 1,
+    videoGenerations: 3,       // 3 video generations during trial
     clientReport: false,
     scriptBank: false,
   },
@@ -26,6 +28,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     scriptsPerProject: 3,
     chatMessages: 20,          // 20 daily chats with FBM expert
     copyVariations: 1,
+    videoGenerations: 10,      // 10 video generations per month
     clientReport: false,
     scriptBank: false,
   },
@@ -35,6 +38,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     scriptsPerProject: 5,
     chatMessages: 999,         // unlimited chats with FBM expert
     copyVariations: 3,
+    videoGenerations: 999,     // unlimited video generations
     clientReport: true,
     scriptBank: true,
   },
@@ -44,6 +48,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     scriptsPerProject: 0,
     chatMessages: 0,
     copyVariations: 0,
+    videoGenerations: 0,
     clientReport: false,
     scriptBank: false,
   },
