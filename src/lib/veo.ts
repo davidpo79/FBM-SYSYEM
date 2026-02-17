@@ -1,8 +1,11 @@
 import { GoogleGenAI, type GenerateVideosOperation } from "@google/genai";
-import { execSync } from "child_process";
+import ffmpeg from "fluent-ffmpeg";
+import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import fs from "fs";
 import path from "path";
 import os from "os";
+
+ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
 let _ai: GoogleGenAI | null = null;
 
@@ -158,21 +161,40 @@ export async function generateImageClip(
   const fps = 30;
   const totalFrames = durationSec * fps;
 
-  // Alternate between zoom-in and zoom-out for variety
-  const zoomEffect = `zoompan=z='min(zoom+0.0015,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${totalFrames}:s=1920x1080:fps=${fps}`;
+  const zoomFilter = `zoompan=z='min(zoom+0.0015,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${totalFrames}:s=1920x1080:fps=${fps}`;
 
-  try {
-    execSync(
-      `npx --yes @ffmpeg-installer/ffmpeg -loop 1 -i "${imagePath}" -vf "${zoomEffect}" -t ${durationSec} -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p "${outputPath}" -y`,
-      { stdio: "pipe", timeout: 30000 },
-    );
-  } catch (e) {
-    // Simpler fallback: just static image as video
-    execSync(
-      `npx --yes @ffmpeg-installer/ffmpeg -loop 1 -i "${imagePath}" -t ${durationSec} -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2" "${outputPath}" -y`,
-      { stdio: "pipe", timeout: 30000 },
-    );
-  }
-
+  await runFfmpeg(imagePath, outputPath, zoomFilter, durationSec);
   return outputPath;
+}
+
+function runFfmpeg(
+  imagePath: string,
+  outputPath: string,
+  videoFilter: string,
+  durationSec: number,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input(imagePath)
+      .inputOptions(["-loop", "1"])
+      .videoFilter(videoFilter)
+      .duration(durationSec)
+      .outputOptions(["-c:v", "libx264", "-preset", "fast", "-crf", "23", "-pix_fmt", "yuv420p"])
+      .output(outputPath)
+      .on("end", () => resolve())
+      .on("error", (err: Error) => {
+        // Fallback: simple static image → video (no Ken Burns)
+        ffmpeg()
+          .input(imagePath)
+          .inputOptions(["-loop", "1"])
+          .videoFilter("scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2")
+          .duration(durationSec)
+          .outputOptions(["-c:v", "libx264", "-preset", "fast", "-crf", "23", "-pix_fmt", "yuv420p"])
+          .output(outputPath)
+          .on("end", () => resolve())
+          .on("error", (err2: Error) => reject(err2))
+          .run();
+      })
+      .run();
+  });
 }
