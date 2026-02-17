@@ -48,6 +48,7 @@ export default function Sidebar({
         { href: `/project/${projectId}/creative`, label: "קריאייטיב", emoji: "\u{1F3A8}" },
         { href: `/project/${projectId}/copy`, label: "קופי", emoji: "\u{1F4CB}" },
         { href: `/project/${projectId}/album`, label: "אלבום וסיכום", emoji: "\u{1F4F8}", badge: albumCount > 0 ? albumCount : undefined },
+        { href: `/project/${projectId}/video-creator`, label: "יצירת וידאו", emoji: "\u{1F3AC}" },
       ]
     : [];
 
