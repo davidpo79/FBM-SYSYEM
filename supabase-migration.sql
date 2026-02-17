@@ -121,3 +121,20 @@ CREATE INDEX IF NOT EXISTS idx_suggestions_user ON improvement_suggestions(user_
 ALTER TABLE improvement_suggestions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own suggestions" ON improvement_suggestions FOR ALL USING (true);
 CREATE POLICY "Service role full access suggestions" ON improvement_suggestions FOR ALL USING (true);
+
+-- 8. Video projects (video creator feature)
+CREATE TABLE IF NOT EXISTS video_projects (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  project_id UUID REFERENCES projects(id) NOT NULL,
+  script_index INTEGER NOT NULL DEFAULT 0,
+  adapted_script JSONB NOT NULL,
+  voice_settings JSONB DEFAULT '{"voice": "female", "rate": 1.0, "pitch": 0}',
+  scenes_data JSONB,
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'processing', 'ready', 'failed')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(project_id, script_index)
+);
+CREATE INDEX IF NOT EXISTS idx_video_projects_project ON video_projects(project_id);
+ALTER TABLE video_projects ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own video projects" ON video_projects FOR ALL USING (true);

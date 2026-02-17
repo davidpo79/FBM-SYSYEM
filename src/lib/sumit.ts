@@ -87,6 +87,7 @@ export async function createPaymentLink(params: {
   price: number;
   redirectUrl: string;
   webhookUrl?: string;
+  creditCardOnly?: boolean;
 }): Promise<{ success: boolean; paymentUrl?: string; error?: string }> {
   try {
     const response = await sumitRequest("/billing/payments/beginredirect/", {
@@ -110,8 +111,9 @@ export async function createPaymentLink(params: {
       RedirectURL: params.redirectUrl,
       ...(params.webhookUrl ? { WebhookURL: params.webhookUrl } : {}),
       MaximumPayments: 1,
-      DocumentDescription: `FBM Studio - ${params.description}`,
+      DocumentDescription: `ייעוץ עסקי - ${params.description}`,
       SendDocumentByEmail: true,
+      ...(params.creditCardOnly ? { AllowOnlycreditCardPayment: true } : {}),
     });
 
     if (response.Data?.RedirectURL) {
@@ -236,14 +238,19 @@ export async function setupRecurringCharge(params: {
           Quantity: 1,
           UnitPrice: params.price,
           Description: params.description,
-          DurationMonths: params.intervalMonths ?? 1,
+          Duration_Days: 0,
+          Duration_Months: params.intervalMonths ?? 1,
           Recurrence: 0, // 0 = indefinite
           DateStart: nextMonth.toISOString(),
         },
       ],
       UpdateCustomerByEmail: true,
       SendDocumentByEmail: true,
+      VATIncluded: false,
+      DocumentDescription: `ייעוץ עסקי - ${params.description}`,
     });
+
+    console.log("setupRecurringCharge response:", JSON.stringify(response, null, 2).substring(0, 1000));
 
     if (response.Status === 0 || response.Data?.StatusCode === 0) {
       const recurringId = response.Data?.RecurringPaymentID
@@ -255,10 +262,41 @@ export async function setupRecurringCharge(params: {
 
     return {
       success: false,
-      error: response.UserErrorMessage || "Failed to set up recurring charge",
+      error: response.UserErrorMessage || response.TechnicalErrorDetails || "Failed to set up recurring charge",
     };
   } catch (e) {
     console.error("Sumit setupRecurringCharge error:", e);
+    return { success: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+/**
+ * List documents (invoices/receipts) for a customer by email.
+ */
+export async function listDocumentsForCustomer(params: {
+  customerEmail: string;
+}): Promise<{ success: boolean; documents?: Array<Record<string, unknown>>; error?: string }> {
+  try {
+    const response = await sumitRequest("/billing/documents/search/", {
+      Customer: {
+        EmailAddress: params.customerEmail,
+        SearchMode: "AutoCreateOrUpdate",
+      },
+      PageSize: 50,
+      Page: 1,
+    });
+
+    if (response.Status === 0 || response.Data) {
+      const items = (response.Data?.Items || response.Data?.Documents || []) as Array<Record<string, unknown>>;
+      return { success: true, documents: items };
+    }
+
+    return {
+      success: false,
+      error: response.UserErrorMessage || "Failed to list documents",
+    };
+  } catch (e) {
+    console.error("Sumit listDocuments error:", e);
     return { success: false, error: e instanceof Error ? e.message : "Unknown error" };
   }
 }

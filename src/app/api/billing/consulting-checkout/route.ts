@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       customerName,
       customerEmail,
       companyNumber,
-      description: CONSULTING_PRODUCT.description,
+      description: `ייעוץ עסקי - ${CONSULTING_PRODUCT.description}`,
       price: CONSULTING_PRODUCT.price,
       redirectUrl,
       webhookUrl,

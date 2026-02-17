@@ -275,6 +275,7 @@ export default function ProjectLayout({
     creative: "קריאייטיב",
     copy: "קופי + צ'אטבוט",
     album: "אלבום הקריאטיבים",
+    "video-creator": "יצירת וידאו",
   };
 
   if (loading || !hydrated) {
