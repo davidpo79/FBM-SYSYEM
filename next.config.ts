@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Bundle FFmpeg binary for video composition
+  serverExternalPackages: ["@ffmpeg-installer/ffmpeg", "fluent-ffmpeg"],
 };
 
 export default nextConfig;

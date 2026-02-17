@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { generateImage } from "@/lib/gemini";
+import { startVideoGeneration, pollVideoOperation, downloadVeoVideo } from "@/lib/veo";
+import { composeVideo } from "@/lib/video-compose";
 import { logApiCall } from "@/lib/api-log";
-import type { AdaptedScript, VoiceSettings, SceneResult } from "@/lib/video-types";
+import type { AdaptedScript, VoiceSettings } from "@/lib/video-types";
+import fs from "fs";
+import path from "path";
+import os from "os";
+
+// Allow up to 5 minutes for the full pipeline
+export const maxDuration = 300;
 
 const TTS_API_URL = "https://texttospeech.googleapis.com/v1/text:synthesize";
 
-async function generateVoiceOver(
+async function generateTTS(
   text: string,
   settings: VoiceSettings,
 ): Promise<Buffer> {
@@ -19,7 +26,6 @@ async function generateVoiceOver(
     standard: settings.voice === "male" ? "he-IL-Standard-B" : "he-IL-Standard-A",
   };
 
-  // Try voices in order: Neural2 -> Wavenet -> Standard
   for (const voiceName of Object.values(voiceNames)) {
     const response = await fetch(`${TTS_API_URL}?key=${apiKey}`, {
       method: "POST",
@@ -41,7 +47,7 @@ async function generateVoiceOver(
     }
   }
 
-  throw new Error("Failed to generate voice over with all voice types");
+  throw new Error("Failed to generate TTS");
 }
 
 async function ensureBucket() {
@@ -49,13 +55,28 @@ async function ensureBucket() {
   if (!buckets?.find((b) => b.name === "videos")) {
     await supabaseAdmin.storage.createBucket("videos", {
       public: true,
-      fileSizeLimit: 52428800, // 50MB
+      fileSizeLimit: 104857600, // 100MB
     });
   }
 }
 
+/**
+ * POST /api/video/generate-all
+ *
+ * Full pipeline: Veo clips + TTS + FFmpeg composition → final MP4
+ *
+ * Steps:
+ * 1. Start Veo generation for all 5 scenes (parallel)
+ * 2. Generate TTS for all scenes (parallel)
+ * 3. Poll Veo until all clips ready
+ * 4. Compose final MP4 with FFmpeg
+ * 5. Upload to Supabase
+ * 6. Return final video URL
+ */
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
+  let tmpDir = "";
+
   try {
     const { projectId, adaptedScript, voiceSettings, scriptIndex } =
       (await req.json()) as {
@@ -72,120 +93,108 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Ensure storage bucket exists
     await ensureBucket();
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fbm-pipeline-"));
 
-    const sceneResults: SceneResult[] = [];
-    const storagePath = `${projectId}`;
-
-    for (const scene of adaptedScript.scenes) {
-      const result: SceneResult = {
-        number: scene.number,
-        type: "b-roll",
-      };
-
-      // Generate B-Roll image
-      if (scene.imagePrompt) {
-        try {
-          const fullPrompt = `Create a professional, high-quality, cinematic background image for a video B-Roll scene.
+    // ── Step 1 + 2: Start Veo + TTS for all scenes in parallel ──
+    const sceneJobs = adaptedScript.scenes.map(async (scene, i) => {
+      const veoPrompt = `Create a professional cinematic B-Roll video clip.
 SCENE: ${scene.imagePrompt}
-REQUIREMENTS:
-- Photorealistic, ultra high quality, 16:9 landscape format
-- Cinematic lighting with depth
-- NO text, words, letters, or watermarks
-- Rich color grading, professional atmosphere`;
+STYLE: Photorealistic, cinematic lighting, smooth camera movement,
+professional color grading, no text or watermarks,
+high production value marketing video aesthetic.`;
 
-          const { base64, mimeType } = await generateImage(fullPrompt, "16:9");
+      // Start Veo and generate TTS concurrently
+      const [operation, ttsBuffer] = await Promise.all([
+        startVideoGeneration(veoPrompt, "16:9"),
+        generateTTS(scene.voiceOverText, voiceSettings),
+      ]);
 
-          const imgFileName = `${storagePath}/scene-${scene.number}-broll.png`;
-          const { error: uploadErr } = await supabaseAdmin.storage
-            .from("videos")
-            .upload(imgFileName, Buffer.from(base64, "base64"), {
-              contentType: mimeType || "image/png",
-              upsert: true,
-            });
+      // Write TTS to temp file
+      const audioPath = path.join(tmpDir, `vo-${i}.mp3`);
+      fs.writeFileSync(audioPath, ttsBuffer);
 
-          if (uploadErr) {
-            console.error(`Upload error for scene ${scene.number} image:`, uploadErr);
-          } else {
-            const { data: urlData } = supabaseAdmin.storage
-              .from("videos")
-              .getPublicUrl(imgFileName);
-            result.imageUrl = urlData.publicUrl;
-          }
-        } catch (e) {
-          console.error(`Image generation error for scene ${scene.number}:`, e);
-        }
+      return { sceneNumber: scene.number, operation, audioPath, scene };
+    });
+
+    const jobs = await Promise.all(sceneJobs);
+
+    // ── Step 3: Poll Veo operations until all clips are ready ──
+    const MAX_POLL_TIME = 240000; // 4 minutes max
+    const POLL_INTERVAL = 10000;  // 10 seconds
+    const pollStart = Date.now();
+    const videoFiles: Record<number, string> = {};
+
+    while (Object.keys(videoFiles).length < jobs.length) {
+      if (Date.now() - pollStart > MAX_POLL_TIME) {
+        throw new Error("Video generation timed out after 4 minutes");
       }
 
-      // Generate Voice Over
-      if (scene.voiceOverText) {
-        try {
-          const audioBuffer = await generateVoiceOver(
-            scene.voiceOverText,
-            voiceSettings,
-          );
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL));
 
-          const audioFileName = `${storagePath}/scene-${scene.number}-vo.mp3`;
-          const { error: uploadErr } = await supabaseAdmin.storage
-            .from("videos")
-            .upload(audioFileName, audioBuffer, {
-              contentType: "audio/mpeg",
-              upsert: true,
-            });
+      for (const job of jobs) {
+        if (videoFiles[job.sceneNumber]) continue; // Already done
 
-          if (uploadErr) {
-            console.error(`Upload error for scene ${scene.number} audio:`, uploadErr);
-          } else {
-            const { data: urlData } = supabaseAdmin.storage
-              .from("videos")
-              .getPublicUrl(audioFileName);
-            result.voiceOverUrl = urlData.publicUrl;
-          }
-        } catch (e) {
-          console.error(`Voice over error for scene ${scene.number}:`, e);
+        const result = await pollVideoOperation(job.operation);
+
+        if (result.done && !result.error) {
+          // Download video clip to temp path
+          const clipPath = await downloadVeoVideo(result.operation);
+          const videoPath = path.join(tmpDir, `clip-${job.sceneNumber}.mp4`);
+          fs.copyFileSync(clipPath, videoPath);
+          videoFiles[job.sceneNumber] = videoPath;
+          // Clean up Veo download temp dir
+          try { fs.rmSync(path.dirname(clipPath), { recursive: true, force: true }); } catch {}
+        } else if (result.done && result.error) {
+          throw new Error(`Scene ${job.sceneNumber} failed: ${result.error}`);
         }
       }
-
-      sceneResults.push(result);
     }
 
-    // Build timeline JSON
-    let currentTime = 0;
-    const timeline = {
-      projectId,
-      totalDuration: adaptedScript.totalDuration,
-      fps: 30,
-      resolution: "1920x1080",
-      format: "16:9",
-      scenes: adaptedScript.scenes.map((scene) => {
-        const entry = {
-          number: scene.number,
-          type: "b-roll" as const,
-          startTime: currentTime,
-          endTime: currentTime + scene.duration,
-          image: `scene-${scene.number}-broll.png`,
-          audio: `scene-${scene.number}-vo.mp3`,
-          voiceOverText: scene.voiceOverText,
-          notes: scene.notes,
-        };
+    // ── Step 4: Compose final MP4 ──
+    const composeScenes = jobs.map((job) => ({
+      videoPath: videoFiles[job.sceneNumber],
+      audioPath: job.audioPath,
+      subtitleText: job.scene.voiceOverText,
+      duration: job.scene.duration,
+    }));
 
-        currentTime += scene.duration;
-        return entry;
-      }),
-    };
+    // Check for background music
+    const musicCandidates = [
+      path.join(process.cwd(), "public", "music", "background.mp3"),
+      path.join(process.cwd(), "public", "music", "bg-music.mp3"),
+    ];
+    const musicPath = musicCandidates.find((p) => fs.existsSync(p));
 
-    // Upload timeline
-    const timelineFileName = `${storagePath}/timeline.json`;
-    await supabaseAdmin.storage
+    const outputPath = path.join(tmpDir, "final-video.mp4");
+    await composeVideo({
+      scenes: composeScenes,
+      musicPath,
+      musicVolume: 0.12,
+      outputPath,
+    });
+
+    // ── Step 5: Upload final video to Supabase ──
+    const finalBuffer = fs.readFileSync(outputPath);
+    const storagePath = `${projectId}/script-${scriptIndex}/final-video.mp4`;
+
+    const { error: uploadErr } = await supabaseAdmin.storage
       .from("videos")
-      .upload(timelineFileName, Buffer.from(JSON.stringify(timeline, null, 2)), {
-        contentType: "application/json",
+      .upload(storagePath, finalBuffer, {
+        contentType: "video/mp4",
         upsert: true,
       });
 
+    if (uploadErr) {
+      throw new Error(`Upload failed: ${uploadErr.message}`);
+    }
+
+    const { data: urlData } = supabaseAdmin.storage
+      .from("videos")
+      .getPublicUrl(storagePath);
+
     // Save to database
-    const { error: dbError } = await supabaseAdmin
+    await supabaseAdmin
       .from("video_projects")
       .upsert(
         {
@@ -193,16 +202,16 @@ REQUIREMENTS:
           script_index: scriptIndex ?? 0,
           adapted_script: adaptedScript,
           voice_settings: voiceSettings,
-          scenes_data: sceneResults,
+          scenes_data: jobs.map((j) => ({
+            number: j.sceneNumber,
+            type: "b-roll" as const,
+            videoUrl: urlData.publicUrl,
+          })),
           status: "ready",
           updated_at: new Date().toISOString(),
         },
         { onConflict: "project_id,script_index" },
       );
-
-    if (dbError) {
-      console.error("DB save error:", dbError);
-    }
 
     logApiCall({
       endpoint: "/api/video/generate-all",
@@ -213,20 +222,24 @@ REQUIREMENTS:
 
     return NextResponse.json({
       success: true,
-      scenes: sceneResults,
-      timeline,
+      videoUrl: urlData.publicUrl,
     });
   } catch (error) {
     console.error("generate-all error:", error);
     logApiCall({
       endpoint: "/api/video/generate-all",
       status: "error",
-      errorMessage: error instanceof Error ? error.message : "Unknown error",
+      errorMessage: error instanceof Error ? error.message : "Unknown",
       durationMs: Date.now() - startTime,
     });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to generate video assets" },
+      { error: error instanceof Error ? error.message : "Failed to generate video" },
       { status: 500 },
     );
+  } finally {
+    // Cleanup temp files
+    if (tmpDir) {
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+    }
   }
 }

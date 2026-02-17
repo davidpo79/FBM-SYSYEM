@@ -5,43 +5,28 @@ import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
 import SceneCard from "@/components/video/SceneCard";
 import VoiceSettingsComponent from "@/components/video/VoiceSettings";
-import type { AdaptedScript, VoiceSettings, SceneResult, VideoScene } from "@/lib/video-types";
+import type { AdaptedScript, VoiceSettings, VideoScene } from "@/lib/video-types";
 
-/* ── Countdown Timer ── */
-function CountdownTimer({ seconds }: { seconds: number }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const startRef = useRef(Date.now());
+/* ── Progress steps ── */
+const STEPS = [
+  { key: "adapt", label: "המרת תסריט לסרטון", icon: "📝" },
+  { key: "veo", label: "יצירת 5 קליפי וידאו (Veo)", icon: "🎥" },
+  { key: "tts", label: "יצירת קריינות בעברית", icon: "🎙️" },
+  { key: "compose", label: "הרכבת סרטון MP4 סופי", icon: "🎬" },
+] as const;
+type StepKey = (typeof STEPS)[number]["key"];
 
-  useEffect(() => {
-    startRef.current = Date.now();
-    setRemaining(seconds);
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
-      setRemaining(Math.max(0, seconds - elapsed));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [seconds]);
-
-  return (
-    <div className="inline-flex flex-col items-center">
-      <div className="text-4xl font-bold text-[var(--gold)] tabular-nums">
-        {remaining > 0 ? remaining : "..."}
-      </div>
-      <span className="text-sm text-[var(--text-muted)] mt-1">
-        {remaining > 0 ? "שניות לסיום המשוער" : "עוד רגע..."}
-      </span>
-    </div>
-  );
-}
-
-/* ── Per-script state machine ── */
-type VideoState = "idle" | "adapting" | "ready" | "generating" | "done";
+/* ── Per-script state ── */
+type VideoState = "idle" | "adapting" | "ready" | "generating" | "done" | "error";
 
 interface ScriptVideo {
   state: VideoState;
   adaptedScript: AdaptedScript | null;
   voiceSettings: VoiceSettings;
-  sceneResults: SceneResult[];
+  currentStep: StepKey | null;
+  stepsCompleted: StepKey[];
+  finalVideoUrl: string | null;
+  error: string | null;
 }
 
 function parseScripts(raw: string): string[] {
@@ -58,40 +43,50 @@ export default function VideoCreatorPage() {
   const scriptsList = parseScripts(scripts);
 
   const [scriptVideos, setScriptVideos] = useState<Record<number, ScriptVideo>>({});
-  const [error, setError] = useState("");
+  const [globalError, setGlobalError] = useState("");
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [videoCount, setVideoCount] = useState(0);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const autoCreatedRef = useRef(false);
 
-  // Trial limit: 3 videos
   const VIDEO_LIMIT = 3;
 
-  /* ── Get or init video state for a script ── */
-  const getVideo = (idx: number): ScriptVideo => {
-    return scriptVideos[idx] || {
+  const getVideo = (idx: number): ScriptVideo =>
+    scriptVideos[idx] || {
       state: "idle",
       adaptedScript: null,
       voiceSettings: { voice: "female", rate: 1.0, pitch: 0 },
-      sceneResults: [],
+      currentStep: null,
+      stepsCompleted: [],
+      finalVideoUrl: null,
+      error: null,
     };
-  };
 
-  /* ── One Click: adapt script → video script (60s, all B-Roll) ── */
-  const handleCreateVideo = useCallback(
+  const updateVideo = useCallback(
+    (idx: number, updates: Partial<ScriptVideo>) => {
+      setScriptVideos((prev) => ({
+        ...prev,
+        [idx]: { ...getVideo(idx), ...prev[idx], ...updates },
+      }));
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  /* ── Step 1: Adapt FBM script → video script ── */
+  const handleAdaptScript = useCallback(
     async (scriptIdx: number) => {
       if (!scriptsList[scriptIdx]) return;
 
-      setScriptVideos((prev) => ({
-        ...prev,
-        [scriptIdx]: {
-          ...getVideo(scriptIdx),
-          state: "adapting",
-          adaptedScript: null,
-          sceneResults: [],
-        },
-      }));
-      setError("");
+      updateVideo(scriptIdx, {
+        state: "adapting",
+        adaptedScript: null,
+        currentStep: "adapt",
+        stepsCompleted: [],
+        finalVideoUrl: null,
+        error: null,
+      });
+      setGlobalError("");
 
       try {
         const res = await fetch("/api/video/adapt-script", {
@@ -105,81 +100,77 @@ export default function VideoCreatorPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to adapt script");
 
-        setScriptVideos((prev) => ({
-          ...prev,
-          [scriptIdx]: {
-            ...prev[scriptIdx],
-            state: "ready",
-            adaptedScript: data,
-          },
-        }));
+        updateVideo(scriptIdx, {
+          state: "ready",
+          adaptedScript: data,
+          currentStep: null,
+          stepsCompleted: ["adapt"],
+        });
       } catch (e) {
-        setError(e instanceof Error ? e.message : "שגיאה ביצירת תסריט וידאו");
-        setScriptVideos((prev) => ({
-          ...prev,
-          [scriptIdx]: { ...getVideo(scriptIdx), state: "idle" },
-        }));
+        const msg = e instanceof Error ? e.message : "שגיאה ביצירת תסריט וידאו";
+        updateVideo(scriptIdx, { state: "idle", error: msg });
+        setGlobalError(msg);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scriptsList, selectedNiche],
+    [scriptsList, selectedNiche, updateVideo],
   );
 
-  /* ── Auto-create on page load for first script (WOW effect like creative) ── */
+  /* ── Auto-adapt first script on page load ── */
   useEffect(() => {
     if (!scripts || autoCreatedRef.current) return;
     const parts = parseScripts(scripts);
     if (parts.length > 0 && !scriptVideos[0]) {
       autoCreatedRef.current = true;
-      handleCreateVideo(0);
+      handleAdaptScript(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scripts]);
 
-  /* ── Update a scene within an adapted script ── */
-  const handleUpdateScene = useCallback((scriptIdx: number, sceneNumber: number, updates: Partial<VideoScene>) => {
-    setScriptVideos((prev) => {
-      const video = prev[scriptIdx];
-      if (!video?.adaptedScript) return prev;
-      const updatedScenes = video.adaptedScript.scenes.map((s) =>
-        s.number === sceneNumber ? { ...s, ...updates } : s
-      );
-      return {
-        ...prev,
-        [scriptIdx]: {
-          ...video,
-          adaptedScript: { ...video.adaptedScript, scenes: updatedScenes },
-        },
-      };
-    });
-  }, []);
+  /* ── Update a scene ── */
+  const handleUpdateScene = useCallback(
+    (scriptIdx: number, sceneNumber: number, updates: Partial<VideoScene>) => {
+      setScriptVideos((prev) => {
+        const video = prev[scriptIdx];
+        if (!video?.adaptedScript) return prev;
+        const updatedScenes = video.adaptedScript.scenes.map((s) =>
+          s.number === sceneNumber ? { ...s, ...updates } : s,
+        );
+        return {
+          ...prev,
+          [scriptIdx]: {
+            ...video,
+            adaptedScript: { ...video.adaptedScript, scenes: updatedScenes },
+          },
+        };
+      });
+    },
+    [],
+  );
 
   /* ── Update voice settings ── */
-  const handleUpdateVoice = useCallback((scriptIdx: number, settings: VoiceSettings) => {
-    setScriptVideos((prev) => ({
-      ...prev,
-      [scriptIdx]: { ...prev[scriptIdx], voiceSettings: settings },
-    }));
-  }, []);
+  const handleUpdateVoice = useCallback(
+    (scriptIdx: number, settings: VoiceSettings) => {
+      updateVideo(scriptIdx, { voiceSettings: settings });
+    },
+    [updateVideo],
+  );
 
   /* ── Preview voice ── */
   const handlePreviewVoice = useCallback(async (settings: VoiceSettings) => {
     setIsPreviewLoading(true);
-    setError("");
     try {
-      const sampleText = "שלום, זוהי דוגמה לקול שישמש בסרטון שלך.";
       const res = await fetch("/api/video/generate-voiceover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: sampleText,
+          text: "שלום, זוהי דוגמה לקול שישמש בסרטון שלך.",
           voice: settings.voice,
           speakingRate: settings.rate,
           pitch: settings.pitch,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "שגיאה ביצירת דוגמת קול");
+      if (!res.ok) throw new Error(data.error);
 
       if (previewAudioRef.current) {
         previewAudioRef.current.pause();
@@ -188,60 +179,86 @@ export default function VideoCreatorPage() {
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
       previewAudioRef.current = audio;
       await audio.play();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "שגיאה ביצירת דוגמת קול");
-    } finally {
-      setIsPreviewLoading(false);
-    }
+    } catch {}
+    setIsPreviewLoading(false);
   }, []);
 
-  /* ── Generate all assets (images + voice over) ── */
-  const handleGenerateAll = useCallback(async (scriptIdx: number) => {
-    const video = scriptVideos[scriptIdx];
-    if (!video?.adaptedScript) return;
+  /* ── Full pipeline: Adapt → Veo → TTS → Compose → MP4 ── */
+  const handleGenerateVideo = useCallback(
+    async (scriptIdx: number) => {
+      const video = scriptVideos[scriptIdx];
+      if (!video?.adaptedScript) return;
 
-    if (videoCount >= VIDEO_LIMIT) {
-      setError(`הגעת למגבלת ${VIDEO_LIMIT} סרטונים בתקופת הניסיון. שדרג את התוכנית שלך.`);
-      return;
-    }
+      if (videoCount >= VIDEO_LIMIT) {
+        setGlobalError(`הגעת למגבלת ${VIDEO_LIMIT} סרטונים בתקופת הניסיון. שדרג את התוכנית שלך.`);
+        return;
+      }
 
-    setScriptVideos((prev) => ({
-      ...prev,
-      [scriptIdx]: { ...prev[scriptIdx], state: "generating", sceneResults: [] },
-    }));
-    setError("");
-
-    try {
-      const res = await fetch("/api/video/generate-all", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId,
-          adaptedScript: video.adaptedScript,
-          voiceSettings: video.voiceSettings,
-          scriptIndex: scriptIdx,
-        }),
+      updateVideo(scriptIdx, {
+        state: "generating",
+        currentStep: "veo",
+        stepsCompleted: ["adapt"],
+        finalVideoUrl: null,
+        error: null,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to generate assets");
+      setGlobalError("");
 
-      setScriptVideos((prev) => ({
-        ...prev,
-        [scriptIdx]: {
-          ...prev[scriptIdx],
+      try {
+        // Simulate step progression for the UI
+        // The generate-all endpoint handles the entire pipeline internally
+        const stepTimer = setInterval(() => {
+          setScriptVideos((prev) => {
+            const v = prev[scriptIdx];
+            if (!v || v.state !== "generating") return prev;
+            const completed = v.stepsCompleted;
+            if (!completed.includes("veo")) {
+              return { ...prev, [scriptIdx]: { ...v, currentStep: "veo" as StepKey, stepsCompleted: [...completed, "veo"] } };
+            }
+            if (!completed.includes("tts")) {
+              return { ...prev, [scriptIdx]: { ...v, currentStep: "tts" as StepKey, stepsCompleted: [...completed, "tts"] } };
+            }
+            if (!completed.includes("compose")) {
+              return { ...prev, [scriptIdx]: { ...v, currentStep: "compose" as StepKey, stepsCompleted: [...completed, "compose"] } };
+            }
+            return prev;
+          });
+        }, 15000);
+
+        const res = await fetch("/api/video/generate-all", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId,
+            adaptedScript: video.adaptedScript,
+            voiceSettings: video.voiceSettings,
+            scriptIndex: scriptIdx,
+          }),
+        });
+
+        clearInterval(stepTimer);
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to generate video");
+
+        updateVideo(scriptIdx, {
           state: "done",
-          sceneResults: data.scenes || [],
-        },
-      }));
-      setVideoCount((c) => c + 1);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "שגיאה ביצירת נכסי וידאו");
-      setScriptVideos((prev) => ({
-        ...prev,
-        [scriptIdx]: { ...prev[scriptIdx], state: "ready" },
-      }));
-    }
-  }, [scriptVideos, projectId, videoCount, VIDEO_LIMIT]);
+          currentStep: null,
+          stepsCompleted: ["adapt", "veo", "tts", "compose"],
+          finalVideoUrl: data.videoUrl,
+        });
+        setVideoCount((c) => c + 1);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "שגיאה ביצירת הסרטון";
+        updateVideo(scriptIdx, {
+          state: "error",
+          error: msg,
+          currentStep: null,
+        });
+        setGlobalError(msg);
+      }
+    },
+    [scriptVideos, projectId, videoCount, VIDEO_LIMIT, updateVideo],
+  );
 
   // Redirect if no scripts
   useEffect(() => {
@@ -255,51 +272,40 @@ export default function VideoCreatorPage() {
       <div className="py-12 text-center" dir="rtl">
         <div className="card-static rounded-xl p-8 max-w-md mx-auto">
           <span className="text-4xl block mb-4">🎬</span>
-          <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-            יצירת וידאו AI
-          </h2>
-          <p className="text-sm text-[var(--text-secondary)]">
-            צריך קודם ליצור תסריטים בשלב התסריטים
-          </p>
+          <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">יצירת וידאו AI</h2>
+          <p className="text-sm text-[var(--text-secondary)]">צריך קודם ליצור תסריטים בשלב התסריטים</p>
         </div>
       </div>
     );
   }
 
-  const readyCount = Object.values(scriptVideos).filter(
-    (v) => v.state === "ready" || v.state === "done"
-  ).length;
+  const doneCount = Object.values(scriptVideos).filter((v) => v.state === "done").length;
 
   return (
     <div className="pb-20 overflow-x-hidden" dir="rtl">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 animate-in">
         <div>
-          <h2 className="text-xl font-bold text-[var(--text-primary)]">
-            🎬 יצירת וידאו AI
-          </h2>
+          <h2 className="text-xl font-bold text-[var(--text-primary)]">🎬 יצירת וידאו AI</h2>
           <p className="text-sm text-[var(--text-muted)] mt-1">
-            סרטון שיווקי של 60 שניות — מופק לגמרי ב-AI
+            סרטון MP4 של 60 שניות — קליפי Veo + קריינות + כתוביות + מוזיקה
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Video count badge */}
-          <span
-            className="text-sm font-medium px-3 py-1.5 rounded-full"
-            style={{
-              backgroundColor: videoCount >= VIDEO_LIMIT ? "rgba(239, 68, 68, 0.1)" : "rgba(212, 168, 67, 0.1)",
-              color: videoCount >= VIDEO_LIMIT ? "#EF4444" : "#D4A843",
-            }}
-          >
-            🎬 {videoCount}/{VIDEO_LIMIT} סרטונים
-          </span>
-        </div>
+        <span
+          className="text-sm font-medium px-3 py-1.5 rounded-full"
+          style={{
+            backgroundColor: videoCount >= VIDEO_LIMIT ? "rgba(239, 68, 68, 0.1)" : "rgba(212, 168, 67, 0.1)",
+            color: videoCount >= VIDEO_LIMIT ? "#EF4444" : "#D4A843",
+          }}
+        >
+          🎬 {videoCount}/{VIDEO_LIMIT} סרטונים
+        </span>
       </div>
 
-      {/* Error banner */}
-      {error && (
+      {/* Error */}
+      {globalError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-[10px] text-sm text-red-600 animate-in">
-          {error}
+          {globalError}
         </div>
       )}
 
@@ -309,15 +315,10 @@ export default function VideoCreatorPage() {
           const video = getVideo(idx);
 
           return (
-            <div
-              key={idx}
-              className={`card-static overflow-hidden animate-in delay-${Math.min(idx + 1, 8)}`}
-            >
-              {/* Script header */}
+            <div key={idx} className="card-static overflow-hidden animate-in">
+              {/* Header */}
               <div className="p-5 border-b border-[var(--card-border)] flex items-center justify-between">
-                <h3 className="font-bold text-[var(--text-primary)]">
-                  תסריט {idx + 1}
-                </h3>
+                <h3 className="font-bold text-[var(--text-primary)]">תסריט {idx + 1}</h3>
                 <div className="flex items-center gap-2">
                   {video.state === "ready" && (
                     <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
@@ -325,17 +326,21 @@ export default function VideoCreatorPage() {
                     </span>
                   )}
                   {video.state === "done" && (
-                    <span className="text-xs font-medium text-[var(--success)] bg-green-50 px-2 py-1 rounded-full">
-                      ✓ סרטון מוכן
+                    <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                      ✓ MP4 מוכן
+                    </span>
+                  )}
+                  {video.state === "error" && (
+                    <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-full">
+                      שגיאה
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* ── State: IDLE ── */}
+              {/* ── IDLE ── */}
               {video.state === "idle" && (
                 <div className="p-8 text-center">
-                  {/* Script preview */}
                   <div
                     className="rounded-lg p-3 mb-4 max-h-24 overflow-y-auto text-sm text-[var(--text-secondary)] text-right mx-auto max-w-lg"
                     style={{ backgroundColor: "var(--content-bg)" }}
@@ -344,53 +349,41 @@ export default function VideoCreatorPage() {
                     {scriptText.length > 200 && "..."}
                   </div>
                   <button
-                    onClick={() => handleCreateVideo(idx)}
+                    onClick={() => handleAdaptScript(idx)}
                     disabled={videoCount >= VIDEO_LIMIT}
                     className="btn-gold !py-3 !px-8 text-base disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     ✨ צור סרטון 60 שניות
                   </button>
                   {videoCount >= VIDEO_LIMIT && (
-                    <p className="text-xs text-red-500 mt-2">
-                      הגעת למגבלת הסרטונים בתקופת הניסיון
-                    </p>
+                    <p className="text-xs text-red-500 mt-2">הגעת למגבלת הסרטונים בתקופת הניסיון</p>
                   )}
                 </div>
               )}
 
-              {/* ── State: ADAPTING (creating video script) ── */}
+              {/* ── ADAPTING ── */}
               {video.state === "adapting" && (
                 <div className="p-8 text-center">
-                  <CountdownTimer seconds={8} />
-                  <p className="text-sm text-[var(--text-muted)] mt-3">
-                    FBM Studio ממיר את התסריט לסרטון 60 שניות...
-                  </p>
-                  <div className="flex items-center justify-center gap-2 mt-2">
-                    <span className="text-xs text-[var(--text-muted)]">5 סצנות B-Roll</span>
-                    <span className="text-[var(--text-muted)]">|</span>
-                    <span className="text-xs text-[var(--text-muted)]">Voice Over בעברית</span>
-                    <span className="text-[var(--text-muted)]">|</span>
-                    <span className="text-xs text-[var(--text-muted)]">16:9</span>
-                  </div>
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full border-4 border-[var(--gold)] border-t-transparent animate-spin" />
+                  <p className="text-sm font-medium text-[var(--text-primary)]">ממיר את התסריט לסרטון 60 שניות...</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">5 סצנות B-Roll | Voice Over בעברית | 16:9</p>
                 </div>
               )}
 
-              {/* ── State: READY (video script ready, can edit + generate) ── */}
+              {/* ── READY (editable video script) ── */}
               {video.state === "ready" && video.adaptedScript && (
                 <div className="p-5">
-                  {/* Edit hint */}
-                  <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-[10px] text-xs text-blue-700 dark:text-blue-300 text-center">
-                    לחץ על טקסט כלשהו כדי לערוך אותו לפני יצירת הסרטון
+                  <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-[10px] text-xs text-blue-700 text-center">
+                    לחץ על טקסט כלשהו כדי לערוך. אחרי העריכה לחץ &quot;צור סרטון MP4&quot;
                   </div>
 
-                  {/* Video title */}
                   {video.adaptedScript.title && (
                     <h4 className="text-base font-bold text-[var(--text-primary)] mb-3 text-center">
                       {video.adaptedScript.title}
                     </h4>
                   )}
 
-                  {/* Stats bar */}
+                  {/* Stats */}
                   <div
                     className="rounded-lg px-4 py-2.5 mb-4 flex items-center justify-center gap-6 text-sm"
                     style={{
@@ -398,43 +391,25 @@ export default function VideoCreatorPage() {
                       border: "1px solid rgba(212, 168, 67, 0.15)",
                     }}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {video.adaptedScript.scenes.length}
-                      </span>
-                      <span className="text-[var(--text-muted)]">סצנות</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {video.adaptedScript.totalDuration}
-                      </span>
-                      <span className="text-[var(--text-muted)]">שניות</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[var(--text-muted)]">16:9</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[var(--text-muted)]">עברית</span>
-                    </div>
+                    <span><strong>{video.adaptedScript.scenes.length}</strong> סצנות</span>
+                    <span><strong>{video.adaptedScript.totalDuration}</strong> שניות</span>
+                    <span>16:9</span>
+                    <span>Veo 3.1</span>
                   </div>
 
-                  {/* Scene cards (editable) */}
+                  {/* Scene cards */}
                   {video.adaptedScript.scenes.map((scene) => (
                     <SceneCard
                       key={scene.number}
                       scene={scene}
                       isEditing={true}
-                      onUpdateScene={(updates) =>
-                        handleUpdateScene(idx, scene.number, updates)
-                      }
+                      onUpdateScene={(updates) => handleUpdateScene(idx, scene.number, updates)}
                     />
                   ))}
 
                   {/* Voice settings */}
                   <div className="mt-4">
-                    <h4 className="text-sm font-bold text-[var(--text-primary)] mb-2">
-                      🎙️ הגדרות קריינות
-                    </h4>
+                    <h4 className="text-sm font-bold text-[var(--text-primary)] mb-2">🎙️ הגדרות קריינות</h4>
                     <VoiceSettingsComponent
                       settings={video.voiceSettings}
                       onChange={(s) => handleUpdateVoice(idx, s)}
@@ -446,7 +421,7 @@ export default function VideoCreatorPage() {
                   {/* Generate button */}
                   <div className="mt-4 flex gap-3">
                     <button
-                      onClick={() => handleGenerateAll(idx)}
+                      onClick={() => handleGenerateVideo(idx)}
                       disabled={videoCount >= VIDEO_LIMIT}
                       className="flex-1 py-3.5 rounded-xl text-white font-bold text-[15px] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
@@ -454,12 +429,12 @@ export default function VideoCreatorPage() {
                         boxShadow: "0 4px 16px rgba(34,197,94,0.3)",
                       }}
                     >
-                      🎬 צור סרטון מוגמר
+                      🎬 צור סרטון MP4
                     </button>
                     <button
-                      onClick={() => handleCreateVideo(idx)}
+                      onClick={() => handleAdaptScript(idx)}
                       className="px-4 py-3.5 rounded-xl border-2 border-[var(--card-border)] text-[var(--text-secondary)] font-medium text-sm cursor-pointer hover:border-[var(--gold)] transition-all"
-                      title="צור תסריט וידאו מחדש"
+                      title="צור תסריט מחדש"
                     >
                       🔄
                     </button>
@@ -467,30 +442,90 @@ export default function VideoCreatorPage() {
                 </div>
               )}
 
-              {/* ── State: GENERATING ── */}
+              {/* ── GENERATING (progress) ── */}
               {video.state === "generating" && (
-                <div className="p-8 text-center">
-                  <CountdownTimer seconds={45} />
-                  <p className="text-sm text-[var(--text-muted)] mt-3">
-                    FBM Studio מייצר {video.adaptedScript?.scenes.length || 5} תמונות B-Roll וקריינות...
-                  </p>
-                  <div className="mt-4 max-w-xs mx-auto">
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: "60%",
-                          background: "linear-gradient(90deg, #D4A843, #22C55E)",
-                          animation: "shimmer 2s infinite",
-                        }}
-                      />
-                    </div>
+                <div className="p-6">
+                  <h4 className="text-center font-bold text-[var(--text-primary)] mb-5">מייצר את הסרטון שלך...</h4>
+
+                  {/* Progress steps */}
+                  <div className="max-w-md mx-auto space-y-3">
+                    {STEPS.map((step) => {
+                      const isCompleted = video.stepsCompleted.includes(step.key);
+                      const isCurrent = video.currentStep === step.key;
+
+                      return (
+                        <div
+                          key={step.key}
+                          className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                          style={{
+                            backgroundColor: isCurrent
+                              ? "rgba(212, 168, 67, 0.08)"
+                              : isCompleted
+                                ? "rgba(34, 197, 94, 0.06)"
+                                : "var(--content-bg)",
+                            border: isCurrent
+                              ? "1px solid rgba(212, 168, 67, 0.3)"
+                              : "1px solid transparent",
+                          }}
+                        >
+                          {/* Status icon */}
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
+                            {isCompleted ? (
+                              <span className="text-green-500 text-lg">✓</span>
+                            ) : isCurrent ? (
+                              <div className="w-5 h-5 rounded-full border-2 border-[var(--gold)] border-t-transparent animate-spin" />
+                            ) : (
+                              <span className="text-lg opacity-30">{step.icon}</span>
+                            )}
+                          </div>
+
+                          <span
+                            className="text-sm font-medium"
+                            style={{
+                              color: isCompleted
+                                ? "var(--success)"
+                                : isCurrent
+                                  ? "var(--text-primary)"
+                                  : "var(--text-muted)",
+                            }}
+                          >
+                            {step.label}
+                          </span>
+
+                          {isCurrent && (
+                            <span className="mr-auto text-xs text-[var(--text-muted)] animate-pulse">
+                              {step.key === "veo" ? "~2 דקות" : step.key === "compose" ? "~30 שניות" : ""}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
+
+                  <p className="text-center text-xs text-[var(--text-muted)] mt-4">
+                    אל תסגור את הדף. יצירת הסרטון לוקחת 2-4 דקות.
+                  </p>
                 </div>
               )}
 
-              {/* ── State: DONE ── */}
-              {video.state === "done" && video.adaptedScript && (
+              {/* ── ERROR ── */}
+              {video.state === "error" && (
+                <div className="p-6 text-center">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-50 flex items-center justify-center text-xl">
+                    ❌
+                  </div>
+                  <p className="text-sm text-red-600 mb-3">{video.error}</p>
+                  <button
+                    onClick={() => handleAdaptScript(idx)}
+                    className="btn-gold !py-2 !px-6 text-sm"
+                  >
+                    נסה שוב
+                  </button>
+                </div>
+              )}
+
+              {/* ── DONE (video player) ── */}
+              {video.state === "done" && video.finalVideoUrl && (
                 <div className="p-5">
                   {/* Success banner */}
                   <div
@@ -507,41 +542,31 @@ export default function VideoCreatorPage() {
                       ✅
                     </span>
                     <div>
-                      <h4 className="font-bold text-[var(--text-primary)]">
-                        סרטון מוכן!
-                      </h4>
+                      <h4 className="font-bold text-[var(--text-primary)]">סרטון MP4 מוכן!</h4>
                       <p className="text-xs text-[var(--text-secondary)]">
-                        {video.sceneResults.filter((s) => s.imageUrl).length} תמונות B-Roll
-                        {" + "}
-                        {video.sceneResults.filter((s) => s.voiceOverUrl).length} קטעי קריינות
+                        60 שניות | 5 סצנות Veo | קריינות בעברית | כתוביות | מוזיקת רקע
                       </p>
                     </div>
                   </div>
 
-                  {/* Scene cards with results */}
-                  {video.adaptedScript.scenes.map((scene) => {
-                    const result = video.sceneResults.find(
-                      (r) => r.number === scene.number
-                    );
-                    return (
-                      <SceneCard
-                        key={scene.number}
-                        scene={scene}
-                        imageUrl={result?.imageUrl}
-                        voiceOverUrl={result?.voiceOverUrl}
-                        isEditing={true}
-                        onUpdateScene={(updates) =>
-                          handleUpdateScene(idx, scene.number, updates)
-                        }
-                      />
-                    );
-                  })}
+                  {/* Video player */}
+                  <div className="rounded-xl overflow-hidden mb-4" style={{ backgroundColor: "#000" }}>
+                    <video
+                      controls
+                      className="w-full"
+                      style={{ maxHeight: 400 }}
+                      poster=""
+                    >
+                      <source src={video.finalVideoUrl} type="video/mp4" />
+                      הדפדפן שלך לא תומך בנגן וידאו.
+                    </video>
+                  </div>
 
-                  {/* Download + Regenerate buttons */}
-                  <div className="flex gap-3 mt-4">
+                  {/* Action buttons */}
+                  <div className="flex gap-3">
                     <a
-                      href={`/api/video/download-package?projectId=${projectId}&scriptIndex=${idx}`}
-                      download
+                      href={video.finalVideoUrl}
+                      download={`fbm-video-script-${idx + 1}.mp4`}
                       className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold cursor-pointer transition-all"
                       style={{
                         background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
@@ -549,17 +574,30 @@ export default function VideoCreatorPage() {
                         boxShadow: "0 2px 12px rgba(212, 168, 67, 0.3)",
                       }}
                     >
-                      📥 הורד הכל (ZIP)
+                      📥 הורד MP4
                     </a>
                     <button
-                      onClick={() => handleGenerateAll(idx)}
+                      onClick={() => handleGenerateVideo(idx)}
                       disabled={videoCount >= VIDEO_LIMIT}
                       className="px-4 py-3 rounded-xl border-2 border-[var(--card-border)] text-[var(--text-secondary)] font-medium text-sm cursor-pointer hover:border-[var(--gold)] transition-all disabled:opacity-50"
-                      title="צור מחדש"
                     >
                       🔄 צור מחדש
                     </button>
                   </div>
+
+                  {/* Expandable: Scene breakdown */}
+                  {video.adaptedScript && (
+                    <details className="mt-4">
+                      <summary className="text-sm font-medium text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)]">
+                        📋 הצג סצנות
+                      </summary>
+                      <div className="mt-3">
+                        {video.adaptedScript.scenes.map((scene) => (
+                          <SceneCard key={scene.number} scene={scene} />
+                        ))}
+                      </div>
+                    </details>
+                  )}
                 </div>
               )}
             </div>
@@ -567,21 +605,15 @@ export default function VideoCreatorPage() {
         })}
       </div>
 
-      {/* All done / next step */}
-      {readyCount > 0 && (
+      {/* Next step */}
+      {doneCount > 0 && (
         <div className="text-center py-8 bg-green-50 border border-green-200 rounded-[20px] mt-6 animate-in">
-          {readyCount >= scriptsList.length ? (
-            <>
-              <h2 className="text-2xl font-bold text-[var(--success)]">כל הסרטונים מוכנים!</h2>
-              <p className="text-[var(--text-secondary)] mt-2">
-                כל התסריטים הומרו לסרטוני וידאו
-              </p>
-            </>
-          ) : (
-            <p className="text-[var(--text-secondary)]">
-              {readyCount}/{scriptsList.length} סרטונים מוכנים
-            </p>
-          )}
+          <h2 className="text-2xl font-bold text-green-600">
+            {doneCount >= scriptsList.length ? "כל הסרטונים מוכנים!" : `${doneCount}/${scriptsList.length} סרטונים מוכנים`}
+          </h2>
+          <p className="text-[var(--text-secondary)] mt-2">
+            סרטוני MP4 עם קליפי Veo, קריינות, כתוביות ומוזיקה
+          </p>
           <button
             onClick={() => router.push(`/project/${projectId}/copy`)}
             className="mt-4 btn-gold text-lg !px-8 !py-3"
