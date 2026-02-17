@@ -156,21 +156,21 @@ export default function StrategyPage() {
             </div>
           </div>
 
-          {/* Download after approval */}
-          {strategyApproved && (
-            <div className="mt-4 flex items-center gap-3 bg-green-50 border border-green-200 rounded-[20px] p-4 animate-in delay-1">
+          {/* Download PDF */}
+          <div className={`mt-4 flex items-center gap-3 ${strategyApproved ? "bg-green-50 border border-green-200" : "bg-gray-50 border border-[var(--card-border)]"} rounded-[20px] p-4 animate-in delay-1`}>
+            {strategyApproved && (
               <p className="text-sm font-medium text-[var(--success)]">
-                המסמך אושר - עכשיו ניתן להוריד
+                המסמך אושר
               </p>
-              <button
-                onClick={() => handleDownloadPdf("מסמך אסטרטגיה FBM", strategy, `${project?.user_name ?? "export"} מסמך תדר וקהלים.pdf`)}
-                disabled={downloading?.includes("מסמך תדר וקהלים")}
-                className="px-4 py-2 text-sm font-medium bg-white border border-[var(--card-border)] text-[var(--text-secondary)] rounded-[10px] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                {downloading?.includes("מסמך תדר וקהלים") ? "מייצא..." : "הורד כ-PDF"}
-              </button>
-            </div>
-          )}
+            )}
+            <button
+              onClick={() => handleDownloadPdf("מסמך אסטרטגיה FBM", strategy, `${project?.user_name ?? "export"} מסמך תדר וקהלים.pdf`)}
+              disabled={downloading?.includes("מסמך תדר וקהלים")}
+              className="px-4 py-2 text-sm font-medium bg-white border border-[var(--card-border)] text-[var(--text-secondary)] rounded-[10px] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {downloading?.includes("מסמך תדר וקהלים") ? "מייצא..." : "הורד כ-PDF"}
+            </button>
+          </div>
         </div>
 
         {/* Sidebar info */}

@@ -576,23 +576,23 @@ export default function ResultsPage() {
               </div>
             )}
 
-            {/* PDF download - only after approval */}
-            {strategyApproved && (
-              <div className="p-4 pt-0">
-                <div className="flex items-center gap-3">
+            {/* PDF download */}
+            <div className="p-4 pt-0">
+              <div className="flex items-center gap-3">
+                {strategyApproved && (
                   <p className="text-sm font-medium text-green-600 dark:text-green-400">
-                    המסמך אושר - עכשיו ניתן להוריד
+                    המסמך אושר
                   </p>
-                  <button
-                    onClick={() => handleDownloadPdf("מסמך אסטרטגיה FBM", strategy, "strategy.pdf")}
-                    disabled={downloading === "strategy.pdf"}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
-                  >
-                    {downloading === "strategy.pdf" ? "מייצא..." : "הורד כ-PDF"}
-                  </button>
-                </div>
+                )}
+                <button
+                  onClick={() => handleDownloadPdf("מסמך אסטרטגיה FBM", strategy, "strategy.pdf")}
+                  disabled={downloading === "strategy.pdf"}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  {downloading === "strategy.pdf" ? "מייצא..." : "הורד כ-PDF"}
+                </button>
               </div>
-            )}
+            </div>
           </details>
         </section>
       )}
