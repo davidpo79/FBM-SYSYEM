@@ -2,8 +2,10 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import os from "os";
+import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 
 const TTS_API_URL = "https://texttospeech.googleapis.com/v1/text:synthesize";
+const FFMPEG_PATH = ffmpegInstaller.path;
 
 /**
  * Try Google Cloud TTS with Neural2 → Wavenet → Standard fallback.
@@ -59,6 +61,7 @@ async function tryCloudTTS(
 
 /**
  * Generate a silent MP3 file of the given duration using FFmpeg.
+ * Uses the bundled ffmpeg binary from @ffmpeg-installer/ffmpeg.
  */
 function generateSilence(durationSec: number): Buffer {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "tts-silence-"));
@@ -66,17 +69,38 @@ function generateSilence(durationSec: number): Buffer {
 
   try {
     execSync(
-      `npx --yes @ffmpeg-installer/ffmpeg -f lavfi -i anullsrc=r=24000:cl=mono -t ${durationSec} -c:a libmp3lame -q:a 9 "${outPath}" -y`,
-      { stdio: "pipe", timeout: 10000 },
+      `"${FFMPEG_PATH}" -f lavfi -i anullsrc=r=24000:cl=mono -t ${durationSec} -c:a libmp3lame -q:a 9 "${outPath}" -y`,
+      { stdio: "pipe", timeout: 15000 },
     );
     return fs.readFileSync(outPath);
-  } catch {
-    // Absolute minimum fallback: tiny MP3 silence frame
-    // This is a valid 0.026s MP3 frame (MPEG1 Layer3, 128kbps, 44100Hz, mono)
-    return Buffer.from(
-      "//uQxAAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
-      "base64",
-    );
+  } catch (e) {
+    console.error("generateSilence failed:", e instanceof Error ? e.message : e);
+    // Fallback: generate a valid WAV silence buffer manually
+    // WAV header (44 bytes) + PCM silence data (24000 Hz * 1 channel * 2 bytes * duration)
+    const sampleRate = 24000;
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    const numSamples = sampleRate * durationSec;
+    const dataSize = numSamples * numChannels * (bitsPerSample / 8);
+    const buffer = Buffer.alloc(44 + dataSize);
+    // RIFF header
+    buffer.write("RIFF", 0);
+    buffer.writeUInt32LE(36 + dataSize, 4);
+    buffer.write("WAVE", 8);
+    // fmt chunk
+    buffer.write("fmt ", 12);
+    buffer.writeUInt32LE(16, 16);
+    buffer.writeUInt16LE(1, 20); // PCM
+    buffer.writeUInt16LE(numChannels, 22);
+    buffer.writeUInt32LE(sampleRate, 24);
+    buffer.writeUInt32LE(sampleRate * numChannels * (bitsPerSample / 8), 28);
+    buffer.writeUInt16LE(numChannels * (bitsPerSample / 8), 32);
+    buffer.writeUInt16LE(bitsPerSample, 34);
+    // data chunk
+    buffer.write("data", 36);
+    buffer.writeUInt32LE(dataSize, 40);
+    // PCM data is already zero-filled (silence)
+    return buffer;
   } finally {
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
   }
