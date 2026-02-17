@@ -4,6 +4,8 @@ import { generateImage } from "@/lib/gemini";
 import { logApiCall } from "@/lib/api-log";
 import type { AdaptedScript, VoiceSettings, SceneResult } from "@/lib/video-types";
 
+export const maxDuration = 300; // 5 minutes – video generation is heavy
+
 const TTS_API_URL = "https://texttospeech.googleapis.com/v1/text:synthesize";
 
 async function generateVoiceOver(
@@ -75,20 +77,23 @@ export async function POST(req: NextRequest) {
     // Ensure storage bucket exists
     await ensureBucket();
 
-    const sceneResults: SceneResult[] = [];
     const storagePath = `${projectId}`;
 
-    for (const scene of adaptedScript.scenes) {
-      const result: SceneResult = {
-        number: scene.number,
-        type: scene.type,
-      };
+    // Process all scenes in parallel to avoid timeout
+    const sceneResults: SceneResult[] = await Promise.all(
+      adaptedScript.scenes.map(async (scene) => {
+        const result: SceneResult = {
+          number: scene.number,
+          type: scene.type,
+        };
 
-      if (scene.type === "b-roll") {
-        // Generate B-Roll image
-        if (scene.imagePrompt) {
-          try {
-            const fullPrompt = `Create a professional, high-quality, cinematic background image for a video B-Roll scene.
+        if (scene.type === "b-roll") {
+          // Run image generation and voice-over in parallel for each scene
+          const [imageResult, voiceResult] = await Promise.allSettled([
+            // Generate B-Roll image
+            scene.imagePrompt
+              ? (async () => {
+                  const fullPrompt = `Create a professional, high-quality, cinematic background image for a video B-Roll scene.
 SCENE: ${scene.imagePrompt}
 REQUIREMENTS:
 - Photorealistic, ultra high quality, 16:9 landscape format
@@ -96,61 +101,71 @@ REQUIREMENTS:
 - NO text, words, letters, or watermarks
 - Rich color grading, professional atmosphere`;
 
-            const { base64, mimeType } = await generateImage(fullPrompt, "16:9");
+                  const { base64, mimeType } = await generateImage(fullPrompt, "16:9");
 
-            const imgFileName = `${storagePath}/scene-${scene.number}-broll.png`;
-            const { error: uploadErr } = await supabaseAdmin.storage
-              .from("videos")
-              .upload(imgFileName, Buffer.from(base64, "base64"), {
-                contentType: mimeType || "image/png",
-                upsert: true,
-              });
+                  const imgFileName = `${storagePath}/scene-${scene.number}-broll.png`;
+                  const { error: uploadErr } = await supabaseAdmin.storage
+                    .from("videos")
+                    .upload(imgFileName, Buffer.from(base64, "base64"), {
+                      contentType: mimeType || "image/png",
+                      upsert: true,
+                    });
 
-            if (uploadErr) {
-              console.error(`Upload error for scene ${scene.number} image:`, uploadErr);
-            } else {
-              const { data: urlData } = supabaseAdmin.storage
-                .from("videos")
-                .getPublicUrl(imgFileName);
-              result.imageUrl = urlData.publicUrl;
-            }
-          } catch (e) {
-            console.error(`Image generation error for scene ${scene.number}:`, e);
+                  if (uploadErr) {
+                    console.error(`Upload error for scene ${scene.number} image:`, uploadErr);
+                    return null;
+                  }
+                  const { data: urlData } = supabaseAdmin.storage
+                    .from("videos")
+                    .getPublicUrl(imgFileName);
+                  return urlData.publicUrl;
+                })()
+              : Promise.resolve(null),
+
+            // Generate Voice Over
+            scene.voiceOverText
+              ? (async () => {
+                  const audioBuffer = await generateVoiceOver(
+                    scene.voiceOverText!,
+                    voiceSettings,
+                  );
+
+                  const audioFileName = `${storagePath}/scene-${scene.number}-vo.mp3`;
+                  const { error: uploadErr } = await supabaseAdmin.storage
+                    .from("videos")
+                    .upload(audioFileName, audioBuffer, {
+                      contentType: "audio/mpeg",
+                      upsert: true,
+                    });
+
+                  if (uploadErr) {
+                    console.error(`Upload error for scene ${scene.number} audio:`, uploadErr);
+                    return null;
+                  }
+                  const { data: urlData } = supabaseAdmin.storage
+                    .from("videos")
+                    .getPublicUrl(audioFileName);
+                  return urlData.publicUrl;
+                })()
+              : Promise.resolve(null),
+          ]);
+
+          if (imageResult.status === "fulfilled" && imageResult.value) {
+            result.imageUrl = imageResult.value;
+          } else if (imageResult.status === "rejected") {
+            console.error(`Image generation error for scene ${scene.number}:`, imageResult.reason);
+          }
+
+          if (voiceResult.status === "fulfilled" && voiceResult.value) {
+            result.voiceOverUrl = voiceResult.value;
+          } else if (voiceResult.status === "rejected") {
+            console.error(`Voice over error for scene ${scene.number}:`, voiceResult.reason);
           }
         }
 
-        // Generate Voice Over
-        if (scene.voiceOverText) {
-          try {
-            const audioBuffer = await generateVoiceOver(
-              scene.voiceOverText,
-              voiceSettings,
-            );
-
-            const audioFileName = `${storagePath}/scene-${scene.number}-vo.mp3`;
-            const { error: uploadErr } = await supabaseAdmin.storage
-              .from("videos")
-              .upload(audioFileName, audioBuffer, {
-                contentType: "audio/mpeg",
-                upsert: true,
-              });
-
-            if (uploadErr) {
-              console.error(`Upload error for scene ${scene.number} audio:`, uploadErr);
-            } else {
-              const { data: urlData } = supabaseAdmin.storage
-                .from("videos")
-                .getPublicUrl(audioFileName);
-              result.voiceOverUrl = urlData.publicUrl;
-            }
-          } catch (e) {
-            console.error(`Voice over error for scene ${scene.number}:`, e);
-          }
-        }
-      }
-
-      sceneResults.push(result);
-    }
+        return result;
+      }),
+    );
 
     // Build timeline JSON
     let currentTime = 0;
