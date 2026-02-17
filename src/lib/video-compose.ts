@@ -103,46 +103,28 @@ export async function composeVideo(options: ComposeOptions): Promise<string> {
   const outputPath = options.outputPath || path.join(tmpDir, "final-video.mp4");
 
   try {
-    // 1. Create concat file for video clips
-    const concatFilePath = path.join(tmpDir, "concat.txt");
-    const concatContent = scenes
-      .map((s) => `file '${s.videoPath.replace(/'/g, "'\\''")}'`)
-      .join("\n");
-    fs.writeFileSync(concatFilePath, concatContent);
-
-    // 2. Create concat file for audio
-    const audioConcatPath = path.join(tmpDir, "audio-concat.txt");
-    const audioConcatContent = scenes
-      .map((s) => `file '${s.audioPath.replace(/'/g, "'\\''")}'`)
-      .join("\n");
-    fs.writeFileSync(audioConcatPath, audioConcatContent);
-
-    // 3. Generate SRT subtitles
+    // 1. Generate SRT subtitles
     const srtPath = path.join(tmpDir, "subtitles.srt");
     const srtContent = generateSrt(scenes);
     fs.writeFileSync(srtPath, srtContent, "utf-8");
 
-    // 4. Concatenate videos
+    // 2. Concatenate videos using concat filter
     const concatVideoPath = path.join(tmpDir, "concat-video.mp4");
-    await runFfmpeg(
-      ffmpeg()
-        .input(concatFilePath)
-        .inputOptions(["-f", "concat", "-safe", "0"])
-        .outputOptions(["-c", "copy"])
-        .output(concatVideoPath)
+    await concatFiles(
+      scenes.map((s) => s.videoPath),
+      concatVideoPath,
+      "video",
     );
 
-    // 5. Concatenate audio
+    // 3. Concatenate audio using concat filter
     const concatAudioPath = path.join(tmpDir, "concat-audio.mp3");
-    await runFfmpeg(
-      ffmpeg()
-        .input(audioConcatPath)
-        .inputOptions(["-f", "concat", "-safe", "0"])
-        .outputOptions(["-c", "copy"])
-        .output(concatAudioPath)
+    await concatFiles(
+      scenes.map((s) => s.audioPath),
+      concatAudioPath,
+      "audio",
     );
 
-    // 6. Final composition: video + voice-over + music + subtitles
+    // 4. Final composition: video + voice-over + music + subtitles
     const ffmpegCmd = ffmpeg()
       .input(concatVideoPath)
       .input(concatAudioPath);
@@ -151,18 +133,15 @@ export async function composeVideo(options: ComposeOptions): Promise<string> {
 
     if (musicPath && fs.existsSync(musicPath)) {
       ffmpegCmd.input(musicPath);
-      // Mix voice-over (input 1) with background music (input 2)
       filterParts.push(
         `[1:a]volume=1.0[vo]`,
         `[2:a]volume=${musicVolume},afade=t=out:st=55:d=5[music]`,
         `[vo][music]amix=inputs=2:duration=first:dropout_transition=3[aout]`
       );
     } else {
-      // Voice-over only
       filterParts.push(`[1:a]volume=1.0[aout]`);
     }
 
-    // Subtitle filter - Hebrew RTL with white text on semi-transparent black bg
     const subtitleFilter = `subtitles='${srtPath.replace(/\\/g, "/").replace(/'/g, "\\'")}':force_style='FontName=Arial,FontSize=22,Alignment=2,MarginV=35,PrimaryColour=&HFFFFFF&,OutlineColour=&H80000000&,BorderStyle=4,Outline=0,Shadow=0,BackColour=&H80000000&'`;
 
     ffmpegCmd
@@ -187,12 +166,54 @@ export async function composeVideo(options: ComposeOptions): Promise<string> {
 
     return outputPath;
   } catch (error) {
-    // Cleanup on error
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     } catch {}
     throw error;
   }
+}
+
+/**
+ * Concatenate files using the concat filter (avoids concat demuxer file issues).
+ */
+function concatFiles(
+  inputPaths: string[],
+  outputPath: string,
+  type: "video" | "audio",
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (inputPaths.length === 0) {
+      return reject(new Error("No input files to concatenate"));
+    }
+
+    // Single file: just copy it
+    if (inputPaths.length === 1) {
+      fs.copyFileSync(inputPaths[0], outputPath);
+      return resolve();
+    }
+
+    const cmd = ffmpeg();
+    for (const p of inputPaths) {
+      cmd.input(p);
+    }
+
+    const n = inputPaths.length;
+    const streamLabels = inputPaths.map((_, i) =>
+      type === "video" ? `[${i}:v]` : `[${i}:a]`
+    );
+    const concatFilter =
+      type === "video"
+        ? `${streamLabels.join("")}concat=n=${n}:v=1:a=0[out]`
+        : `${streamLabels.join("")}concat=n=${n}:v=0:a=1[out]`;
+
+    cmd
+      .complexFilter([concatFilter])
+      .outputOptions(["-map", "[out]", "-y"])
+      .output(outputPath)
+      .on("end", () => resolve())
+      .on("error", (err: Error) => reject(err))
+      .run();
+  });
 }
 
 /**
