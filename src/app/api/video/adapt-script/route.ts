@@ -9,23 +9,28 @@ const ADAPTATION_PROMPT = (scriptText: string, niche: string) => `
 הסרטון מורכב מקליפי B-Roll (סטוק וידאו) עם Voice Over בעברית וכתוביות.
 
 כללים:
-- בדיוק 5 סצנות B-Roll
-- כל סצנה 10-14 שניות (סה"כ ~60 שניות)
-- פורמט 9:16 (portrait / רילס)
-- לכל סצנה: searchQuery — 2-4 מילות מפתח באנגלית לחיפוש סטוק וידאו (Pexels). דוגמאות טובות: "business meeting office", "frustrated person computer", "happy customer shopping", "money growth success"
-- לכל סצנה: visualDescription — תיאור ויזואלי קצר בעברית של מה שנראה בקליפ
-- לכל סצנה: voiceOverText — טקסט קריינות בעברית, מקסימום 2-3 משפטים קצרים
+- בדיוק 8 סצנות B-Roll (קצרות ודינמיות)
+- כל סצנה 7-8 שניות (סה"כ ~60 שניות)
+- פורמט 9:16 (portrait / רילס) — נחתך מ-landscape
+- לכל סצנה: searchQuery — 2-4 מילות מפתח באנגלית לחיפוש סטוק וידאו (Pexels)
+  * כשיש דמויות אנושיות בסצנה, הוסף "mediterranean" למילות החיפוש. דוגמאות: "mediterranean business owner office", "mediterranean woman shopping happy", "mediterranean man frustrated computer"
+  * כשאין דמויות: "business growth chart", "modern office workspace", "money success celebration"
+- לכל סצנה: visualDescription — תיאור ויזואלי קצר בעברית
+- לכל סצנה: voiceOverText — טקסט קריינות בעברית, משפט אחד עד שניים קצרים
 - הטקסט חייב להתאים לוויזואל
 - סצנה ראשונה = Hook חזק שתופס תשומת לב
 - סצנה אחרונה = CTA ברור
-- שפה ישירה, רגשית, אנרגטית
+- שפה ישירה, רגשית, אנרגטית, קצבית
 
-מבנה מומלץ:
-1. Hook (10s) — כאב/בעיה חזקה
-2. הזדהות (12s) — "גם אתה מרגיש ש..." + אגיטציה
-3. פתרון (12s) — הצגת הפתרון
-4. הוכחה (12s) — תוצאות/מספרים
-5. CTA (14s) — הנעה לפעולה
+מבנה מומלץ (8 סצנות):
+1. Hook (7s) — כאב/בעיה חזקה, תופס תשומת לב מיידית
+2. אגיטציה (7s) — מחריף את הכאב
+3. הזדהות (8s) — "גם אתה מכיר את זה..."
+4. ציפייה (7s) — "תארו לעצמכם ש..."
+5. פתרון (8s) — הצגת הפתרון/שיטה
+6. הוכחה (7s) — תוצאות/מספרים
+7. סמכות (8s) — למה אנחנו + הוכחה חברתית
+8. CTA (8s) — הנעה לפעולה ברורה
 
 התסריט המקורי:
 ${scriptText}
@@ -38,8 +43,8 @@ ${scriptText}
   "scenes": [
     {
       "number": 1,
-      "duration": 10,
-      "searchQuery": "frustrated business owner desk",
+      "duration": 7,
+      "searchQuery": "mediterranean frustrated business owner desk",
       "visualDescription": "בעל עסק מתוסכל ליד המחשב",
       "voiceOverText": "טקסט קריינות בעברית",
       "notes": "Hook — תופס תשומת לב"

@@ -12,10 +12,13 @@ interface SceneCardProps {
 
 const SCENE_LABELS: Record<number, string> = {
   1: "Hook",
-  2: "הזדהות",
-  3: "פתרון",
-  4: "הוכחה",
-  5: "CTA",
+  2: "אגיטציה",
+  3: "הזדהות",
+  4: "ציפייה",
+  5: "פתרון",
+  6: "הוכחה",
+  7: "סמכות",
+  8: "CTA",
 };
 
 export default function SceneCard({
@@ -69,15 +72,15 @@ export default function SceneCard({
 
       <div className="p-4 space-y-3">
         {/* Clip thumbnail */}
-        <div className="rounded-lg overflow-hidden relative" style={{ backgroundColor: "#000" }}>
+        <div className="rounded-lg overflow-hidden relative" style={{ backgroundColor: "#000", aspectRatio: "16/9" }}>
           {clip ? (
-            <div className="relative group">
+            <div className="relative group w-full h-full">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={clip.image}
                 alt={`Scene ${scene.number}`}
-                className="w-full"
-                style={{ maxHeight: 160, objectFit: "cover" }}
+                className="w-full h-full"
+                style={{ objectFit: "cover" }}
               />
               {/* Visual description overlay */}
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
@@ -133,7 +136,7 @@ export default function SceneCard({
                   src={c.image}
                   alt={`Option ${c.id}`}
                   className="w-full"
-                  style={{ height: 56, objectFit: "cover" }}
+                  style={{ height: 56, width: "100%", objectFit: "cover" }}
                 />
               </button>
             ))}
