@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
 import SceneCard from "@/components/video/SceneCard";
 import VoiceSettingsComponent from "@/components/video/VoiceSettings";
-import type { AdaptedScript, VoiceSettings, VideoScene, PexelsVideo } from "@/lib/video-types";
+import type { AdaptedScript, VoiceSettings, VideoScene, PexelsVideo, VideoSource } from "@/lib/video-types";
 
 /* ── States ── */
 type PageState =
@@ -18,13 +18,21 @@ type PageState =
   | "error";
 
 /* ── Progress steps (shown during generation) ── */
-const STEPS = [
+const PEXELS_STEPS = [
   { key: "download", label: "מוריד קליפים מ-Pexels" },
   { key: "tts", label: "יוצר קריינות בעברית" },
   { key: "compose", label: "מרכיב סרטון MP4" },
   { key: "upload", label: "מעלה לענן" },
 ] as const;
-type StepKey = (typeof STEPS)[number]["key"];
+
+const RUNWAY_STEPS = [
+  { key: "ai-gen", label: "מייצר קליפים עם AI (Runway)" },
+  { key: "tts", label: "יוצר קריינות בעברית (+ timestamps)" },
+  { key: "compose", label: "מרכיב סרטון MP4" },
+  { key: "upload", label: "מעלה לענן" },
+] as const;
+
+type StepKey = "download" | "ai-gen" | "tts" | "compose" | "upload";
 
 function parseScripts(raw: string): string[] {
   if (!raw) return [];
@@ -48,6 +56,7 @@ export default function VideoCreatorPage() {
     rate: 1.0,
     pitch: 0,
   });
+  const [videoSource, setVideoSource] = useState<VideoSource>("pexels");
   const [currentStep, setCurrentStep] = useState<StepKey | null>(null);
   const [finalVideoUrl, setFinalVideoUrl] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState("");
@@ -57,6 +66,8 @@ export default function VideoCreatorPage() {
   const autoCreatedRef = useRef(false);
 
   const VIDEO_LIMIT = 3;
+  const STEPS = videoSource === "runway" ? RUNWAY_STEPS : PEXELS_STEPS;
+  const hasRunwayKey = true; // Will be checked server-side
 
   /* ── Step 1: Adapt script → scenes ── */
   const handleAdaptScript = useCallback(
@@ -84,29 +95,30 @@ export default function VideoCreatorPage() {
 
         const adapted = adaptData as AdaptedScript;
 
-        // 1b: Search Pexels clips for each scene
-        setPageState("searching");
+        // 1b: Search Pexels clips (for Pexels mode, also pre-fetched in AI mode as fallback)
+        if (videoSource === "pexels") {
+          setPageState("searching");
 
-        const searchRes = await fetch("/api/video/search-clips", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            scenes: adapted.scenes.map((s) => ({
-              number: s.number,
-              searchQuery: s.searchQuery,
-              duration: s.duration,
-            })),
-          }),
-        });
-        const searchData = await searchRes.json().catch(() => ({ error: `שגיאת חיפוש (${searchRes.status})` }));
+          const searchRes = await fetch("/api/video/search-clips", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              scenes: adapted.scenes.map((s) => ({
+                number: s.number,
+                searchQuery: s.searchQuery,
+                duration: s.duration,
+              })),
+            }),
+          });
+          const searchData = await searchRes.json().catch(() => ({ error: `שגיאת חיפוש (${searchRes.status})` }));
 
-        if (searchRes.ok && searchData.scenes) {
-          // Merge clips into adapted script
-          for (const sceneClips of searchData.scenes as { number: number; clips: PexelsVideo[] }[]) {
-            const scene = adapted.scenes.find((s) => s.number === sceneClips.number);
-            if (scene) {
-              scene.clipOptions = sceneClips.clips;
-              scene.selectedClip = sceneClips.clips[0] || undefined;
+          if (searchRes.ok && searchData.scenes) {
+            for (const sceneClips of searchData.scenes as { number: number; clips: PexelsVideo[] }[]) {
+              const scene = adapted.scenes.find((s) => s.number === sceneClips.number);
+              if (scene) {
+                scene.clipOptions = sceneClips.clips;
+                scene.selectedClip = sceneClips.clips[0] || undefined;
+              }
             }
           }
         }
@@ -119,7 +131,7 @@ export default function VideoCreatorPage() {
         setGlobalError(msg);
       }
     },
-    [scriptsList, selectedNiche],
+    [scriptsList, selectedNiche, videoSource],
   );
 
   /* ── Auto-adapt first script on load ── */
@@ -216,15 +228,39 @@ export default function VideoCreatorPage() {
     setIsPreviewLoading(false);
   }, []);
 
+  /* ── Switch video source ── */
+  const handleSwitchSource = useCallback(
+    (source: VideoSource) => {
+      setVideoSource(source);
+      // Re-adapt if we already have a script loaded
+      if (adaptedScript && pageState === "ready") {
+        // For Runway, no need to search Pexels clips
+        // For Pexels, trigger clip search
+        if (source === "pexels" && adaptedScript.scenes.some((s) => !s.selectedClip)) {
+          handleAdaptScript(activeScript);
+        }
+      }
+    },
+    [adaptedScript, pageState, activeScript, handleAdaptScript],
+  );
+
   /* ── Generate final MP4 ── */
   const handleGenerateVideo = useCallback(async () => {
     if (!adaptedScript) return;
 
-    // Check all scenes have clips
-    const missingClip = adaptedScript.scenes.find((s) => !s.selectedClip);
-    if (missingClip) {
-      setGlobalError(`סצנה ${missingClip.number} חסר קליפ וידאו. בחר קליפ לכל סצנה.`);
-      return;
+    // Validate based on source
+    if (videoSource === "pexels") {
+      const missingClip = adaptedScript.scenes.find((s) => !s.selectedClip);
+      if (missingClip) {
+        setGlobalError(`סצנה ${missingClip.number} חסר קליפ וידאו. בחר קליפ לכל סצנה.`);
+        return;
+      }
+    } else if (videoSource === "runway") {
+      const missingPrompt = adaptedScript.scenes.find((s) => !s.videoPromptEn);
+      if (missingPrompt) {
+        setGlobalError(`סצנה ${missingPrompt.number} חסר תיאור AI. ערוך את ה-Prompt.`);
+        return;
+      }
     }
 
     if (videoCount >= VIDEO_LIMIT) {
@@ -233,18 +269,21 @@ export default function VideoCreatorPage() {
     }
 
     setPageState("generating");
-    setCurrentStep("download");
+    setCurrentStep(videoSource === "runway" ? "ai-gen" : "download");
     setGlobalError("");
 
     // Simulate step progression
+    const stepOrder: StepKey[] = videoSource === "runway"
+      ? ["ai-gen", "tts", "compose", "upload"]
+      : ["download", "tts", "compose", "upload"];
+    let stepIdx = 0;
+
     const stepTimer = setInterval(() => {
-      setCurrentStep((prev) => {
-        if (prev === "download") return "tts";
-        if (prev === "tts") return "compose";
-        if (prev === "compose") return "upload";
-        return prev;
-      });
-    }, 8000);
+      stepIdx++;
+      if (stepIdx < stepOrder.length) {
+        setCurrentStep(stepOrder[stepIdx]);
+      }
+    }, videoSource === "runway" ? 15000 : 8000); // AI generation takes longer
 
     try {
       const res = await fetch("/api/video/generate-all", {
@@ -255,6 +294,7 @@ export default function VideoCreatorPage() {
           adaptedScript,
           voiceSettings,
           scriptIndex: activeScript,
+          videoSource,
         }),
       });
 
@@ -269,6 +309,7 @@ export default function VideoCreatorPage() {
         console.log("TTS engines:", data.ttsEngines);
         console.log("Font used:", data.fontUsed);
         console.log("Music track:", data.hasMusicTrack);
+        console.log("Video source:", data.videoSource);
       }
 
       if (!res.ok) throw new Error(data.error || "שגיאה ביצירת הסרטון");
@@ -286,7 +327,7 @@ export default function VideoCreatorPage() {
       setPageState("error");
       setGlobalError(msg);
     }
-  }, [adaptedScript, projectId, voiceSettings, activeScript, videoCount]);
+  }, [adaptedScript, projectId, voiceSettings, activeScript, videoCount, videoSource]);
 
   /* ── Redirect if no scripts ── */
   useEffect(() => {
@@ -314,7 +355,7 @@ export default function VideoCreatorPage() {
         <div>
           <h2 className="text-xl font-bold text-[var(--text-primary)]">🎬 יצירת וידאו</h2>
           <p className="text-sm text-[var(--text-muted)] mt-1">
-            סרטון MP4 של 60 שניות — קליפי סטוק + קריינות + כתוביות
+            סרטון MP4 של 60 שניות — {videoSource === "runway" ? "AI ג׳נרטיבי" : "קליפי סטוק"} + קריינות + כתוביות
           </p>
         </div>
         <span
@@ -326,6 +367,34 @@ export default function VideoCreatorPage() {
         >
           🎬 {videoCount}/{VIDEO_LIMIT} סרטונים
         </span>
+      </div>
+
+      {/* ── Video Source Toggle ── */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => handleSwitchSource("pexels")}
+          disabled={pageState === "generating"}
+          className="flex-1 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all disabled:opacity-50"
+          style={{
+            backgroundColor: videoSource === "pexels" ? "rgba(59, 130, 246, 0.1)" : "var(--content-bg)",
+            color: videoSource === "pexels" ? "#3B82F6" : "var(--text-secondary)",
+            border: videoSource === "pexels" ? "2px solid #3B82F6" : "2px solid var(--card-border)",
+          }}
+        >
+          📹 Pexels (סטוק חינמי)
+        </button>
+        <button
+          onClick={() => handleSwitchSource("runway")}
+          disabled={pageState === "generating" || !hasRunwayKey}
+          className="flex-1 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all disabled:opacity-50"
+          style={{
+            backgroundColor: videoSource === "runway" ? "rgba(139, 92, 246, 0.1)" : "var(--content-bg)",
+            color: videoSource === "runway" ? "#8B5CF6" : "var(--text-secondary)",
+            border: videoSource === "runway" ? "2px solid #8B5CF6" : "2px solid var(--card-border)",
+          }}
+        >
+          🤖 Runway AI (ג׳נרטיבי)
+        </button>
       </div>
 
       {/* Script selector (if multiple) */}
@@ -384,7 +453,9 @@ export default function VideoCreatorPage() {
         <div className="card-static rounded-xl p-8 text-center animate-in">
           <div className="w-12 h-12 mx-auto mb-3 rounded-full border-4 border-[var(--gold)] border-t-transparent animate-spin" />
           <p className="text-sm font-medium text-[var(--text-primary)]">ממיר את התסריט לסצנות וידאו...</p>
-          <p className="text-xs text-[var(--text-muted)] mt-1">AI מפרק את התסריט ל-5 סצנות</p>
+          <p className="text-xs text-[var(--text-muted)] mt-1">
+            AI מפרק את התסריט ל-8 סצנות {videoSource === "runway" ? "+ prompts קולנועיים" : ""}
+          </p>
         </div>
       )}
 
@@ -401,8 +472,18 @@ export default function VideoCreatorPage() {
       {pageState === "ready" && adaptedScript && (
         <div className="animate-in">
           {/* Info banner */}
-          <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-[10px] text-xs text-blue-700 text-center">
-            ערוך את הטקסט, החלף קליפים, ולחץ &quot;צור סרטון MP4&quot;
+          <div
+            className="mb-3 p-2 rounded-[10px] text-xs text-center"
+            style={{
+              backgroundColor: videoSource === "runway" ? "rgba(139, 92, 246, 0.05)" : "rgba(59, 130, 246, 0.05)",
+              border: `1px solid ${videoSource === "runway" ? "rgba(139, 92, 246, 0.2)" : "rgba(59, 130, 246, 0.2)"}`,
+              color: videoSource === "runway" ? "#7C3AED" : "#2563EB",
+            }}
+          >
+            {videoSource === "runway"
+              ? "ערוך את ה-Prompts, טקסט הקריינות, ולחץ \"צור סרטון AI\""
+              : "ערוך את הטקסט, החלף קליפים, ולחץ \"צור סרטון MP4\""
+            }
           </div>
 
           {/* Title */}
@@ -416,14 +497,14 @@ export default function VideoCreatorPage() {
           <div
             className="rounded-lg px-4 py-2.5 mb-4 flex items-center justify-center gap-6 text-sm"
             style={{
-              backgroundColor: "rgba(212, 168, 67, 0.06)",
-              border: "1px solid rgba(212, 168, 67, 0.15)",
+              backgroundColor: videoSource === "runway" ? "rgba(139, 92, 246, 0.06)" : "rgba(212, 168, 67, 0.06)",
+              border: `1px solid ${videoSource === "runway" ? "rgba(139, 92, 246, 0.15)" : "rgba(212, 168, 67, 0.15)"}`,
             }}
           >
             <span><strong>{adaptedScript.scenes.length}</strong> סצנות</span>
             <span><strong>{adaptedScript.totalDuration}</strong> שניות</span>
             <span>9:16</span>
-            <span>Pexels B-Roll</span>
+            <span>{videoSource === "runway" ? "Runway AI" : "Pexels B-Roll"}</span>
           </div>
 
           {/* Scene cards */}
@@ -433,7 +514,8 @@ export default function VideoCreatorPage() {
               scene={scene}
               isEditing={true}
               onUpdateScene={(updates) => handleUpdateScene(scene.number, updates)}
-              onSwapClip={handleSwapClip}
+              onSwapClip={videoSource === "pexels" ? handleSwapClip : undefined}
+              videoSource={videoSource}
             />
           ))}
 
@@ -455,11 +537,15 @@ export default function VideoCreatorPage() {
               disabled={videoCount >= VIDEO_LIMIT}
               className="flex-1 py-3.5 rounded-xl text-white font-bold text-[15px] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                background: "linear-gradient(135deg, #22C55E 0%, #16a34a 100%)",
-                boxShadow: "0 4px 16px rgba(34,197,94,0.3)",
+                background: videoSource === "runway"
+                  ? "linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)"
+                  : "linear-gradient(135deg, #22C55E 0%, #16a34a 100%)",
+                boxShadow: videoSource === "runway"
+                  ? "0 4px 16px rgba(139,92,246,0.3)"
+                  : "0 4px 16px rgba(34,197,94,0.3)",
               }}
             >
-              🎬 צור סרטון MP4
+              {videoSource === "runway" ? "🤖 צור סרטון AI" : "🎬 צור סרטון MP4"}
             </button>
             <button
               onClick={() => handleAdaptScript(activeScript)}
@@ -469,13 +555,22 @@ export default function VideoCreatorPage() {
               🔄
             </button>
           </div>
+
+          {/* Runway cost estimate */}
+          {videoSource === "runway" && (
+            <p className="text-[11px] text-center text-[var(--text-muted)] mt-2">
+              עלות משוערת: ~${(adaptedScript.scenes.length * 0.14).toFixed(2)} ({adaptedScript.scenes.length} קליפים x $0.14)
+            </p>
+          )}
         </div>
       )}
 
       {/* ── GENERATING (progress) ── */}
       {pageState === "generating" && (
         <div className="card-static rounded-xl p-6 animate-in">
-          <h4 className="text-center font-bold text-[var(--text-primary)] mb-5">מייצר את הסרטון שלך...</h4>
+          <h4 className="text-center font-bold text-[var(--text-primary)] mb-5">
+            {videoSource === "runway" ? "מייצר סרטון AI..." : "מייצר את הסרטון שלך..."}
+          </h4>
 
           <div className="max-w-md mx-auto space-y-3">
             {STEPS.map((step) => {
@@ -490,12 +585,14 @@ export default function VideoCreatorPage() {
                   className="flex items-center gap-3 px-4 py-3 rounded-xl"
                   style={{
                     backgroundColor: isCurrent
-                      ? "rgba(212, 168, 67, 0.08)"
+                      ? videoSource === "runway"
+                        ? "rgba(139, 92, 246, 0.08)"
+                        : "rgba(212, 168, 67, 0.08)"
                       : isCompleted
                         ? "rgba(34, 197, 94, 0.06)"
                         : "var(--content-bg)",
                     border: isCurrent
-                      ? "1px solid rgba(212, 168, 67, 0.3)"
+                      ? `1px solid ${videoSource === "runway" ? "rgba(139, 92, 246, 0.3)" : "rgba(212, 168, 67, 0.3)"}`
                       : "1px solid transparent",
                   }}
                 >
@@ -503,7 +600,10 @@ export default function VideoCreatorPage() {
                     {isCompleted ? (
                       <span className="text-green-500 text-lg">✓</span>
                     ) : isCurrent ? (
-                      <div className="w-5 h-5 rounded-full border-2 border-[var(--gold)] border-t-transparent animate-spin" />
+                      <div
+                        className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
+                        style={{ borderColor: videoSource === "runway" ? "#8B5CF6" : "var(--gold)", borderTopColor: "transparent" }}
+                      />
                     ) : (
                       <span className="text-lg opacity-30">○</span>
                     )}
@@ -526,7 +626,10 @@ export default function VideoCreatorPage() {
           </div>
 
           <p className="text-center text-xs text-[var(--text-muted)] mt-4">
-            אל תסגור את הדף. ההרכבה לוקחת 30-90 שניות.
+            {videoSource === "runway"
+              ? "אל תסגור את הדף. ייצור AI לוקח 2-5 דקות."
+              : "אל תסגור את הדף. ההרכבה לוקחת 30-90 שניות."
+            }
           </p>
         </div>
       )}
@@ -567,7 +670,7 @@ export default function VideoCreatorPage() {
             <div>
               <h4 className="font-bold text-[var(--text-primary)]">סרטון MP4 מוכן!</h4>
               <p className="text-xs text-[var(--text-secondary)]">
-                {adaptedScript?.scenes.length || 5} סצנות | קריינות בעברית | כתוביות
+                {adaptedScript?.scenes.length || 8} סצנות | {videoSource === "runway" ? "AI ג׳נרטיבי" : "Pexels B-Roll"} | קריינות בעברית | כתוביות
               </p>
             </div>
           </div>
@@ -611,7 +714,7 @@ export default function VideoCreatorPage() {
               </summary>
               <div className="mt-3">
                 {adaptedScript.scenes.map((scene) => (
-                  <SceneCard key={scene.number} scene={scene} />
+                  <SceneCard key={scene.number} scene={scene} videoSource={videoSource} />
                 ))}
               </div>
             </details>

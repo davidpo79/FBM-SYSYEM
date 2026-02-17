@@ -16,29 +16,55 @@ export interface PexelsVideo {
   videoFiles: PexelsVideoFile[];
 }
 
+/** Video source: stock footage (Pexels) or AI-generated (Runway/Veo) */
+export type VideoSource = "pexels" | "runway" | "veo";
+
+/** Word-level timestamp for precise subtitle sync */
+export interface WordTimestamp {
+  word: string;
+  start: number;  // seconds from scene start
+  end: number;    // seconds from scene start
+}
+
 export interface VideoScene {
   number: number;
   duration: number;
-  searchQuery: string;       // English keywords for Pexels search
-  voiceOverText: string;     // Hebrew voice-over text
-  subtitleText?: string;     // Hebrew subtitle (defaults to voiceOverText)
-  visualDescription: string; // Hebrew description for UI
+  searchQuery: string;         // English keywords for Pexels search
+  videoPromptEn: string;       // English cinematic prompt for AI video generation
+  voiceOverText: string;       // Hebrew voice-over text
+  subtitleText?: string;       // Hebrew subtitle (defaults to voiceOverText)
+  visualDescription: string;   // Hebrew description for UI
   notes: string;
-  /* Clip selection */
+  /* Clip selection (Pexels mode) */
   selectedClip?: PexelsVideo;
   clipOptions?: PexelsVideo[];
+  /* AI video clip (Runway/Veo mode) */
+  aiClipUrl?: string;          // URL of AI-generated clip
+  aiClipTaskId?: string;       // Runway task ID (for polling)
+  aiClipStatus?: "pending" | "generating" | "ready" | "failed";
+  /* Word-level timestamps from TTS (for precise subtitle sync) */
+  wordTimestamps?: WordTimestamp[];
 }
 
 export interface AdaptedScript {
   title: string;
   scenes: VideoScene[];
   totalDuration: number;
+  videoSource?: VideoSource;   // Which video source to use
 }
 
 export interface VoiceSettings {
   voice: "male" | "female";
   rate: number;   // 0.5 – 2.0
   pitch: number;  // -10 – +10
+}
+
+/** ElevenLabs voice settings for cinematic quality */
+export interface ElevenLabsVoiceConfig {
+  stability: number;          // 0.0–1.0 (lower = more expressive)
+  similarity_boost: number;   // 0.0–1.0
+  style: number;              // 0.0–1.0 (adds human roughness)
+  use_speaker_boost: boolean;
 }
 
 export interface VideoProject {

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getBestVideoFile } from "@/lib/pexels";
 import { composeVideo } from "@/lib/video-compose";
-import { generateTTS } from "@/lib/tts";
+import { generateTTS, generateTTSWithTimestamps } from "@/lib/tts";
+import { waitForRunwayVideo, buildCinematicPrompt, startRunwayGeneration } from "@/lib/runway";
 import { logApiCall } from "@/lib/api-log";
-import type { AdaptedScript, VoiceSettings, PexelsVideo } from "@/lib/video-types";
+import type { AdaptedScript, VoiceSettings, PexelsVideo, VideoSource } from "@/lib/video-types";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -22,7 +23,7 @@ async function ensureBucket() {
 }
 
 async function downloadFile(url: string, destPath: string): Promise<void> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
+  const res = await fetch(url, { signal: AbortSignal.timeout(60000) });
   if (!res.ok) throw new Error(`Download failed: ${res.status} ${url}`);
   const buffer = Buffer.from(await res.arrayBuffer());
   fs.writeFileSync(destPath, buffer);
@@ -33,7 +34,9 @@ interface SelectedScene {
   number: number;
   duration: number;
   voiceOverText: string;
-  selectedClip: PexelsVideo;
+  selectedClip?: PexelsVideo;
+  videoPromptEn?: string;
+  aiClipUrl?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -42,12 +45,13 @@ export async function POST(req: NextRequest) {
   const debug: string[] = [];
 
   try {
-    const { projectId, adaptedScript, voiceSettings, scriptIndex } =
+    const { projectId, adaptedScript, voiceSettings, scriptIndex, videoSource } =
       (await req.json()) as {
         projectId: string;
         adaptedScript: AdaptedScript;
         voiceSettings: VoiceSettings;
         scriptIndex: number;
+        videoSource?: VideoSource;
       };
 
     if (!projectId || !adaptedScript?.scenes) {
@@ -57,17 +61,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const source: VideoSource = videoSource || adaptedScript.videoSource || "pexels";
+    debug.push(`Video source: ${source}`);
+
     // Check env vars
     debug.push(`ELEVEN_LABS_API_KEY: ${process.env.ELEVEN_LABS_API_KEY ? "SET" : "NOT SET"}`);
     debug.push(`GOOGLE_TTS_API_KEY: ${process.env.GOOGLE_TTS_API_KEY ? "SET" : "NOT SET"}`);
     debug.push(`PEXELS_API_KEY: ${process.env.PEXELS_API_KEY ? "SET" : "NOT SET"}`);
+    debug.push(`RUNWAY_API_KEY: ${process.env.RUNWAY_API_KEY ? "SET" : "NOT SET"}`);
 
-    // Validate scenes
+    // Validate scenes based on source
     const selectedScenes: SelectedScene[] = [];
     for (const scene of adaptedScript.scenes) {
-      if (!scene.selectedClip) {
+      if (source === "pexels" && !scene.selectedClip) {
         return NextResponse.json(
           { error: `סצנה ${scene.number} חסר קליפ וידאו. בחר קליפ לכל סצנה.` },
+          { status: 400 },
+        );
+      }
+      if (source === "runway" && !scene.videoPromptEn && !scene.aiClipUrl) {
+        return NextResponse.json(
+          { error: `סצנה ${scene.number} חסר תיאור AI. ודא שכל הסצנות כוללות videoPromptEn.` },
           { status: 400 },
         );
       }
@@ -76,6 +90,8 @@ export async function POST(req: NextRequest) {
         duration: scene.duration,
         voiceOverText: scene.voiceOverText,
         selectedClip: scene.selectedClip,
+        videoPromptEn: scene.videoPromptEn,
+        aiClipUrl: scene.aiClipUrl,
       });
     }
 
@@ -83,35 +99,64 @@ export async function POST(req: NextRequest) {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fbm-pipeline-"));
     debug.push(`tmpDir: ${tmpDir}`);
 
-    // ── Step 1: Download clips + Generate TTS (parallel) ──
+    // ── Step 1: Download/generate clips + Generate TTS (parallel) ──
     const ttsEngines: string[] = [];
     let ttsAvailable = true;
+    const useTimestamps = source === "runway"; // Use word-level sync for AI clips
 
     const jobs = await Promise.all(
       selectedScenes.map(async (scene, i) => {
-        // Download video clip
-        const clipUrl = getBestVideoFile(scene.selectedClip);
-        if (!clipUrl) throw new Error(`סצנה ${scene.number}: לא נמצא קובץ וידאו`);
+        let videoPath: string;
 
-        const videoPath = path.join(tmpDir, `clip-${i}.mp4`);
-        await downloadFile(clipUrl, videoPath);
+        if (source === "runway") {
+          // ── Runway AI-generated clip ──
+          videoPath = path.join(tmpDir, `clip-${i}.mp4`);
 
-        // Generate TTS
-        const ttsResult = await generateTTS(
-          scene.voiceOverText,
-          voiceSettings.voice,
-          voiceSettings.rate,
-          voiceSettings.pitch,
-          scene.duration,
-        );
+          if (scene.aiClipUrl) {
+            // Pre-generated AI clip (already has URL)
+            debug.push(`Scene ${i + 1}: Using pre-generated AI clip`);
+            await downloadFile(scene.aiClipUrl, videoPath);
+          } else {
+            // Generate new clip with Runway
+            debug.push(`Scene ${i + 1}: Generating AI clip with Runway...`);
+            const cinematicPrompt = buildCinematicPrompt(scene.videoPromptEn || "");
+            const taskId = await startRunwayGeneration(cinematicPrompt, "9:16", 5);
+            const clipUrl = await waitForRunwayVideo(taskId);
+            await downloadFile(clipUrl, videoPath);
+            debug.push(`Scene ${i + 1}: AI clip ready`);
+          }
+        } else {
+          // ── Pexels stock clip ──
+          const clipUrl = getBestVideoFile(scene.selectedClip!);
+          if (!clipUrl) throw new Error(`סצנה ${scene.number}: לא נמצא קובץ וידאו`);
+
+          videoPath = path.join(tmpDir, `clip-${i}.mp4`);
+          await downloadFile(clipUrl, videoPath);
+        }
+
+        // Generate TTS (with timestamps for Runway mode)
+        const ttsResult = useTimestamps
+          ? await generateTTSWithTimestamps(
+              scene.voiceOverText,
+              voiceSettings.voice,
+              voiceSettings.rate,
+              voiceSettings.pitch,
+              scene.duration,
+            )
+          : await generateTTS(
+              scene.voiceOverText,
+              voiceSettings.voice,
+              voiceSettings.rate,
+              voiceSettings.pitch,
+              scene.duration,
+            );
 
         ttsEngines.push(ttsResult.engine);
         if (!ttsResult.usedTTS) ttsAvailable = false;
 
-        // Use .wav extension for consistency (normalizeAudio will handle any format)
         const audioPath = path.join(tmpDir, `vo-${i}.wav`);
         fs.writeFileSync(audioPath, ttsResult.audioBuffer);
-        debug.push(`Scene ${i + 1}: TTS=${ttsResult.engine}, audio=${ttsResult.audioBuffer.length}b`);
+        debug.push(`Scene ${i + 1}: TTS=${ttsResult.engine}, audio=${ttsResult.audioBuffer.length}b${ttsResult.wordTimestamps ? `, words=${ttsResult.wordTimestamps.length}` : ""}`);
 
         return {
           videoPath,
@@ -171,7 +216,7 @@ export async function POST(req: NextRequest) {
         {
           project_id: projectId,
           script_index: scriptIndex ?? 0,
-          adapted_script: adaptedScript,
+          adapted_script: { ...adaptedScript, videoSource: source },
           voice_settings: voiceSettings,
           status: "ready",
           final_video_url: urlData.publicUrl,
@@ -190,6 +235,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       videoUrl: urlData.publicUrl,
+      videoSource: source,
       ttsAvailable,
       ttsEngines: [...new Set(ttsEngines)],
       fontUsed: composeResult.fontUsed,

@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import type { WordTimestamp } from "./video-types";
 
 const TTS_API_URL = "https://texttospeech.googleapis.com/v1/text:synthesize";
 const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech";
@@ -45,9 +46,9 @@ async function tryElevenLabsTTS(
           model_id: "eleven_multilingual_v2",
           language_code: "he",
           voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.0,
+            stability: 0.45,
+            similarity_boost: 0.8,
+            style: 0.2,
             use_speaker_boost: true,
           },
         }),
@@ -71,6 +72,119 @@ async function tryElevenLabsTTS(
     return { buffer: audioBuffer, engine: "elevenlabs" };
   } catch (e) {
     console.error("ElevenLabs error:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/**
+ * Try ElevenLabs TTS with word-level timestamps (alignment).
+ * Uses the /with-timestamps endpoint.
+ * Returns both the audio buffer and per-word timing data.
+ */
+async function tryElevenLabsTTSWithTimestamps(
+  text: string,
+  voice: "male" | "female",
+): Promise<{
+  buffer: Buffer;
+  engine: string;
+  wordTimestamps: WordTimestamp[];
+} | null> {
+  const apiKey = process.env.ELEVEN_LABS_API_KEY;
+  if (!apiKey) {
+    console.log("ElevenLabs (timestamps): ELEVEN_LABS_API_KEY not set, skipping");
+    return null;
+  }
+
+  const voiceId = ELEVENLABS_VOICES[voice];
+  console.log(`ElevenLabs (timestamps): trying voice ${voiceId} (${voice})...`);
+
+  try {
+    const response = await fetch(
+      `${ELEVENLABS_API_URL}/${voiceId}/with-timestamps?output_format=mp3_44100_128`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_multilingual_v2",
+          language_code: "he",
+          voice_settings: {
+            stability: 0.45,
+            similarity_boost: 0.8,
+            style: 0.2,
+            use_speaker_boost: true,
+          },
+        }),
+        signal: AbortSignal.timeout(30000),
+      },
+    );
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      console.error(`ElevenLabs timestamps failed [${response.status}]: ${errText}`);
+      return null;
+    }
+
+    const data = await response.json();
+
+    // Decode audio from base64
+    const audioBase64 = data.audio_base64;
+    if (!audioBase64) {
+      console.warn("ElevenLabs timestamps: no audio_base64 in response");
+      return null;
+    }
+
+    const audioBuffer = Buffer.from(audioBase64, "base64");
+    if (audioBuffer.length < 200) {
+      console.warn("ElevenLabs timestamps: audio too small:", audioBuffer.length);
+      return null;
+    }
+
+    // Parse word-level alignment
+    const wordTimestamps: WordTimestamp[] = [];
+    const alignment = data.alignment;
+    if (alignment?.characters && alignment?.character_start_times_seconds && alignment?.character_end_times_seconds) {
+      // Build word timestamps from character-level data
+      const chars: string[] = alignment.characters;
+      const starts: number[] = alignment.character_start_times_seconds;
+      const ends: number[] = alignment.character_end_times_seconds;
+
+      let currentWord = "";
+      let wordStart = 0;
+      let wordEnd = 0;
+
+      for (let i = 0; i < chars.length; i++) {
+        if (chars[i] === " " || i === chars.length - 1) {
+          if (i === chars.length - 1 && chars[i] !== " ") {
+            currentWord += chars[i];
+            wordEnd = ends[i];
+          }
+          if (currentWord.trim()) {
+            wordTimestamps.push({
+              word: currentWord.trim(),
+              start: wordStart,
+              end: wordEnd,
+            });
+          }
+          currentWord = "";
+          wordStart = i + 1 < starts.length ? starts[i + 1] : 0;
+        } else {
+          if (currentWord === "") {
+            wordStart = starts[i];
+          }
+          currentWord += chars[i];
+          wordEnd = ends[i];
+        }
+      }
+    }
+
+    console.log(`ElevenLabs timestamps SUCCESS: ${audioBuffer.length} bytes, ${wordTimestamps.length} words`);
+    return { buffer: audioBuffer, engine: "elevenlabs", wordTimestamps };
+  } catch (e) {
+    console.error("ElevenLabs timestamps error:", e instanceof Error ? e.message : e);
     return null;
   }
 }
@@ -173,7 +287,8 @@ function generateSilence(durationSec: number): Buffer {
 export interface TTSResult {
   audioBuffer: Buffer;
   usedTTS: boolean;
-  engine: string; // which engine was used (for debugging)
+  engine: string;
+  wordTimestamps?: WordTimestamp[];
 }
 
 /**
@@ -206,6 +321,35 @@ export async function generateTTS(
   // 3. Fallback: silence
   const silenceBuffer = generateSilence(durationFallbackSec);
   return { audioBuffer: silenceBuffer, usedTTS: false, engine: "silence" };
+}
+
+/**
+ * Generate Hebrew TTS audio WITH word-level timestamps.
+ * Uses ElevenLabs /with-timestamps endpoint for precise subtitle sync.
+ * Falls back to regular TTS if timestamps are not available.
+ */
+export async function generateTTSWithTimestamps(
+  text: string,
+  voice: "male" | "female" = "female",
+  rate: number = 1.0,
+  pitch: number = 0,
+  durationFallbackSec: number = 10,
+): Promise<TTSResult> {
+  console.log(`\n=== TTS (with timestamps) for: "${text.substring(0, 60)}..." ===`);
+
+  // 1. Try ElevenLabs with timestamps (best quality + sync data)
+  const elevenResult = await tryElevenLabsTTSWithTimestamps(text, voice);
+  if (elevenResult) {
+    return {
+      audioBuffer: elevenResult.buffer,
+      usedTTS: true,
+      engine: elevenResult.engine,
+      wordTimestamps: elevenResult.wordTimestamps,
+    };
+  }
+
+  // 2. Fall back to regular TTS (no timestamps)
+  return generateTTS(text, voice, rate, pitch, durationFallbackSec);
 }
 
 /**

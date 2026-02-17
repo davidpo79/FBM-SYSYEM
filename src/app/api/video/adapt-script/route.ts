@@ -3,24 +3,31 @@ import { callAI } from "@/lib/ai";
 import { logApiCall } from "@/lib/api-log";
 
 const ADAPTATION_PROMPT = (scriptText: string, niche: string) => `
-אתה מומחה לייצור וידאו שיווקי.
+אתה מומחה לייצור וידאו שיווקי ברמה קולנועית.
 
 משימה: המר את תסריט ה-FBM הבא לתסריט וידאו קצר של 60 שניות.
-הסרטון מורכב מקליפי B-Roll (סטוק וידאו) עם Voice Over בעברית וכתוביות.
+הסרטון מורכב מקליפי B-Roll (סטוק וידאו או וידאו ג'נרטיבי AI) עם Voice Over בעברית וכתוביות.
 
 כללים:
 - בדיוק 8 סצנות B-Roll (קצרות ודינמיות)
 - כל סצנה 7-8 שניות (סה"כ ~60 שניות)
-- פורמט 9:16 (portrait / רילס) — נחתך מ-landscape
+- פורמט 9:16 (portrait / רילס)
 - לכל סצנה: searchQuery — 2-4 מילות מפתח באנגלית לחיפוש סטוק וידאו (Pexels)
-  * כשיש דמויות אנושיות בסצנה, הוסף "mediterranean" למילות החיפוש. דוגמאות: "mediterranean business owner office", "mediterranean woman shopping happy", "mediterranean man frustrated computer"
-  * כשאין דמויות: "business growth chart", "modern office workspace", "money success celebration"
-- לכל סצנה: visualDescription — תיאור ויזואלי קצר בעברית
+  * כשיש דמויות אנושיות בסצנה, הוסף "mediterranean" למילות החיפוש
+  * כשאין דמויות: "business growth chart", "modern office workspace"
+- לכל סצנה: videoPromptEn — תיאור קולנועי באנגלית עבור מנוע וידאו AI (כמו Runway Gen-3)
+  * התיאור חייב להיות מפורט וקולנועי באנגלית טכנית
+  * לכלול: סוג שוט (close-up, wide, tracking), תאורה (volumetric, golden hour), תנועת מצלמה (push-in, dolly), טקסטורות
+  * דוגמה: "Cinematic close-up of a focused entrepreneur typing on laptop, golden hour lighting through window, shallow depth of field, lens flare, 8K quality"
+  * אל תכלול טקסט, לוגואים או watermarks בתיאור
+- לכל סצנה: visualDescription — תיאור ויזואלי קצר בעברית (לממשק המשתמש)
 - לכל סצנה: voiceOverText — טקסט קריינות בעברית, משפט אחד עד שניים קצרים
+  * השתמש בפיסוק מרובה (פסיקים ונקודות) כדי שהקריינות תישמע טבעית
+  * הוסף עצירות טבעיות בטקסט לנשימה
 - הטקסט חייב להתאים לוויזואל
 - סצנה ראשונה = Hook חזק שתופס תשומת לב
 - סצנה אחרונה = CTA ברור
-- שפה ישירה, רגשית, אנרגטית, קצבית
+- שפה ישירה, רגשית, אנרגטית, קצבית — עברית מדוברת טבעית
 
 מבנה מומלץ (8 סצנות):
 1. Hook (7s) — כאב/בעיה חזקה, תופס תשומת לב מיידית
@@ -45,8 +52,9 @@ ${scriptText}
       "number": 1,
       "duration": 7,
       "searchQuery": "mediterranean frustrated business owner desk",
+      "videoPromptEn": "Extreme close-up of a stressed business owner rubbing his temples at a cluttered desk, warm office lighting, shallow depth of field, cinematic color grading, slight camera push-in, photorealistic skin texture, 8K quality",
       "visualDescription": "בעל עסק מתוסכל ליד המחשב",
-      "voiceOverText": "טקסט קריינות בעברית",
+      "voiceOverText": "טקסט קריינות בעברית, עם פסיקים טבעיים.",
       "notes": "Hook — תופס תשומת לב"
     }
   ],
@@ -102,6 +110,7 @@ export async function POST(req: NextRequest) {
         number: (scene.number as number) || i + 1,
         duration: (scene.duration as number) || 12,
         searchQuery: (scene.searchQuery as string) || "business professional",
+        videoPromptEn: (scene.videoPromptEn as string) || (scene.searchQuery as string) || "Professional cinematic B-roll footage",
         visualDescription: (scene.visualDescription as string) || "",
         voiceOverText: (scene.voiceOverText as string) || "",
         notes: (scene.notes as string) || "",
