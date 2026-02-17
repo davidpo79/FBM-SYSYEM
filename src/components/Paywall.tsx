@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import ConsultingCard from "@/components/ConsultingCard";
+import PaymentModal from "@/components/PaymentModal";
+import type { CustomerDetails } from "@/components/PaymentModal";
 
 interface PaywallProps {
   daysLeft?: number | null;
@@ -42,11 +44,32 @@ const plans = [
 ];
 
 export default function Paywall({ daysLeft, currentPlan, projectCount }: PaywallProps) {
-  const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [showPayment, setShowPayment] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
-  const handleSelectPlan = async (planKey: string) => {
-    setLoading(planKey);
+  // Reset state when user navigates back
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        setPaymentLoading(false);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  const handleSelectPlan = (planKey: string) => {
+    setSelectedPlan(planKey);
+    setPaymentUrl(null);
+    setShowPayment(true);
+    setError("");
+  };
+
+  const handleSubmitDetails = async (details: CustomerDetails) => {
+    setPaymentLoading(true);
     setError("");
 
     try {
@@ -58,7 +81,11 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ plan: planKey }),
+        body: JSON.stringify({
+          plan: selectedPlan,
+          customerName: details.customerName,
+          customerIdNumber: details.customerIdNumber,
+        }),
       });
 
       const json = await res.json();
@@ -66,13 +93,28 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
         throw new Error(json.error || "Failed to create checkout");
       }
 
-      // Redirect to Sumit payment page
-      window.location.href = json.paymentUrl;
+      setPaymentUrl(json.paymentUrl);
     } catch (e) {
       setError(e instanceof Error ? e.message : "שגיאה ביצירת קישור תשלום");
-      setLoading(null);
+      setShowPayment(false);
+    } finally {
+      setPaymentLoading(false);
     }
   };
+
+  const handlePaymentComplete = useCallback(() => {
+    setShowPayment(false);
+    setPaymentUrl(null);
+    setSelectedPlan(null);
+    window.location.reload();
+  }, []);
+
+  const handlePaymentClose = useCallback(() => {
+    setShowPayment(false);
+    setPaymentUrl(null);
+    setSelectedPlan(null);
+    setPaymentLoading(false);
+  }, []);
 
   const isExpired = currentPlan === "expired" || daysLeft === 0;
 
@@ -103,11 +145,11 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row gap-6 max-w-2xl w-full">
+      <div className="flex flex-col md:flex-row gap-6 max-w-2xl w-full md:items-stretch">
         {plans.map((plan) => (
           <div
             key={plan.key}
-            className="flex-1 rounded-2xl p-6 relative overflow-hidden"
+            className="flex-1 rounded-2xl p-6 relative overflow-hidden flex flex-col"
             style={{
               background: plan.highlight
                 ? "linear-gradient(135deg, rgba(212,168,67,0.08) 0%, rgba(212,168,67,0.02) 100%)"
@@ -133,18 +175,19 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
               </div>
             )}
 
-            <div className={plan.highlight ? "mt-4" : ""}>
+            <div className={`flex flex-col flex-1 ${plan.highlight ? "mt-4" : ""}`}>
               <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">
                 {plan.name} {plan.highlight && "⭐"}
               </h3>
-              <div className="flex items-baseline gap-1 mb-4">
+              <div className="flex items-baseline gap-1 mb-1">
                 <span className="text-3xl font-bold" style={{ color: plan.highlight ? "#D4A843" : "var(--text-primary)" }}>
                   {plan.price}₪
                 </span>
                 <span className="text-sm text-[var(--text-muted)]">/חודש</span>
               </div>
+              <p className="text-[10px] text-[var(--text-muted)] mb-4">*המחירים לא כוללים מע&quot;מ</p>
 
-              <ul className="space-y-2 mb-6">
+              <ul className="space-y-2 mb-6 flex-1">
                 {plan.features.map((feature, i) => (
                   <li
                     key={i}
@@ -158,8 +201,8 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
 
               <button
                 onClick={() => handleSelectPlan(plan.key)}
-                disabled={loading !== null}
-                className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={showPayment}
+                className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-auto"
                 style={{
                   background: plan.highlight
                     ? "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)"
@@ -171,7 +214,7 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
                     : "none",
                 }}
               >
-                {loading === plan.key ? "⏳ מעבד..." : "💳 הפעל תוכנית"}
+                הפעל מנוי חודשי
               </button>
             </div>
           </div>
@@ -188,6 +231,16 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
       <p className="text-xs text-[var(--text-muted)] mt-8 text-center">
         יש שאלות? דברו איתנו בוואטסאפ
       </p>
+
+      {showPayment && (
+        <PaymentModal
+          url={paymentUrl}
+          onSubmitDetails={handleSubmitDetails}
+          loading={paymentLoading}
+          onComplete={handlePaymentComplete}
+          onClose={handlePaymentClose}
+        />
+      )}
     </div>
   );
 }

@@ -5,6 +5,17 @@ import { CONSULTING_PRODUCT } from "@/lib/plan-limits";
 
 export async function POST(req: NextRequest) {
   try {
+    // Parse body for customer details
+    let formCustomerName = "";
+    let customerIdNumber = "";
+    try {
+      const body = await req.json();
+      formCustomerName = body?.customerName || "";
+      customerIdNumber = body?.customerIdNumber || "";
+    } catch {
+      // Body may be empty, that's OK
+    }
+
     // Get current user from Authorization header
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
@@ -24,8 +35,9 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    const customerName = profile?.full_name || user.email?.split("@")[0] || "Customer";
+    const customerName = formCustomerName || profile?.full_name || user.email?.split("@")[0] || "Customer";
     const customerEmail = user.email || "";
+    const companyNumber = customerIdNumber || "";
 
     // Verify Sumit credentials are configured
     if (!process.env.SUMIT_COMPANY_ID || !process.env.SUMIT_API_KEY) {
@@ -38,12 +50,13 @@ export async function POST(req: NextRequest) {
 
     // Determine URLs
     const origin = req.headers.get("origin") || "https://fbm-studio.com";
-    const redirectUrl = `${origin}/settings?consultation=success`;
+    const redirectUrl = `${origin}/payment-complete?type=consulting`;
     const webhookUrl = `${origin}/api/billing/consultation-webhook`;
 
     const result = await createPaymentLink({
       customerName,
       customerEmail,
+      companyNumber,
       description: CONSULTING_PRODUCT.description,
       price: CONSULTING_PRODUCT.price,
       redirectUrl,

@@ -65,7 +65,7 @@ export const PLAN_LABELS: Record<string, string> = {
 export const CONSULTING_PRODUCT = {
   type: "one-time" as const,
   price: 1000,               // before VAT
-  priceWithVAT: 1170,        // including 17% VAT
+  priceWithVAT: 1180,        // including 18% VAT
   description: "שעת ייעוץ אישית עם דוד",
 };
 
