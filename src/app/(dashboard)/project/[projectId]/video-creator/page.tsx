@@ -261,6 +261,16 @@ export default function VideoCreatorPage() {
       clearInterval(stepTimer);
 
       const data = await res.json().catch(() => ({ error: `שגיאת שרת (${res.status})` }));
+
+      // Log debug info to console for diagnostics
+      if (data.debug) {
+        console.log("=== Video Generation Debug ===");
+        data.debug.forEach((d: string) => console.log("  ", d));
+        console.log("TTS engines:", data.ttsEngines);
+        console.log("Font used:", data.fontUsed);
+        console.log("Music track:", data.hasMusicTrack);
+      }
+
       if (!res.ok) throw new Error(data.error || "שגיאה ביצירת הסרטון");
 
       setFinalVideoUrl(data.videoUrl);

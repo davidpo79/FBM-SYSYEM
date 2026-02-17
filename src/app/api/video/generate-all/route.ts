@@ -21,14 +21,12 @@ async function ensureBucket() {
   }
 }
 
-/**
- * Download a file from URL to a local path.
- */
 async function downloadFile(url: string, destPath: string): Promise<void> {
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
   if (!res.ok) throw new Error(`Download failed: ${res.status} ${url}`);
   const buffer = Buffer.from(await res.arrayBuffer());
   fs.writeFileSync(destPath, buffer);
+  console.log(`Downloaded: ${destPath} (${buffer.length} bytes)`);
 }
 
 interface SelectedScene {
@@ -38,21 +36,10 @@ interface SelectedScene {
   selectedClip: PexelsVideo;
 }
 
-/**
- * POST /api/video/generate-all
- *
- * Pipeline: Download Pexels clips → TTS → FFmpeg compose → Upload
- *
- * Body: {
- *   projectId: string,
- *   adaptedScript: AdaptedScript (with selectedClip on each scene),
- *   voiceSettings: VoiceSettings,
- *   scriptIndex: number
- * }
- */
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   let tmpDir = "";
+  const debug: string[] = [];
 
   try {
     const { projectId, adaptedScript, voiceSettings, scriptIndex } =
@@ -70,7 +57,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate that all scenes have a selected clip
+    // Check env vars
+    debug.push(`ELEVEN_LABS_API_KEY: ${process.env.ELEVEN_LABS_API_KEY ? "SET" : "NOT SET"}`);
+    debug.push(`GOOGLE_TTS_API_KEY: ${process.env.GOOGLE_TTS_API_KEY ? "SET" : "NOT SET"}`);
+    debug.push(`PEXELS_API_KEY: ${process.env.PEXELS_API_KEY ? "SET" : "NOT SET"}`);
+
+    // Validate scenes
     const selectedScenes: SelectedScene[] = [];
     for (const scene of adaptedScript.scenes) {
       if (!scene.selectedClip) {
@@ -89,8 +81,10 @@ export async function POST(req: NextRequest) {
 
     await ensureBucket();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fbm-pipeline-"));
+    debug.push(`tmpDir: ${tmpDir}`);
 
-    // ── Step 1: Download Pexels clips + Generate TTS (parallel) ──
+    // ── Step 1: Download clips + Generate TTS (parallel) ──
+    const ttsEngines: string[] = [];
     let ttsAvailable = true;
 
     const jobs = await Promise.all(
@@ -110,10 +104,14 @@ export async function POST(req: NextRequest) {
           voiceSettings.pitch,
           scene.duration,
         );
+
+        ttsEngines.push(ttsResult.engine);
         if (!ttsResult.usedTTS) ttsAvailable = false;
 
-        const audioPath = path.join(tmpDir, `vo-${i}.mp3`);
+        // Use .wav extension for consistency (normalizeAudio will handle any format)
+        const audioPath = path.join(tmpDir, `vo-${i}.wav`);
         fs.writeFileSync(audioPath, ttsResult.audioBuffer);
+        debug.push(`Scene ${i + 1}: TTS=${ttsResult.engine}, audio=${ttsResult.audioBuffer.length}b`);
 
         return {
           videoPath,
@@ -124,23 +122,31 @@ export async function POST(req: NextRequest) {
       }),
     );
 
+    debug.push(`TTS engines used: ${[...new Set(ttsEngines)].join(", ")}`);
+
     // ── Step 2: Compose final MP4 ──
     const musicCandidates = [
       path.join(process.cwd(), "public", "music", "background.mp3"),
       path.join(process.cwd(), "public", "music", "bg-music.mp3"),
     ];
     const musicPath = musicCandidates.find((p) => fs.existsSync(p));
+    debug.push(`Music file: ${musicPath || "none (will generate ambient)"}`);
 
     const outputPath = path.join(tmpDir, "final-video.mp4");
-    await composeVideo({
+    const composeResult = await composeVideo({
       scenes: jobs,
       musicPath,
       musicVolume: 0.12,
       outputPath,
     });
 
+    debug.push(`Font used: ${composeResult.fontUsed}`);
+    debug.push(`Music track: ${composeResult.hasMusicTrack}`);
+
     // ── Step 3: Upload to Supabase ──
-    const finalBuffer = fs.readFileSync(outputPath);
+    const finalBuffer = fs.readFileSync(composeResult.outputPath);
+    debug.push(`Final video: ${finalBuffer.length} bytes`);
+
     const storagePath = `${projectId}/script-${scriptIndex}/final-video.mp4`;
 
     const { error: uploadErr } = await supabaseAdmin.storage
@@ -185,12 +191,17 @@ export async function POST(req: NextRequest) {
       success: true,
       videoUrl: urlData.publicUrl,
       ttsAvailable,
+      ttsEngines: [...new Set(ttsEngines)],
+      fontUsed: composeResult.fontUsed,
+      hasMusicTrack: composeResult.hasMusicTrack,
+      debug,
       warning: !ttsAvailable
-        ? "הסרטון נוצר ללא קריינות. הגדר GOOGLE_TTS_API_KEY ב-Vercel."
+        ? "הסרטון נוצר ללא קריינות. הגדר ELEVEN_LABS_API_KEY ב-Vercel."
         : undefined,
     });
   } catch (error) {
     console.error("generate-all error:", error);
+    debug.push(`ERROR: ${error instanceof Error ? error.message : "Unknown"}`);
     logApiCall({
       endpoint: "/api/video/generate-all",
       status: "error",
@@ -198,7 +209,10 @@ export async function POST(req: NextRequest) {
       durationMs: Date.now() - startTime,
     });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to generate video" },
+      {
+        error: error instanceof Error ? error.message : "Failed to generate video",
+        debug,
+      },
       { status: 500 },
     );
   } finally {
