@@ -13,7 +13,8 @@ const ADAPTATION_PROMPT = (scriptText: string, niche: string) => `
 - בדיוק 5 סצנות B-Roll
 - כל סצנה 10-14 שניות (סה"כ 60 שניות)
 - פורמט 16:9 (landscape)
-- לכל סצנה: תיאור ויזואלי מפורט באנגלית עבור AI video generation (Veo)
+- לכל סצנה: תיאור ויזואלי מפורט באנגלית עבור AI video generation (Veo) בשדה imagePrompt
+- לכל סצנה: תיאור ויזואלי בעברית לתצוגה בממשק בשדה imagePromptHe (תרגום עברי קצר של מה שרואים)
 - לכל סצנה: טקסט Voice Over בעברית — מקסימום 2-3 משפטים קצרים וחזקים
 - טקסט ה-VO חייב להתאים בצורה מושלמת לוויזואל — מה שרואים = מה ששומעים
 - הסצנה הראשונה = hook חזק שתופס תשומת לב ב-3 שניות
@@ -41,6 +42,7 @@ ${scriptText}
       "type": "b-roll",
       "duration": 10,
       "imagePrompt": "Detailed cinematic description in English for AI video generation. Include: camera angle, lighting, subject, environment, mood, color palette. Example: Close-up shot of a frustrated business owner looking at empty analytics dashboard, warm office lighting, shallow depth of field, cinematic color grading...",
+      "imagePromptHe": "תיאור ויזואלי בעברית — תרגום קצר ומדויק של מה שרואים בסצנה. לדוגמה: צילום קלוז-אפ של בעל עסק מתוסכל מביט בדשבורד אנליטיקס ריק",
       "voiceOverText": "טקסט Voice Over בעברית — קצר, חזק, רגשי",
       "notes": "הערות על הסצנה"
     }
@@ -90,6 +92,7 @@ export async function POST(req: NextRequest) {
       type: "b-roll" as const,
       duration: scene.duration || 12,
       imagePrompt: scene.imagePrompt || "",
+      imagePromptHe: scene.imagePromptHe || "",
       voiceOverText: scene.voiceOverText || "",
       notes: scene.notes || "",
     }));

@@ -31,8 +31,6 @@ export async function startVideoGeneration(
     config: {
       aspectRatio,
       numberOfVideos: 1,
-      // No audio generation - we add our own Hebrew VO
-      generateAudio: false,
     },
   });
 

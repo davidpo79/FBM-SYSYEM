@@ -158,6 +158,7 @@ export default function VideoCreatorPage() {
   /* ── Preview voice ── */
   const handlePreviewVoice = useCallback(async (settings: VoiceSettings) => {
     setIsPreviewLoading(true);
+    setGlobalError("");
     try {
       const res = await fetch("/api/video/generate-voiceover", {
         method: "POST",
@@ -170,7 +171,7 @@ export default function VideoCreatorPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || "שגיאה ביצירת דוגמת קול");
 
       if (previewAudioRef.current) {
         previewAudioRef.current.pause();
@@ -179,7 +180,10 @@ export default function VideoCreatorPage() {
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
       previewAudioRef.current = audio;
       await audio.play();
-    } catch {}
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "שגיאה ביצירת דוגמת קול";
+      setGlobalError(msg);
+    }
     setIsPreviewLoading(false);
   }, []);
 

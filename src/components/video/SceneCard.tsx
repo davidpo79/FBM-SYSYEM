@@ -21,11 +21,11 @@ export default function SceneCard({
   const [editingField, setEditingField] = useState<"imagePrompt" | "voiceOverText" | null>(null);
 
   const sceneLabels: Record<number, string> = {
-    1: "Hook",
+    1: "פתיח (הוק)",
     2: "הזדהות",
     3: "פתרון",
     4: "הוכחה",
-    5: "CTA",
+    5: "קריאה לפעולה",
   };
 
   const sceneLabel = sceneLabels[scene.number] || `סצנה ${scene.number}`;
@@ -94,23 +94,29 @@ export default function SceneCard({
                 <strong className="text-xs text-[var(--text-primary)]">תיאור ויזואלי:</strong>
               </div>
               {isEditing && editingField === "imagePrompt" ? (
-                <textarea
-                  value={scene.imagePrompt}
-                  onChange={(e) => onUpdateScene?.({ imagePrompt: e.target.value })}
-                  onBlur={() => setEditingField(null)}
-                  autoFocus
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-xs resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
-                  dir="ltr"
-                />
+                <>
+                  <textarea
+                    value={scene.imagePromptHe}
+                    onChange={(e) => onUpdateScene?.({ imagePromptHe: e.target.value })}
+                    onBlur={() => setEditingField(null)}
+                    autoFocus
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-xs resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+                    dir="rtl"
+                    placeholder="תיאור ויזואלי בעברית"
+                  />
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1" dir="ltr">
+                    Veo prompt: {scene.imagePrompt}
+                  </p>
+                </>
               ) : (
                 <p
                   className={`text-xs text-[var(--text-secondary)] leading-relaxed ${isEditing ? "cursor-pointer hover:bg-[var(--content-bg)] rounded px-1 py-0.5 -mx-1" : ""}`}
-                  dir="ltr"
+                  dir="rtl"
                   onClick={() => isEditing && setEditingField("imagePrompt")}
                   title={isEditing ? "לחץ לעריכה" : ""}
                 >
-                  {scene.imagePrompt}
+                  {scene.imagePromptHe || scene.imagePrompt}
                 </p>
               )}
             </div>

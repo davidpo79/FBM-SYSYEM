@@ -2,7 +2,8 @@ export interface VideoScene {
   number: number;
   type: "b-roll";
   duration: number;
-  imagePrompt: string;        // English prompt for AI image/video generation
+  imagePrompt: string;        // English prompt for Veo video generation
+  imagePromptHe: string;      // Hebrew visual description for UI display
   voiceOverText: string;      // Hebrew voice-over text
   subtitleText?: string;      // Hebrew subtitle (defaults to voiceOverText)
   notes: string;
