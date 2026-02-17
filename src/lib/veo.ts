@@ -25,16 +25,24 @@ export async function startVideoGeneration(
 ): Promise<GenerateVideosOperation> {
   const ai = getClient();
 
-  const operation = await ai.models.generateVideos({
-    model: VEO_MODEL,
-    prompt: prompt,
-    config: {
-      aspectRatio,
-      numberOfVideos: 1,
-    },
-  });
+  try {
+    const operation = await ai.models.generateVideos({
+      model: VEO_MODEL,
+      prompt: prompt,
+      config: {
+        aspectRatio,
+        numberOfVideos: 1,
+      },
+    });
 
-  return operation;
+    return operation;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
+      throw new Error("חריגה ממגבלת Veo API (2 בקשות לדקה / 10 ביום). נסה שוב מאוחר יותר.");
+    }
+    throw e;
+  }
 }
 
 /**

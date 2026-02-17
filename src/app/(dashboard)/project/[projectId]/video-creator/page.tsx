@@ -210,6 +210,7 @@ export default function VideoCreatorPage() {
       try {
         // Simulate step progression for the UI
         // The generate-all endpoint handles the entire pipeline internally
+        // Step progression: veo takes ~3min (staggered batches), tts ~20s, compose ~30s
         const stepTimer = setInterval(() => {
           setScriptVideos((prev) => {
             const v = prev[scriptIdx];
@@ -502,7 +503,7 @@ export default function VideoCreatorPage() {
 
                           {isCurrent && (
                             <span className="mr-auto text-xs text-[var(--text-muted)] animate-pulse">
-                              {step.key === "veo" ? "~2 דקות" : step.key === "compose" ? "~30 שניות" : ""}
+                              {step.key === "veo" ? "~3-4 דקות" : step.key === "compose" ? "~30 שניות" : ""}
                             </span>
                           )}
                         </div>
@@ -511,7 +512,7 @@ export default function VideoCreatorPage() {
                   </div>
 
                   <p className="text-center text-xs text-[var(--text-muted)] mt-4">
-                    אל תסגור את הדף. יצירת הסרטון לוקחת 2-4 דקות.
+                    אל תסגור את הדף. יצירת הסרטון לוקחת 3-5 דקות (מגבלת Veo: 2 בקשות לדקה).
                   </p>
                 </div>
               )}

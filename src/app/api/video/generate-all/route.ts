@@ -58,38 +58,80 @@ export async function POST(req: NextRequest) {
     await ensureBucket();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fbm-pipeline-"));
 
-    // ── Step 1 + 2: Start Veo + TTS for all scenes in parallel ──
+    // ── Step 1 + 2: Start Veo (staggered) + TTS (parallel) ──
+    // Veo rate limit: 2 RPM. Send in batches of 2 with 62s delay between batches.
     let ttsAvailable = true;
+    const VEO_BATCH_SIZE = 2;
+    const VEO_BATCH_DELAY_MS = 62000; // 62 seconds to respect 2 RPM
 
-    const sceneJobs = adaptedScript.scenes.map(async (scene, i) => {
-      const veoPrompt = `Create a professional cinematic B-Roll video clip.
+    type SceneJob = {
+      sceneNumber: number;
+      operation: Awaited<ReturnType<typeof startVideoGeneration>>;
+      audioPath: string;
+      scene: (typeof adaptedScript.scenes)[number];
+    };
+    const jobs: SceneJob[] = [];
+
+    // Generate TTS for all scenes immediately (no Veo rate limit)
+    const ttsJobs = adaptedScript.scenes.map(async (scene, i) => {
+      const ttsResult = await generateTTS(
+        scene.voiceOverText,
+        voiceSettings.voice,
+        voiceSettings.rate,
+        voiceSettings.pitch,
+        scene.duration,
+      );
+      if (!ttsResult.usedTTS) ttsAvailable = false;
+      const audioPath = path.join(tmpDir, `vo-${i}.mp3`);
+      fs.writeFileSync(audioPath, ttsResult.audioBuffer);
+      return { audioPath, scene };
+    });
+
+    const ttsResults = await Promise.all(ttsJobs);
+
+    // Start Veo generation in batches of 2 (respecting 2 RPM limit)
+    for (let batchStart = 0; batchStart < adaptedScript.scenes.length; batchStart += VEO_BATCH_SIZE) {
+      if (batchStart > 0) {
+        console.log(`Waiting ${VEO_BATCH_DELAY_MS / 1000}s before next Veo batch (RPM limit)...`);
+        await new Promise((r) => setTimeout(r, VEO_BATCH_DELAY_MS));
+      }
+
+      const batchEnd = Math.min(batchStart + VEO_BATCH_SIZE, adaptedScript.scenes.length);
+      const batchPromises = [];
+
+      for (let i = batchStart; i < batchEnd; i++) {
+        const scene = adaptedScript.scenes[i];
+        const veoPrompt = `Create a professional cinematic B-Roll video clip.
 SCENE: ${scene.imagePrompt}
 STYLE: Photorealistic, cinematic lighting, smooth camera movement,
 professional color grading, no text or watermarks,
 high production value marketing video aesthetic.`;
 
-      // Start Veo and generate TTS concurrently
-      const [operation, ttsResult] = await Promise.all([
-        startVideoGeneration(veoPrompt, "16:9"),
-        generateTTS(
-          scene.voiceOverText,
-          voiceSettings.voice,
-          voiceSettings.rate,
-          voiceSettings.pitch,
-          scene.duration,
-        ),
-      ]);
+        batchPromises.push(
+          startVideoGeneration(veoPrompt, "16:9")
+            .then((operation) => ({
+              sceneNumber: scene.number,
+              operation,
+              audioPath: ttsResults[i].audioPath,
+              scene,
+            }))
+            .catch((err) => {
+              console.error(`Scene ${scene.number} Veo start failed:`, err);
+              // Check for rate limit error
+              const errMsg = err instanceof Error ? err.message : String(err);
+              if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
+                throw new Error(
+                  "חריגה ממגבלת Veo API (2 בקשות לדקה / 10 ביום). נסה שוב מאוחר יותר."
+                );
+              }
+              throw err;
+            }),
+        );
+      }
 
-      if (!ttsResult.usedTTS) ttsAvailable = false;
-
-      // Write TTS/silence to temp file
-      const audioPath = path.join(tmpDir, `vo-${i}.mp3`);
-      fs.writeFileSync(audioPath, ttsResult.audioBuffer);
-
-      return { sceneNumber: scene.number, operation, audioPath, scene };
-    });
-
-    const jobs = await Promise.all(sceneJobs);
+      const batchResults = await Promise.all(batchPromises);
+      jobs.push(...batchResults);
+    }
 
     // ── Step 3: Poll Veo operations until all clips are ready ──
     const MAX_POLL_TIME = 240000; // 4 minutes max
