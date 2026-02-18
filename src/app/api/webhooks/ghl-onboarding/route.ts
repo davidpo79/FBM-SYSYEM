@@ -1,10 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-
-// Use service role key for webhook (no user auth)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 
 const WEBHOOK_SECRET =
   process.env.GHL_WEBHOOK_SECRET || "fbm-ghl-secret-2026";
