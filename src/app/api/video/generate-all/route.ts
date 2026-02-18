@@ -3,14 +3,14 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getBestVideoFile } from "@/lib/pexels";
 import { composeVideo } from "@/lib/video-compose";
 import { generateTTS, generateTTSWithTimestamps } from "@/lib/tts";
-import { startVideoGeneration, pollVideoOperation, downloadVeoVideo } from "@/lib/veo";
+import { startVideoGeneration, pollVideoOperation, downloadVeoVideo, generateImageClip } from "@/lib/veo";
 import { logApiCall } from "@/lib/api-log";
 import type { AdaptedScript, VoiceSettings, PexelsVideo, VideoSource } from "@/lib/video-types";
 import fs from "fs";
 import path from "path";
 import os from "os";
 
-export const maxDuration = 300; // 5 minutes
+export const maxDuration = 600; // 10 minutes — Veo needs ~35s delay between scenes
 
 async function ensureBucket() {
   const { data: buckets } = await supabaseAdmin.storage.listBuckets();
@@ -98,42 +98,76 @@ export async function POST(req: NextRequest) {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fbm-pipeline-"));
     debug.push(`tmpDir: ${tmpDir}`);
 
-    // ── Step 1a: Download/generate video clips (parallel) ──
+    // ── Step 1a: Download/generate video clips ──
     const ttsEngines: string[] = [];
     let ttsAvailable = true;
     let ttsFailureReason = "";
     const useTimestamps = source === "veo"; // Use word-level sync for AI clips
 
-    // Download all video clips in parallel
-    const videoPaths = await Promise.all(
-      selectedScenes.map(async (scene, i) => {
+    const videoPaths: string[] = [];
+
+    if (source === "pexels") {
+      // Pexels: download all clips in parallel (no rate limits)
+      const paths = await Promise.all(
+        selectedScenes.map(async (scene, i) => {
+          const clipUrl = getBestVideoFile(scene.selectedClip!);
+          if (!clipUrl) throw new Error(`סצנה ${scene.number}: לא נמצא קובץ וידאו`);
+          const videoPath = path.join(tmpDir, `clip-${i}.mp4`);
+          await downloadFile(clipUrl, videoPath);
+          return videoPath;
+        }),
+      );
+      videoPaths.push(...paths);
+    } else {
+      // Veo: generate clips SEQUENTIALLY with delay to avoid rate limits (2 req/min)
+      let veoFailed = false; // once Veo rate-limits, use Imagen for rest
+      for (let i = 0; i < selectedScenes.length; i++) {
+        const scene = selectedScenes[i];
         let videoPath: string;
 
-        if (source === "veo") {
-          // ── Google Veo AI-generated clip ──
+        if (scene.aiClipUrl) {
+          debug.push(`Scene ${i + 1}: Using pre-generated AI clip`);
           videoPath = path.join(tmpDir, `clip-${i}.mp4`);
-
-          if (scene.aiClipUrl) {
-            debug.push(`Scene ${i + 1}: Using pre-generated AI clip`);
-            await downloadFile(scene.aiClipUrl, videoPath);
-          } else {
+          await downloadFile(scene.aiClipUrl, videoPath);
+        } else if (veoFailed) {
+          // Veo rate limited — use Imagen + Ken Burns fallback
+          debug.push(`Scene ${i + 1}: Using Imagen fallback (Ken Burns)...`);
+          try {
+            videoPath = await generateImageClip(scene.videoPromptEn || "", scene.duration, "9:16");
+            debug.push(`Scene ${i + 1}: Imagen clip ready`);
+          } catch (imgErr) {
+            debug.push(`Scene ${i + 1}: Imagen failed: ${imgErr instanceof Error ? imgErr.message : "Unknown"}`);
+            throw new Error(`סצנה ${i + 1}: ייצור קליפ נכשל (Veo rate-limited + Imagen failed)`);
+          }
+        } else {
+          // Try Veo with rate-limit handling
+          try {
             debug.push(`Scene ${i + 1}: Generating AI clip with Veo...`);
             const prompt = scene.videoPromptEn || "";
+
+            // Wait 35s between Veo requests (2 req/min limit)
+            if (i > 0) {
+              debug.push(`Scene ${i + 1}: Waiting 35s for Veo rate limit...`);
+              await new Promise((r) => setTimeout(r, 35000));
+            }
+
             const operation = await startVideoGeneration(prompt, "9:16");
 
-            // Poll until done (max 5 min)
+            // Poll until done (max 5 min per clip)
             const maxWait = 300000;
             const pollInterval = 10000;
             const startPoll = Date.now();
             let finalOp = operation;
+            let pollDone = false;
 
             while (Date.now() - startPoll < maxWait) {
               const pollResult = await pollVideoOperation(finalOp);
               if (pollResult.done) {
                 if (pollResult.error) {
-                  throw new Error(`Veo scene ${i + 1}: ${pollResult.error}`);
+                  throw new Error(pollResult.error);
                 }
                 finalOp = pollResult.operation;
+                pollDone = true;
                 break;
               }
               finalOp = pollResult.operation;
@@ -141,25 +175,33 @@ export async function POST(req: NextRequest) {
               await new Promise((r) => setTimeout(r, pollInterval));
             }
 
-            if (Date.now() - startPoll >= maxWait) {
-              throw new Error(`Veo scene ${i + 1}: Timeout - video generation took too long`);
+            if (!pollDone) {
+              throw new Error("Timeout");
             }
 
             videoPath = await downloadVeoVideo(finalOp);
             debug.push(`Scene ${i + 1}: AI clip ready`);
-          }
-        } else {
-          // ── Pexels stock clip ──
-          const clipUrl = getBestVideoFile(scene.selectedClip!);
-          if (!clipUrl) throw new Error(`סצנה ${scene.number}: לא נמצא קובץ וידאו`);
+          } catch (veoErr) {
+            const errMsg = veoErr instanceof Error ? veoErr.message : String(veoErr);
+            debug.push(`Scene ${i + 1}: Veo failed: ${errMsg}`);
 
-          videoPath = path.join(tmpDir, `clip-${i}.mp4`);
-          await downloadFile(clipUrl, videoPath);
+            // If rate limited or any Veo error, switch to Imagen fallback for remaining scenes
+            veoFailed = true;
+            debug.push(`Scene ${i + 1}: Switching to Imagen fallback for remaining scenes`);
+
+            try {
+              videoPath = await generateImageClip(scene.videoPromptEn || "", scene.duration, "9:16");
+              debug.push(`Scene ${i + 1}: Imagen clip ready`);
+            } catch (imgErr) {
+              debug.push(`Scene ${i + 1}: Imagen also failed: ${imgErr instanceof Error ? imgErr.message : "Unknown"}`);
+              throw new Error(`סצנה ${i + 1}: ייצור קליפ נכשל. ${errMsg}`);
+            }
+          }
         }
 
-        return videoPath;
-      }),
-    );
+        videoPaths.push(videoPath!);
+      }
+    }
 
     // ── Step 1b: Generate TTS sequentially ──
     const jobs: { videoPath: string; audioPath: string; subtitleText: string; duration: number }[] = [];

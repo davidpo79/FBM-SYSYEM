@@ -58,52 +58,76 @@ async function tryGeminiTTS(
   }
 
   const voiceName = GEMINI_VOICES[voice];
-  console.log(`Gemini TTS: trying voice ${voiceName} (${voice})...`);
+  const maxRetries = 3;
 
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text }] }],
-      config: {
-        responseModalities: ["AUDIO"],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName },
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    console.log(`Gemini TTS: trying voice ${voiceName} (${voice}), attempt ${attempt}/${maxRetries}...`);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-preview-tts",
+        contents: [{ parts: [{ text }] }],
+        config: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName },
+            },
           },
         },
-      },
-    });
+      });
 
-    const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-    if (!audioData?.data) {
-      console.warn("Gemini TTS: no audio data in response");
-      lastTTSFailureReason = "Gemini TTS: לא התקבל אודיו מהשרת";
-      return null;
-    }
+      const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+      if (!audioData?.data) {
+        console.warn("Gemini TTS: no audio data in response");
+        lastTTSFailureReason = "Gemini TTS: לא התקבל אודיו מהשרת";
+        return null;
+      }
 
-    const pcmBuffer = Buffer.from(audioData.data, "base64");
-    if (pcmBuffer.length < 200) {
-      console.warn(`Gemini TTS: audio too small (${pcmBuffer.length}b)`);
-      lastTTSFailureReason = "Gemini TTS: אודיו קטן מדי";
-      return null;
-    }
+      const pcmBuffer = Buffer.from(audioData.data, "base64");
+      if (pcmBuffer.length < 200) {
+        console.warn(`Gemini TTS: audio too small (${pcmBuffer.length}b)`);
+        lastTTSFailureReason = "Gemini TTS: אודיו קטן מדי";
+        return null;
+      }
 
-    // Convert PCM to WAV
-    const wavBuffer = pcmToWav(pcmBuffer);
-    console.log(`Gemini TTS SUCCESS [${voiceName}]: ${wavBuffer.length} bytes`);
-    lastTTSFailureReason = "";
-    return { buffer: wavBuffer, engine: `gemini-tts-${voiceName}` };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("Gemini TTS error:", msg);
-    if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
-      lastTTSFailureReason = "Gemini TTS: חריגה ממגבלת בקשות. נסה שוב בעוד דקה.";
-    } else {
-      lastTTSFailureReason = `Gemini TTS: ${msg.substring(0, 150)}`;
+      // Convert PCM to WAV
+      const wavBuffer = pcmToWav(pcmBuffer);
+      console.log(`Gemini TTS SUCCESS [${voiceName}]: ${wavBuffer.length} bytes`);
+      lastTTSFailureReason = "";
+      return { buffer: wavBuffer, engine: `gemini-tts-${voiceName}` };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`Gemini TTS error (attempt ${attempt}):`, msg);
+
+      if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
+        lastTTSFailureReason = "Gemini TTS: חריגה ממגבלת בקשות. נסה שוב בעוד דקה.";
+        // Rate limit — wait and retry
+        if (attempt < maxRetries) {
+          const waitMs = attempt * 5000;
+          console.log(`Gemini TTS: rate limited, waiting ${waitMs}ms...`);
+          await delay(waitMs);
+          continue;
+        }
+      } else if (msg.includes("500") || msg.includes("INTERNAL") || msg.includes("internal")) {
+        lastTTSFailureReason = `Gemini TTS: שגיאת שרת (500). ניסיון ${attempt}/${maxRetries}`;
+        // Transient server error — wait and retry
+        if (attempt < maxRetries) {
+          const waitMs = attempt * 3000;
+          console.log(`Gemini TTS: server error, retrying in ${waitMs}ms...`);
+          await delay(waitMs);
+          continue;
+        }
+      } else {
+        lastTTSFailureReason = `Gemini TTS: ${msg.substring(0, 150)}`;
+        // Non-retryable error
+        return null;
+      }
     }
-    return null;
   }
+
+  return null;
 }
 
 /**

@@ -282,7 +282,7 @@ export default function VideoCreatorPage() {
       if (stepIdx < stepOrder.length) {
         setCurrentStep(stepOrder[stepIdx]);
       }
-    }, videoSource === "veo" ? 15000 : 8000); // AI generation takes longer
+    }, videoSource === "veo" ? 60000 : 8000); // Veo: ~35s delay + generation per scene
 
     try {
       const res = await fetch("/api/video/generate-all", {
@@ -626,7 +626,7 @@ export default function VideoCreatorPage() {
 
           <p className="text-center text-xs text-[var(--text-muted)] mt-4">
             {videoSource === "veo"
-              ? "אל תסגור את הדף. ייצור AI לוקח 2-5 דקות."
+              ? "אל תסגור את הדף. ייצור AI לוקח 5-10 דקות (בגלל מגבלת קצב)."
               : "אל תסגור את הדף. ההרכבה לוקחת 30-90 שניות."
             }
           </p>
