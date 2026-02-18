@@ -4,30 +4,36 @@
  * Generates cinematic B-Roll clips using text prompts.
  * Async workflow: submit → poll → download.
  *
- * Supports: gen4_turbo (text_to_video), gen3a_turbo (image_to_video fallback).
+ * Text-to-video: veo3.1, veo3.1_fast, veo3 (text prompt only)
+ * Image-to-video: gen4_turbo, gen3a_turbo (requires source image)
+ *
  * Requires: RUNWAY_API_KEY environment variable.
  */
 
 const RUNWAY_API_BASE = "https://api.dev.runwayml.com/v1";
 
-// Model configurations with their supported endpoints and ratios
-const RUNWAY_MODELS = {
-  gen4_turbo: {
-    endpoint: "text_to_video",
+// Text-to-video models (no image required) — ordered by priority
+const TEXT_TO_VIDEO_MODELS = [
+  {
+    model: "veo3.1_fast",
     portraitRatio: "720:1280",
     landscapeRatio: "1280:720",
+    // veo text-to-video supports 4, 6, or 8 seconds only
+    maxDuration: 8,
   },
-  gen3a_turbo: {
-    endpoint: "text_to_video",
-    portraitRatio: "768:1280",
-    landscapeRatio: "1280:768",
+  {
+    model: "veo3.1",
+    portraitRatio: "720:1280",
+    landscapeRatio: "1280:720",
+    maxDuration: 8,
   },
-} as const;
-
-type RunwayModel = keyof typeof RUNWAY_MODELS;
-
-// Order of models to try (first = preferred)
-const MODEL_PRIORITY: RunwayModel[] = ["gen4_turbo", "gen3a_turbo"];
+  {
+    model: "veo3",
+    portraitRatio: "720:1280",
+    landscapeRatio: "1280:720",
+    maxDuration: 8,
+  },
+] as const;
 
 export interface RunwayTaskResult {
   id: string;
@@ -55,104 +61,101 @@ function getHeaders(): Record<string, string> {
 }
 
 /**
- * Try to start video generation with a specific model.
- * Returns task ID on success, null on failure.
+ * Clamp duration to allowed values for text-to-video (4, 6, or 8 seconds).
  */
-async function tryModel(
-  model: RunwayModel,
-  prompt: string,
-  aspectRatio: "16:9" | "9:16",
-  duration: 5 | 10,
-): Promise<string | null> {
-  const config = RUNWAY_MODELS[model];
-  const url = `${RUNWAY_API_BASE}/${config.endpoint}`;
-  const ratio = aspectRatio === "9:16" ? config.portraitRatio : config.landscapeRatio;
-
-  const payload = {
-    model,
-    promptText: prompt,
-    ratio,
-    duration,
-  };
-
-  console.log(`Runway: Trying ${model} via ${config.endpoint} (${duration}s, ${ratio})...`);
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.id) {
-        console.log(`Runway: ${model} → Task started: ${data.id}`);
-        return data.id;
-      }
-      console.warn(`Runway: ${model} returned OK but no task ID`);
-      return null;
+function clampTextToVideoDuration(requested: number, max: number): number {
+  const allowed = [4, 6, 8].filter((d) => d <= max);
+  // Pick the closest allowed duration
+  let best = allowed[0];
+  for (const d of allowed) {
+    if (Math.abs(d - requested) < Math.abs(best - requested)) {
+      best = d;
     }
-
-    const errText = await response.text().catch(() => "");
-    console.warn(`Runway: ${model} failed [${response.status}]: ${errText.substring(0, 200)}`);
-
-    // Rate limit - don't try other models, throw immediately
-    if (response.status === 429) {
-      throw new Error("Runway: חריגה ממגבלת בקשות. נסה שוב בעוד דקה.");
-    }
-
-    // Auth error - key is invalid, don't try other models
-    if (response.status === 401) {
-      throw new Error(`Runway: מפתח API לא תקין (401). בדוק RUNWAY_API_KEY. ${errText.substring(0, 200)}`);
-    }
-
-    // 403/422 = model/endpoint not available, try next model
-    return null;
-  } catch (e) {
-    // Re-throw rate limit and auth errors
-    if (e instanceof Error && (e.message.includes("429") || e.message.includes("401"))) {
-      throw e;
-    }
-    console.warn(`Runway: ${model} error:`, e instanceof Error ? e.message : e);
-    return null;
   }
+  return best;
 }
 
 /**
- * Start generating a video clip with Runway.
- * Tries multiple models in priority order until one succeeds.
+ * Start generating a video clip with Runway text-to-video.
+ * Tries veo3.1_fast → veo3.1 → veo3 until one succeeds.
  * Returns a task ID to poll for completion.
  *
  * @param prompt - English cinematic description
  * @param aspectRatio - "16:9" (landscape) or "9:16" (portrait)
- * @param duration - 5 or 10 seconds
+ * @param duration - requested seconds (will be clamped to 4/6/8)
  */
 export async function startRunwayGeneration(
   prompt: string,
   aspectRatio: "16:9" | "9:16" = "9:16",
   duration: 5 | 10 = 5,
 ): Promise<string> {
-  console.log(`Runway: Starting generation (${duration}s, ${aspectRatio})...`);
+  console.log(`Runway: Starting text_to_video (${duration}s, ${aspectRatio})...`);
   console.log(`Runway prompt: ${prompt.substring(0, 100)}...`);
 
+  const url = `${RUNWAY_API_BASE}/text_to_video`;
   const errors: string[] = [];
 
-  for (const model of MODEL_PRIORITY) {
+  for (const config of TEXT_TO_VIDEO_MODELS) {
+    const ratio = aspectRatio === "9:16" ? config.portraitRatio : config.landscapeRatio;
+    const actualDuration = clampTextToVideoDuration(duration, config.maxDuration);
+
+    const payload = {
+      model: config.model,
+      promptText: prompt,
+      ratio,
+      duration: actualDuration,
+    };
+
+    console.log(`Runway: Trying ${config.model} (${actualDuration}s, ${ratio})...`);
+
     try {
-      const taskId = await tryModel(model, prompt, aspectRatio, duration);
-      if (taskId) return taskId;
-      errors.push(`${model}: not available`);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(30000),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.id) {
+          console.log(`Runway: ${config.model} → Task started: ${data.id}`);
+          return data.id;
+        }
+        console.warn(`Runway: ${config.model} returned OK but no task ID`);
+        errors.push(`${config.model}: no task ID`);
+        continue;
+      }
+
+      const errText = await response.text().catch(() => "");
+      console.warn(`Runway: ${config.model} failed [${response.status}]: ${errText.substring(0, 200)}`);
+
+      // Rate limit — stop immediately
+      if (response.status === 429) {
+        throw new Error("Runway: חריגה ממגבלת בקשות. נסה שוב בעוד דקה.");
+      }
+
+      // Auth error — key is invalid, stop immediately
+      if (response.status === 401) {
+        throw new Error(`Runway: מפתח API לא תקין (401). בדוק RUNWAY_API_KEY. ${errText.substring(0, 200)}`);
+      }
+
+      // 403/422 = model not available for this account, try next
+      errors.push(`${config.model}: [${response.status}] ${errText.substring(0, 100)}`);
     } catch (e) {
-      // Re-throw critical errors (rate limit, auth)
-      throw e;
+      if (e instanceof Error && (e.message.includes("429") || e.message.includes("401"))) {
+        throw e;
+      }
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn(`Runway: ${config.model} error: ${msg}`);
+      errors.push(`${config.model}: ${msg.substring(0, 100)}`);
     }
   }
 
   throw new Error(
-    `Runway: אף מודל לא זמין. נסה לבדוק את תוכנית ה-API שלך ב-Runway. ` +
-      `ניסיונות: ${errors.join(", ")}`,
+    `Runway: אף מודל text-to-video לא זמין. ` +
+      `נסה לבדוק את תוכנית ה-API שלך ב-Runway (נדרש גישה ל-veo3.1 / veo3). ` +
+      `ניסיונות: ${errors.join(" | ")}`,
   );
 }
 
