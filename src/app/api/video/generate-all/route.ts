@@ -99,13 +99,14 @@ export async function POST(req: NextRequest) {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fbm-pipeline-"));
     debug.push(`tmpDir: ${tmpDir}`);
 
-    // ── Step 1: Download/generate clips + Generate TTS (parallel) ──
+    // ── Step 1a: Download/generate video clips (parallel) ──
     const ttsEngines: string[] = [];
     let ttsAvailable = true;
     let ttsFailureReason = "";
     const useTimestamps = source === "runway"; // Use word-level sync for AI clips
 
-    const jobs = await Promise.all(
+    // Download all video clips in parallel
+    const videoPaths = await Promise.all(
       selectedScenes.map(async (scene, i) => {
         let videoPath: string;
 
@@ -114,11 +115,9 @@ export async function POST(req: NextRequest) {
           videoPath = path.join(tmpDir, `clip-${i}.mp4`);
 
           if (scene.aiClipUrl) {
-            // Pre-generated AI clip (already has URL)
             debug.push(`Scene ${i + 1}: Using pre-generated AI clip`);
             await downloadFile(scene.aiClipUrl, videoPath);
           } else {
-            // Generate new clip with Runway
             debug.push(`Scene ${i + 1}: Generating AI clip with Runway...`);
             const cinematicPrompt = buildCinematicPrompt(scene.videoPromptEn || "");
             const taskId = await startRunwayGeneration(cinematicPrompt, "9:16", 10);
@@ -135,41 +134,49 @@ export async function POST(req: NextRequest) {
           await downloadFile(clipUrl, videoPath);
         }
 
-        // Generate TTS (with timestamps for Runway mode)
-        const ttsResult = useTimestamps
-          ? await generateTTSWithTimestamps(
-              scene.voiceOverText,
-              voiceSettings.voice,
-              voiceSettings.rate,
-              voiceSettings.pitch,
-              scene.duration,
-            )
-          : await generateTTS(
-              scene.voiceOverText,
-              voiceSettings.voice,
-              voiceSettings.rate,
-              voiceSettings.pitch,
-              scene.duration,
-            );
-
-        ttsEngines.push(ttsResult.engine);
-        if (!ttsResult.usedTTS) {
-          ttsAvailable = false;
-          if (ttsResult.failureReason) ttsFailureReason = ttsResult.failureReason;
-        }
-
-        const audioPath = path.join(tmpDir, `vo-${i}.wav`);
-        fs.writeFileSync(audioPath, ttsResult.audioBuffer);
-        debug.push(`Scene ${i + 1}: TTS=${ttsResult.engine}, audio=${ttsResult.audioBuffer.length}b${ttsResult.wordTimestamps ? `, words=${ttsResult.wordTimestamps.length}` : ""}`);
-
-        return {
-          videoPath,
-          audioPath,
-          subtitleText: scene.voiceOverText,
-          duration: scene.duration,
-        };
+        return videoPath;
       }),
     );
+
+    // ── Step 1b: Generate TTS sequentially (avoid ElevenLabs rate limits) ──
+    const jobs: { videoPath: string; audioPath: string; subtitleText: string; duration: number }[] = [];
+
+    for (let i = 0; i < selectedScenes.length; i++) {
+      const scene = selectedScenes[i];
+
+      const ttsResult = useTimestamps
+        ? await generateTTSWithTimestamps(
+            scene.voiceOverText,
+            voiceSettings.voice,
+            voiceSettings.rate,
+            voiceSettings.pitch,
+            scene.duration,
+          )
+        : await generateTTS(
+            scene.voiceOverText,
+            voiceSettings.voice,
+            voiceSettings.rate,
+            voiceSettings.pitch,
+            scene.duration,
+          );
+
+      ttsEngines.push(ttsResult.engine);
+      if (!ttsResult.usedTTS) {
+        ttsAvailable = false;
+        if (ttsResult.failureReason) ttsFailureReason = ttsResult.failureReason;
+      }
+
+      const audioPath = path.join(tmpDir, `vo-${i}.wav`);
+      fs.writeFileSync(audioPath, ttsResult.audioBuffer);
+      debug.push(`Scene ${i + 1}: TTS=${ttsResult.engine}, audio=${ttsResult.audioBuffer.length}b${ttsResult.wordTimestamps ? `, words=${ttsResult.wordTimestamps.length}` : ""}`);
+
+      jobs.push({
+        videoPath: videoPaths[i],
+        audioPath,
+        subtitleText: scene.voiceOverText,
+        duration: scene.duration,
+      });
+    }
 
     debug.push(`TTS engines used: ${[...new Set(ttsEngines)].join(", ")}`);
 

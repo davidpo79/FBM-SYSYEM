@@ -18,9 +18,12 @@ const ELEVENLABS_VOICES = {
 // Track last failure reason for user-facing messages
 let lastTTSFailureReason = "";
 
+/** Small delay helper */
+function delay(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
+
 /**
- * Try ElevenLabs TTS (best quality, requires ELEVEN_LABS_API_KEY).
- * Uses multilingual v2 model with Hebrew language code.
+ * Try ElevenLabs TTS with retry on 429.
+ * Uses turbo v2.5 model with Hebrew language code for best quality.
  */
 async function tryElevenLabsTTS(
   text: string,
@@ -34,69 +37,82 @@ async function tryElevenLabsTTS(
   }
 
   const voiceId = ELEVENLABS_VOICES[voice];
-  console.log(`ElevenLabs: trying voice ${voiceId} (${voice})...`);
+  const maxRetries = 3;
 
-  try {
-    const response = await fetch(
-      `${ELEVENLABS_API_URL}/${voiceId}?output_format=mp3_44100_128`,
-      {
-        method: "POST",
-        headers: {
-          "xi-api-key": apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: 0.45,
-            similarity_boost: 0.8,
-            style: 0.2,
-            use_speaker_boost: true,
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      const waitMs = 2000 * attempt; // 2s, 4s
+      console.log(`ElevenLabs: Retry ${attempt}/${maxRetries} after ${waitMs}ms...`);
+      await delay(waitMs);
+    }
+
+    try {
+      const response = await fetch(
+        `${ELEVENLABS_API_URL}/${voiceId}?output_format=mp3_44100_128`,
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
           },
-        }),
-        signal: AbortSignal.timeout(30000),
-      },
-    );
+          body: JSON.stringify({
+            text,
+            model_id: "eleven_turbo_v2_5",
+            language_code: "heb",
+            voice_settings: {
+              stability: 0.45,
+              similarity_boost: 0.8,
+              style: 0.2,
+              use_speaker_boost: true,
+            },
+          }),
+          signal: AbortSignal.timeout(30000),
+        },
+      );
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      console.error(`ElevenLabs failed [${response.status}]: ${errText}`);
-
-      if (response.status === 401) {
-        lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
-      } else if (response.status === 403) {
-        lastTTSFailureReason = `ElevenLabs: אין הרשאה (403). ${errText.substring(0, 150)}`;
-      } else if (response.status === 429) {
-        lastTTSFailureReason = `ElevenLabs: חריגה ממגבלת בקשות (429)`;
-      } else {
-        lastTTSFailureReason = `ElevenLabs: שגיאה [${response.status}]: ${errText.substring(0, 150)}`;
+      if (response.status === 429) {
+        console.warn(`ElevenLabs: Rate limited (429), attempt ${attempt + 1}/${maxRetries}`);
+        if (attempt < maxRetries - 1) continue; // retry
+        lastTTSFailureReason = "ElevenLabs: חריגה ממגבלת בקשות (429)";
+        return null;
       }
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "");
+        console.error(`ElevenLabs failed [${response.status}]: ${errText}`);
+        if (response.status === 401) {
+          lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
+        } else if (response.status === 403) {
+          lastTTSFailureReason = `ElevenLabs: אין הרשאה (403). ${errText.substring(0, 150)}`;
+        } else {
+          lastTTSFailureReason = `ElevenLabs: שגיאה [${response.status}]: ${errText.substring(0, 150)}`;
+        }
+        return null;
+      }
+
+      const audioBuffer = Buffer.from(await response.arrayBuffer());
+      if (audioBuffer.length < 200) {
+        console.warn("ElevenLabs: audio too small:", audioBuffer.length);
+        lastTTSFailureReason = "ElevenLabs: תשובה ריקה מהשרת";
+        return null;
+      }
+
+      console.log(`ElevenLabs SUCCESS: ${audioBuffer.length} bytes`);
+      lastTTSFailureReason = "";
+      return { buffer: audioBuffer, engine: "elevenlabs" };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("ElevenLabs error:", msg);
+      lastTTSFailureReason = `ElevenLabs: ${msg.substring(0, 150)}`;
       return null;
     }
-
-    const audioBuffer = Buffer.from(await response.arrayBuffer());
-    if (audioBuffer.length < 200) {
-      console.warn("ElevenLabs: audio too small:", audioBuffer.length);
-      lastTTSFailureReason = "ElevenLabs: תשובה ריקה מהשרת";
-      return null;
-    }
-
-    console.log(`ElevenLabs SUCCESS: ${audioBuffer.length} bytes`);
-    lastTTSFailureReason = "";
-    return { buffer: audioBuffer, engine: "elevenlabs" };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("ElevenLabs error:", msg);
-    lastTTSFailureReason = `ElevenLabs: ${msg.substring(0, 150)}`;
-    return null;
   }
+  return null;
 }
 
 /**
- * Try ElevenLabs TTS with word-level timestamps (alignment).
+ * Try ElevenLabs TTS with word-level timestamps (alignment) and retry on 429.
  * Uses the /with-timestamps endpoint.
- * Returns both the audio buffer and per-word timing data.
  */
 async function tryElevenLabsTTSWithTimestamps(
   text: string,
@@ -114,103 +130,119 @@ async function tryElevenLabsTTSWithTimestamps(
   }
 
   const voiceId = ELEVENLABS_VOICES[voice];
-  console.log(`ElevenLabs (timestamps): trying voice ${voiceId} (${voice})...`);
+  const maxRetries = 3;
 
-  try {
-    const response = await fetch(
-      `${ELEVENLABS_API_URL}/${voiceId}/with-timestamps?output_format=mp3_44100_128`,
-      {
-        method: "POST",
-        headers: {
-          "xi-api-key": apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: 0.45,
-            similarity_boost: 0.8,
-            style: 0.2,
-            use_speaker_boost: true,
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      const waitMs = 2000 * attempt;
+      console.log(`ElevenLabs (timestamps): Retry ${attempt}/${maxRetries} after ${waitMs}ms...`);
+      await delay(waitMs);
+    }
+
+    try {
+      const response = await fetch(
+        `${ELEVENLABS_API_URL}/${voiceId}/with-timestamps?output_format=mp3_44100_128`,
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
           },
-        }),
-        signal: AbortSignal.timeout(30000),
-      },
-    );
+          body: JSON.stringify({
+            text,
+            model_id: "eleven_turbo_v2_5",
+            language_code: "heb",
+            voice_settings: {
+              stability: 0.45,
+              similarity_boost: 0.8,
+              style: 0.2,
+              use_speaker_boost: true,
+            },
+          }),
+          signal: AbortSignal.timeout(30000),
+        },
+      );
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      console.error(`ElevenLabs timestamps failed [${response.status}]: ${errText}`);
-      if (response.status === 401) {
-        lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
-      } else if (response.status === 403) {
-        lastTTSFailureReason = `ElevenLabs: אין הרשאה (403). ${errText.substring(0, 150)}`;
-      } else {
-        lastTTSFailureReason = `ElevenLabs: שגיאה [${response.status}]: ${errText.substring(0, 150)}`;
+      if (response.status === 429) {
+        console.warn(`ElevenLabs (timestamps): Rate limited (429), attempt ${attempt + 1}/${maxRetries}`);
+        if (attempt < maxRetries - 1) continue;
+        lastTTSFailureReason = "ElevenLabs: חריגה ממגבלת בקשות (429)";
+        return null;
       }
-      return null;
-    }
 
-    const data = await response.json();
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "");
+        console.error(`ElevenLabs timestamps failed [${response.status}]: ${errText}`);
+        if (response.status === 401) {
+          lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
+        } else if (response.status === 403) {
+          lastTTSFailureReason = `ElevenLabs: אין הרשאה (403). ${errText.substring(0, 150)}`;
+        } else {
+          lastTTSFailureReason = `ElevenLabs: שגיאה [${response.status}]: ${errText.substring(0, 150)}`;
+        }
+        return null;
+      }
 
-    // Decode audio from base64
-    const audioBase64 = data.audio_base64;
-    if (!audioBase64) {
-      console.warn("ElevenLabs timestamps: no audio_base64 in response");
-      return null;
-    }
+      const data = await response.json();
 
-    const audioBuffer = Buffer.from(audioBase64, "base64");
-    if (audioBuffer.length < 200) {
-      console.warn("ElevenLabs timestamps: audio too small:", audioBuffer.length);
-      return null;
-    }
+      // Decode audio from base64
+      const audioBase64 = data.audio_base64;
+      if (!audioBase64) {
+        console.warn("ElevenLabs timestamps: no audio_base64 in response");
+        return null;
+      }
 
-    // Parse word-level alignment
-    const wordTimestamps: WordTimestamp[] = [];
-    const alignment = data.alignment;
-    if (alignment?.characters && alignment?.character_start_times_seconds && alignment?.character_end_times_seconds) {
-      // Build word timestamps from character-level data
-      const chars: string[] = alignment.characters;
-      const starts: number[] = alignment.character_start_times_seconds;
-      const ends: number[] = alignment.character_end_times_seconds;
+      const audioBuffer = Buffer.from(audioBase64, "base64");
+      if (audioBuffer.length < 200) {
+        console.warn("ElevenLabs timestamps: audio too small:", audioBuffer.length);
+        return null;
+      }
 
-      let currentWord = "";
-      let wordStart = 0;
-      let wordEnd = 0;
+      // Parse word-level alignment
+      const wordTimestamps: WordTimestamp[] = [];
+      const alignment = data.alignment;
+      if (alignment?.characters && alignment?.character_start_times_seconds && alignment?.character_end_times_seconds) {
+        const chars: string[] = alignment.characters;
+        const starts: number[] = alignment.character_start_times_seconds;
+        const ends: number[] = alignment.character_end_times_seconds;
 
-      for (let i = 0; i < chars.length; i++) {
-        if (chars[i] === " " || i === chars.length - 1) {
-          if (i === chars.length - 1 && chars[i] !== " ") {
+        let currentWord = "";
+        let wordStart = 0;
+        let wordEnd = 0;
+
+        for (let i = 0; i < chars.length; i++) {
+          if (chars[i] === " " || i === chars.length - 1) {
+            if (i === chars.length - 1 && chars[i] !== " ") {
+              currentWord += chars[i];
+              wordEnd = ends[i];
+            }
+            if (currentWord.trim()) {
+              wordTimestamps.push({
+                word: currentWord.trim(),
+                start: wordStart,
+                end: wordEnd,
+              });
+            }
+            currentWord = "";
+            wordStart = i + 1 < starts.length ? starts[i + 1] : 0;
+          } else {
+            if (currentWord === "") {
+              wordStart = starts[i];
+            }
             currentWord += chars[i];
             wordEnd = ends[i];
           }
-          if (currentWord.trim()) {
-            wordTimestamps.push({
-              word: currentWord.trim(),
-              start: wordStart,
-              end: wordEnd,
-            });
-          }
-          currentWord = "";
-          wordStart = i + 1 < starts.length ? starts[i + 1] : 0;
-        } else {
-          if (currentWord === "") {
-            wordStart = starts[i];
-          }
-          currentWord += chars[i];
-          wordEnd = ends[i];
         }
       }
-    }
 
-    console.log(`ElevenLabs timestamps SUCCESS: ${audioBuffer.length} bytes, ${wordTimestamps.length} words`);
-    return { buffer: audioBuffer, engine: "elevenlabs", wordTimestamps };
-  } catch (e) {
-    console.error("ElevenLabs timestamps error:", e instanceof Error ? e.message : e);
-    return null;
+      console.log(`ElevenLabs timestamps SUCCESS: ${audioBuffer.length} bytes, ${wordTimestamps.length} words`);
+      return { buffer: audioBuffer, engine: "elevenlabs", wordTimestamps };
+    } catch (e) {
+      console.error("ElevenLabs timestamps error:", e instanceof Error ? e.message : e);
+      return null;
+    }
   }
+  return null;
 }
 
 /**
