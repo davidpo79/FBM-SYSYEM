@@ -1251,10 +1251,10 @@ export default function CreativePage() {
             </p>
           )}
           <button
-            onClick={() => router.push(`/project/${projectId}/copy`)}
+            onClick={() => router.push(`/project/${projectId}/video-creator`)}
             className="mt-4 btn-gold text-lg !px-8 !py-3"
           >
-            המשך לקופי למודעות
+            המשך ליצירת וידאו
           </button>
         </div>
       )}

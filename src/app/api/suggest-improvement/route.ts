@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! });
+let _ai: GoogleGenAI | null = null;
+function getAI() { return (_ai ??= new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! })); }
 
 const SYSTEM_PROMPT =
   "You are helping a user formulate a product improvement suggestion for FBM Studio (a Facebook marketing tool). Help them articulate their idea clearly. Respond in Hebrew. Be encouraging and ask clarifying questions.";
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
       })
       .join("\n\n");
 
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: "gemini-2.0-flash",
       contents: conversationText,
       config: {

@@ -1,7 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { logApiCall } from "@/lib/api-log";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! });
+let _ai: GoogleGenAI | null = null;
+function getAI() { return (_ai ??= new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! })); }
 
 const SYSTEM_PROMPT = `אתה יועץ FBM (Frequency-Based Marketing) שמתמחה בזיהוי נישות אידיאליות.
 אתה עוזר למשתמש לחשוב על נישות שמתאימות לתדר שלו — בדיאלוג חופשי, לא בהחלטה חד-צדדית.
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
       { role: "user", parts: [{ text: message }] },
     ];
 
-    const stream = await ai.models.generateContentStream({
+    const stream = await getAI().models.generateContentStream({
       model: "gemini-2.0-flash",
       contents,
       config: {

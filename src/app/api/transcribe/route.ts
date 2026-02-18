@@ -1,7 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { logApiCall } from "@/lib/api-log";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! });
+let _ai: GoogleGenAI | null = null;
+function getAI() { return (_ai ??= new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! })); }
 
 export async function POST(req: Request) {
   const startTime = Date.now();
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
     const bytes = await audioFile.arrayBuffer();
     const base64 = Buffer.from(bytes).toString("base64");
 
-    const result = await ai.models.generateContent({
+    const result = await getAI().models.generateContent({
       model: "gemini-2.0-flash",
       contents: [
         {

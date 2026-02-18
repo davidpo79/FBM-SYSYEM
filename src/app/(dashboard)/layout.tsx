@@ -358,6 +358,7 @@ function MobileSidebarContent({
         { href: `/project/${projectId}/pains`, label: "ניתוח כאבים", emoji: "\u{1F494}" },
         { href: `/project/${projectId}/scripts`, label: "תסריטים", emoji: "\u{1F4DD}" },
         { href: `/project/${projectId}/creative`, label: "קריאייטיב", emoji: "\u{1F3A8}" },
+        { href: `/project/${projectId}/video-creator`, label: "יצירת וידאו", emoji: "\u{1F3AC}" },
         { href: `/project/${projectId}/copy`, label: "קופי", emoji: "\u{1F4CB}" },
         { href: `/project/${projectId}/album`, label: "אלבום וסיכום", emoji: "\u{1F4F8}", badge: albumCount > 0 ? albumCount : undefined },
       ]

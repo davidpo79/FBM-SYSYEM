@@ -2,7 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 import { getFBMExpertSystemPrompt } from "@/lib/fbm-expert-prompt";
 import { logApiCall } from "@/lib/api-log";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! });
+let _ai: GoogleGenAI | null = null;
+function getAI() { return (_ai ??= new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! })); }
 
 export async function POST(req: Request) {
   const startTime = Date.now();
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
       { role: "user", parts: [{ text: message }] },
     ];
 
-    const stream = await ai.models.generateContentStream({
+    const stream = await getAI().models.generateContentStream({
       model: "gemini-2.0-flash",
       contents,
       config: {
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
           // Generate follow-up questions
           let suggestions: string[] = [];
           try {
-            const followUp = await ai.models.generateContent({
+            const followUp = await getAI().models.generateContent({
               model: "gemini-2.0-flash",
               contents: `בהתבסס על השיחה הבאה, הצע 3 שאלות המשך קצרות וממוקדות שהמשתמש יכול לשאול. החזר JSON בלבד: ["שאלה 1", "שאלה 2", "שאלה 3"]\n\nשיחה:\nמשתמש: ${message}\nמומחה: ${fullText.slice(0, 500)}`,
             });
