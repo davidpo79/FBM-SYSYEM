@@ -15,6 +15,12 @@ const ELEVENLABS_VOICES = {
   male: "onwK4e9ZLuTAKqWW03F9",   // Daniel
 };
 
+// Model configs to try in order (first success wins)
+const ELEVENLABS_CONFIGS = [
+  { model_id: "eleven_turbo_v2_5", language_code: "he", label: "turbo-v2.5+he" },
+  { model_id: "eleven_multilingual_v2", language_code: undefined, label: "multilingual-v2" },
+] as const;
+
 // Track last failure reason for user-facing messages
 let lastTTSFailureReason = "";
 
@@ -22,8 +28,42 @@ let lastTTSFailureReason = "";
 function delay(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
 
 /**
- * Try ElevenLabs TTS with retry on 429.
- * Uses turbo v2.5 model with Hebrew language code for best quality.
+ * Make a single ElevenLabs TTS request.
+ * Returns audio buffer on success, null on failure.
+ */
+async function elevenLabsRequest(
+  url: string,
+  apiKey: string,
+  text: string,
+  modelId: string,
+  languageCode: string | undefined,
+): Promise<Response> {
+  const body: Record<string, unknown> = {
+    text,
+    model_id: modelId,
+    voice_settings: {
+      stability: 0.45,
+      similarity_boost: 0.8,
+      style: 0.2,
+      use_speaker_boost: true,
+    },
+  };
+  if (languageCode) body.language_code = languageCode;
+
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "xi-api-key": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30000),
+  });
+}
+
+/**
+ * Try ElevenLabs TTS with model fallback and retry on 429.
+ * Tries turbo-v2.5 with Hebrew enforcement first, then multilingual-v2 with auto-detect.
  */
 async function tryElevenLabsTTS(
   text: string,
@@ -37,82 +77,64 @@ async function tryElevenLabsTTS(
   }
 
   const voiceId = ELEVENLABS_VOICES[voice];
-  const maxRetries = 3;
+  const url = `${ELEVENLABS_API_URL}/${voiceId}?output_format=mp3_44100_128`;
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    if (attempt > 0) {
-      const waitMs = 2000 * attempt; // 2s, 4s
-      console.log(`ElevenLabs: Retry ${attempt}/${maxRetries} after ${waitMs}ms...`);
-      await delay(waitMs);
-    }
+  for (const config of ELEVENLABS_CONFIGS) {
+    const maxRetries = 3;
 
-    try {
-      const response = await fetch(
-        `${ELEVENLABS_API_URL}/${voiceId}?output_format=mp3_44100_128`,
-        {
-          method: "POST",
-          headers: {
-            "xi-api-key": apiKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            text,
-            model_id: "eleven_turbo_v2_5",
-            language_code: "heb",
-            voice_settings: {
-              stability: 0.45,
-              similarity_boost: 0.8,
-              style: 0.2,
-              use_speaker_boost: true,
-            },
-          }),
-          signal: AbortSignal.timeout(30000),
-        },
-      );
-
-      if (response.status === 429) {
-        console.warn(`ElevenLabs: Rate limited (429), attempt ${attempt + 1}/${maxRetries}`);
-        if (attempt < maxRetries - 1) continue; // retry
-        lastTTSFailureReason = "ElevenLabs: חריגה ממגבלת בקשות (429)";
-        return null;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      if (attempt > 0) {
+        await delay(2000 * attempt);
+        console.log(`ElevenLabs [${config.label}]: Retry ${attempt}/${maxRetries}...`);
       }
 
-      if (!response.ok) {
-        const errText = await response.text().catch(() => "");
-        console.error(`ElevenLabs failed [${response.status}]: ${errText}`);
-        if (response.status === 401) {
-          lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
-        } else if (response.status === 403) {
-          lastTTSFailureReason = `ElevenLabs: אין הרשאה (403). ${errText.substring(0, 150)}`;
-        } else {
-          lastTTSFailureReason = `ElevenLabs: שגיאה [${response.status}]: ${errText.substring(0, 150)}`;
+      try {
+        console.log(`ElevenLabs: Trying ${config.label} (voice=${voice})...`);
+        const response = await elevenLabsRequest(url, apiKey, text, config.model_id, config.language_code);
+
+        if (response.status === 429) {
+          console.warn(`ElevenLabs [${config.label}]: Rate limited (429)`);
+          if (attempt < maxRetries - 1) continue;
+          lastTTSFailureReason = "ElevenLabs: חריגה ממגבלת בקשות (429)";
+          return null; // Rate limit applies to all models
         }
-        return null;
-      }
 
-      const audioBuffer = Buffer.from(await response.arrayBuffer());
-      if (audioBuffer.length < 200) {
-        console.warn("ElevenLabs: audio too small:", audioBuffer.length);
-        lastTTSFailureReason = "ElevenLabs: תשובה ריקה מהשרת";
-        return null;
-      }
+        if (response.status === 401) {
+          const errText = await response.text().catch(() => "");
+          lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
+          return null; // Auth failure = stop completely
+        }
 
-      console.log(`ElevenLabs SUCCESS: ${audioBuffer.length} bytes`);
-      lastTTSFailureReason = "";
-      return { buffer: audioBuffer, engine: "elevenlabs" };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error("ElevenLabs error:", msg);
-      lastTTSFailureReason = `ElevenLabs: ${msg.substring(0, 150)}`;
-      return null;
+        if (!response.ok) {
+          const errText = await response.text().catch(() => "");
+          console.warn(`ElevenLabs [${config.label}] failed [${response.status}]: ${errText.substring(0, 150)}`);
+          break; // Try next model config
+        }
+
+        const audioBuffer = Buffer.from(await response.arrayBuffer());
+        if (audioBuffer.length < 200) {
+          console.warn(`ElevenLabs [${config.label}]: audio too small (${audioBuffer.length}b)`);
+          break; // Try next model
+        }
+
+        console.log(`ElevenLabs SUCCESS [${config.label}]: ${audioBuffer.length} bytes`);
+        lastTTSFailureReason = "";
+        return { buffer: audioBuffer, engine: `elevenlabs-${config.label}` };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`ElevenLabs [${config.label}] error:`, msg);
+        lastTTSFailureReason = `ElevenLabs: ${msg.substring(0, 150)}`;
+        break; // Try next model
+      }
     }
   }
+
+  if (!lastTTSFailureReason) lastTTSFailureReason = "ElevenLabs: כל המודלים נכשלו";
   return null;
 }
 
 /**
- * Try ElevenLabs TTS with word-level timestamps (alignment) and retry on 429.
- * Uses the /with-timestamps endpoint.
+ * Try ElevenLabs TTS with word-level timestamps and model fallback.
  */
 async function tryElevenLabsTTSWithTimestamps(
   text: string,
@@ -130,124 +152,99 @@ async function tryElevenLabsTTSWithTimestamps(
   }
 
   const voiceId = ELEVENLABS_VOICES[voice];
-  const maxRetries = 3;
+  const url = `${ELEVENLABS_API_URL}/${voiceId}/with-timestamps?output_format=mp3_44100_128`;
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    if (attempt > 0) {
-      const waitMs = 2000 * attempt;
-      console.log(`ElevenLabs (timestamps): Retry ${attempt}/${maxRetries} after ${waitMs}ms...`);
-      await delay(waitMs);
-    }
+  for (const config of ELEVENLABS_CONFIGS) {
+    const maxRetries = 3;
 
-    try {
-      const response = await fetch(
-        `${ELEVENLABS_API_URL}/${voiceId}/with-timestamps?output_format=mp3_44100_128`,
-        {
-          method: "POST",
-          headers: {
-            "xi-api-key": apiKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            text,
-            model_id: "eleven_turbo_v2_5",
-            language_code: "heb",
-            voice_settings: {
-              stability: 0.45,
-              similarity_boost: 0.8,
-              style: 0.2,
-              use_speaker_boost: true,
-            },
-          }),
-          signal: AbortSignal.timeout(30000),
-        },
-      );
-
-      if (response.status === 429) {
-        console.warn(`ElevenLabs (timestamps): Rate limited (429), attempt ${attempt + 1}/${maxRetries}`);
-        if (attempt < maxRetries - 1) continue;
-        lastTTSFailureReason = "ElevenLabs: חריגה ממגבלת בקשות (429)";
-        return null;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      if (attempt > 0) {
+        await delay(2000 * attempt);
+        console.log(`ElevenLabs timestamps [${config.label}]: Retry ${attempt}/${maxRetries}...`);
       }
 
-      if (!response.ok) {
-        const errText = await response.text().catch(() => "");
-        console.error(`ElevenLabs timestamps failed [${response.status}]: ${errText}`);
-        if (response.status === 401) {
-          lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
-        } else if (response.status === 403) {
-          lastTTSFailureReason = `ElevenLabs: אין הרשאה (403). ${errText.substring(0, 150)}`;
-        } else {
-          lastTTSFailureReason = `ElevenLabs: שגיאה [${response.status}]: ${errText.substring(0, 150)}`;
+      try {
+        console.log(`ElevenLabs timestamps: Trying ${config.label} (voice=${voice})...`);
+        const response = await elevenLabsRequest(url, apiKey, text, config.model_id, config.language_code);
+
+        if (response.status === 429) {
+          console.warn(`ElevenLabs timestamps [${config.label}]: Rate limited (429)`);
+          if (attempt < maxRetries - 1) continue;
+          lastTTSFailureReason = "ElevenLabs: חריגה ממגבלת בקשות (429)";
+          return null;
         }
-        return null;
-      }
 
-      const data = await response.json();
+        if (response.status === 401) {
+          const errText = await response.text().catch(() => "");
+          lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
+          return null;
+        }
 
-      // Decode audio from base64
-      const audioBase64 = data.audio_base64;
-      if (!audioBase64) {
-        console.warn("ElevenLabs timestamps: no audio_base64 in response");
-        return null;
-      }
+        if (!response.ok) {
+          const errText = await response.text().catch(() => "");
+          console.warn(`ElevenLabs timestamps [${config.label}] failed [${response.status}]: ${errText.substring(0, 150)}`);
+          break; // Try next model
+        }
 
-      const audioBuffer = Buffer.from(audioBase64, "base64");
-      if (audioBuffer.length < 200) {
-        console.warn("ElevenLabs timestamps: audio too small:", audioBuffer.length);
-        return null;
-      }
+        const data = await response.json();
+        const audioBase64 = data.audio_base64;
+        if (!audioBase64) {
+          console.warn(`ElevenLabs timestamps [${config.label}]: no audio_base64`);
+          break;
+        }
 
-      // Parse word-level alignment
-      const wordTimestamps: WordTimestamp[] = [];
-      const alignment = data.alignment;
-      if (alignment?.characters && alignment?.character_start_times_seconds && alignment?.character_end_times_seconds) {
-        const chars: string[] = alignment.characters;
-        const starts: number[] = alignment.character_start_times_seconds;
-        const ends: number[] = alignment.character_end_times_seconds;
+        const audioBuffer = Buffer.from(audioBase64, "base64");
+        if (audioBuffer.length < 200) {
+          console.warn(`ElevenLabs timestamps [${config.label}]: audio too small (${audioBuffer.length}b)`);
+          break;
+        }
 
-        let currentWord = "";
-        let wordStart = 0;
-        let wordEnd = 0;
+        // Parse word-level alignment
+        const wordTimestamps: WordTimestamp[] = [];
+        const alignment = data.alignment;
+        if (alignment?.characters && alignment?.character_start_times_seconds && alignment?.character_end_times_seconds) {
+          const chars: string[] = alignment.characters;
+          const starts: number[] = alignment.character_start_times_seconds;
+          const ends: number[] = alignment.character_end_times_seconds;
 
-        for (let i = 0; i < chars.length; i++) {
-          if (chars[i] === " " || i === chars.length - 1) {
-            if (i === chars.length - 1 && chars[i] !== " ") {
+          let currentWord = "";
+          let wordStart = 0;
+          let wordEnd = 0;
+
+          for (let i = 0; i < chars.length; i++) {
+            if (chars[i] === " " || i === chars.length - 1) {
+              if (i === chars.length - 1 && chars[i] !== " ") {
+                currentWord += chars[i];
+                wordEnd = ends[i];
+              }
+              if (currentWord.trim()) {
+                wordTimestamps.push({ word: currentWord.trim(), start: wordStart, end: wordEnd });
+              }
+              currentWord = "";
+              wordStart = i + 1 < starts.length ? starts[i + 1] : 0;
+            } else {
+              if (currentWord === "") wordStart = starts[i];
               currentWord += chars[i];
               wordEnd = ends[i];
             }
-            if (currentWord.trim()) {
-              wordTimestamps.push({
-                word: currentWord.trim(),
-                start: wordStart,
-                end: wordEnd,
-              });
-            }
-            currentWord = "";
-            wordStart = i + 1 < starts.length ? starts[i + 1] : 0;
-          } else {
-            if (currentWord === "") {
-              wordStart = starts[i];
-            }
-            currentWord += chars[i];
-            wordEnd = ends[i];
           }
         }
-      }
 
-      console.log(`ElevenLabs timestamps SUCCESS: ${audioBuffer.length} bytes, ${wordTimestamps.length} words`);
-      return { buffer: audioBuffer, engine: "elevenlabs", wordTimestamps };
-    } catch (e) {
-      console.error("ElevenLabs timestamps error:", e instanceof Error ? e.message : e);
-      return null;
+        console.log(`ElevenLabs timestamps SUCCESS [${config.label}]: ${audioBuffer.length}b, ${wordTimestamps.length} words`);
+        return { buffer: audioBuffer, engine: `elevenlabs-${config.label}`, wordTimestamps };
+      } catch (e) {
+        console.error(`ElevenLabs timestamps [${config.label}] error:`, e instanceof Error ? e.message : e);
+        break;
+      }
     }
   }
+
+  if (!lastTTSFailureReason) lastTTSFailureReason = "ElevenLabs: כל המודלים נכשלו";
   return null;
 }
 
 /**
  * Try Google Cloud TTS with Wavenet → Standard fallback.
- * Requires GOOGLE_TTS_API_KEY (separate from GOOGLE_AI_API_KEY).
  */
 async function tryCloudTTS(
   text: string,
@@ -316,10 +313,9 @@ function generateSilence(durationSec: number): Buffer {
     return fs.readFileSync(outPath);
   } catch (e) {
     console.error("generateSilence FFmpeg failed:", e instanceof Error ? e.message : e);
-    // Manual WAV buffer
     const sampleRate = 24000;
     const numSamples = sampleRate * durationSec;
-    const dataSize = numSamples * 2; // 16-bit mono
+    const dataSize = numSamples * 2;
     const buffer = Buffer.alloc(44 + dataSize);
     buffer.write("RIFF", 0);
     buffer.writeUInt32LE(36 + dataSize, 4);
@@ -345,12 +341,12 @@ export interface TTSResult {
   usedTTS: boolean;
   engine: string;
   wordTimestamps?: WordTimestamp[];
-  failureReason?: string; // Why TTS failed (for user-facing messages)
+  failureReason?: string;
 }
 
 /**
  * Generate Hebrew TTS audio.
- * Pipeline: ElevenLabs → Google Cloud TTS → Silence fallback.
+ * Pipeline: ElevenLabs (turbo-v2.5 → multilingual-v2) → Google Cloud TTS → Silence.
  */
 export async function generateTTS(
   text: string,
@@ -361,13 +357,11 @@ export async function generateTTS(
 ): Promise<TTSResult> {
   console.log(`\n=== TTS for: "${text.substring(0, 60)}..." ===`);
 
-  // 1. Try ElevenLabs (best quality)
   const elevenResult = await tryElevenLabsTTS(text, voice);
   if (elevenResult) {
     return { audioBuffer: elevenResult.buffer, usedTTS: true, engine: elevenResult.engine };
   }
 
-  // 2. Try Google Cloud TTS
   const cloudResult = await tryCloudTTS(text, voice, rate, pitch);
   if (cloudResult) {
     return { audioBuffer: cloudResult.buffer, usedTTS: true, engine: cloudResult.engine };
@@ -376,7 +370,6 @@ export async function generateTTS(
   console.warn("=== ALL TTS ENGINES FAILED - generating silence ===");
   console.warn(`Last failure reason: ${lastTTSFailureReason}`);
 
-  // 3. Fallback: silence
   const silenceBuffer = generateSilence(durationFallbackSec);
   return {
     audioBuffer: silenceBuffer,
@@ -388,8 +381,6 @@ export async function generateTTS(
 
 /**
  * Generate Hebrew TTS audio WITH word-level timestamps.
- * Uses ElevenLabs /with-timestamps endpoint for precise subtitle sync.
- * Falls back to regular TTS if timestamps are not available.
  */
 export async function generateTTSWithTimestamps(
   text: string,
@@ -400,7 +391,6 @@ export async function generateTTSWithTimestamps(
 ): Promise<TTSResult> {
   console.log(`\n=== TTS (with timestamps) for: "${text.substring(0, 60)}..." ===`);
 
-  // 1. Try ElevenLabs with timestamps (best quality + sync data)
   const elevenResult = await tryElevenLabsTTSWithTimestamps(text, voice);
   if (elevenResult) {
     return {
@@ -411,7 +401,6 @@ export async function generateTTSWithTimestamps(
     };
   }
 
-  // 2. Fall back to regular TTS (no timestamps)
   return generateTTS(text, voice, rate, pitch, durationFallbackSec);
 }
 
