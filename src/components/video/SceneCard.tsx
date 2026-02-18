@@ -38,7 +38,7 @@ export default function SceneCard({
   const sceneLabel = SCENE_LABELS[scene.number] || `סצנה ${scene.number}`;
   const clip = scene.selectedClip;
   const clipOptions = scene.clipOptions || [];
-  const isAiMode = videoSource === "runway";
+  const isAiMode = videoSource === "veo";
 
   const handleSelectClip = (c: PexelsVideo) => {
     onUpdateScene?.({ selectedClip: c });
@@ -154,7 +154,7 @@ export default function SceneCard({
           </>
         )}
 
-        {/* ── Runway AI mode: Video prompt ── */}
+        {/* ── Veo AI mode: Video prompt ── */}
         {isAiMode && (
           <div
             className="rounded-lg p-3"

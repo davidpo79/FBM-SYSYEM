@@ -25,9 +25,9 @@ const PEXELS_STEPS = [
   { key: "upload", label: "מעלה לענן" },
 ] as const;
 
-const RUNWAY_STEPS = [
-  { key: "ai-gen", label: "מייצר קליפים עם AI (Runway)" },
-  { key: "tts", label: "יוצר קריינות בעברית (+ timestamps)" },
+const VEO_STEPS = [
+  { key: "ai-gen", label: "מייצר קליפים עם Google Veo" },
+  { key: "tts", label: "יוצר קריינות בעברית (Gemini TTS)" },
   { key: "compose", label: "מרכיב סרטון MP4" },
   { key: "upload", label: "מעלה לענן" },
 ] as const;
@@ -66,8 +66,7 @@ export default function VideoCreatorPage() {
   const autoCreatedRef = useRef(false);
 
   const VIDEO_LIMIT = 3;
-  const STEPS = videoSource === "runway" ? RUNWAY_STEPS : PEXELS_STEPS;
-  const hasRunwayKey = true; // Will be checked server-side
+  const STEPS = videoSource === "veo" ? VEO_STEPS : PEXELS_STEPS;
 
   /* ── Step 1: Adapt script → scenes ── */
   const handleAdaptScript = useCallback(
@@ -234,7 +233,7 @@ export default function VideoCreatorPage() {
       setVideoSource(source);
       // Re-adapt if we already have a script loaded
       if (adaptedScript && pageState === "ready") {
-        // For Runway, no need to search Pexels clips
+        // For Veo, no need to search Pexels clips
         // For Pexels, trigger clip search
         if (source === "pexels" && adaptedScript.scenes.some((s) => !s.selectedClip)) {
           handleAdaptScript(activeScript);
@@ -255,7 +254,7 @@ export default function VideoCreatorPage() {
         setGlobalError(`סצנה ${missingClip.number} חסר קליפ וידאו. בחר קליפ לכל סצנה.`);
         return;
       }
-    } else if (videoSource === "runway") {
+    } else if (videoSource === "veo") {
       const missingPrompt = adaptedScript.scenes.find((s) => !s.videoPromptEn);
       if (missingPrompt) {
         setGlobalError(`סצנה ${missingPrompt.number} חסר תיאור AI. ערוך את ה-Prompt.`);
@@ -269,11 +268,11 @@ export default function VideoCreatorPage() {
     }
 
     setPageState("generating");
-    setCurrentStep(videoSource === "runway" ? "ai-gen" : "download");
+    setCurrentStep(videoSource === "veo" ? "ai-gen" : "download");
     setGlobalError("");
 
     // Simulate step progression
-    const stepOrder: StepKey[] = videoSource === "runway"
+    const stepOrder: StepKey[] = videoSource === "veo"
       ? ["ai-gen", "tts", "compose", "upload"]
       : ["download", "tts", "compose", "upload"];
     let stepIdx = 0;
@@ -283,7 +282,7 @@ export default function VideoCreatorPage() {
       if (stepIdx < stepOrder.length) {
         setCurrentStep(stepOrder[stepIdx]);
       }
-    }, videoSource === "runway" ? 15000 : 8000); // AI generation takes longer
+    }, videoSource === "veo" ? 15000 : 8000); // AI generation takes longer
 
     try {
       const res = await fetch("/api/video/generate-all", {
@@ -355,7 +354,7 @@ export default function VideoCreatorPage() {
         <div>
           <h2 className="text-xl font-bold text-[var(--text-primary)]">🎬 יצירת וידאו</h2>
           <p className="text-sm text-[var(--text-muted)] mt-1">
-            סרטון MP4 של 60 שניות — {videoSource === "runway" ? "AI ג׳נרטיבי" : "קליפי סטוק"} + קריינות + כתוביות
+            סרטון MP4 של 60 שניות — {videoSource === "veo" ? "Google AI ג׳נרטיבי" : "קליפי סטוק"} + קריינות + כתוביות
           </p>
         </div>
         <span
@@ -384,16 +383,16 @@ export default function VideoCreatorPage() {
           📹 Pexels (סטוק חינמי)
         </button>
         <button
-          onClick={() => handleSwitchSource("runway")}
-          disabled={pageState === "generating" || !hasRunwayKey}
+          onClick={() => handleSwitchSource("veo")}
+          disabled={pageState === "generating"}
           className="flex-1 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all disabled:opacity-50"
           style={{
-            backgroundColor: videoSource === "runway" ? "rgba(139, 92, 246, 0.1)" : "var(--content-bg)",
-            color: videoSource === "runway" ? "#8B5CF6" : "var(--text-secondary)",
-            border: videoSource === "runway" ? "2px solid #8B5CF6" : "2px solid var(--card-border)",
+            backgroundColor: videoSource === "veo" ? "rgba(139, 92, 246, 0.1)" : "var(--content-bg)",
+            color: videoSource === "veo" ? "#8B5CF6" : "var(--text-secondary)",
+            border: videoSource === "veo" ? "2px solid #8B5CF6" : "2px solid var(--card-border)",
           }}
         >
-          🤖 Runway AI (ג׳נרטיבי)
+          🤖 Google AI (Veo)
         </button>
       </div>
 
@@ -454,7 +453,7 @@ export default function VideoCreatorPage() {
           <div className="w-12 h-12 mx-auto mb-3 rounded-full border-4 border-[var(--gold)] border-t-transparent animate-spin" />
           <p className="text-sm font-medium text-[var(--text-primary)]">ממיר את התסריט לסצנות וידאו...</p>
           <p className="text-xs text-[var(--text-muted)] mt-1">
-            AI מפרק את התסריט ל-10 סצנות {videoSource === "runway" ? "+ prompts קולנועיים" : ""}
+            AI מפרק את התסריט ל-10 סצנות {videoSource === "veo" ? "+ prompts קולנועיים" : ""}
           </p>
         </div>
       )}
@@ -475,12 +474,12 @@ export default function VideoCreatorPage() {
           <div
             className="mb-3 p-2 rounded-[10px] text-xs text-center"
             style={{
-              backgroundColor: videoSource === "runway" ? "rgba(139, 92, 246, 0.05)" : "rgba(59, 130, 246, 0.05)",
-              border: `1px solid ${videoSource === "runway" ? "rgba(139, 92, 246, 0.2)" : "rgba(59, 130, 246, 0.2)"}`,
-              color: videoSource === "runway" ? "#7C3AED" : "#2563EB",
+              backgroundColor: videoSource === "veo" ? "rgba(139, 92, 246, 0.05)" : "rgba(59, 130, 246, 0.05)",
+              border: `1px solid ${videoSource === "veo" ? "rgba(139, 92, 246, 0.2)" : "rgba(59, 130, 246, 0.2)"}`,
+              color: videoSource === "veo" ? "#7C3AED" : "#2563EB",
             }}
           >
-            {videoSource === "runway"
+            {videoSource === "veo"
               ? "ערוך את ה-Prompts, טקסט הקריינות, ולחץ \"צור סרטון AI\""
               : "ערוך את הטקסט, החלף קליפים, ולחץ \"צור סרטון MP4\""
             }
@@ -497,14 +496,14 @@ export default function VideoCreatorPage() {
           <div
             className="rounded-lg px-4 py-2.5 mb-4 flex items-center justify-center gap-6 text-sm"
             style={{
-              backgroundColor: videoSource === "runway" ? "rgba(139, 92, 246, 0.06)" : "rgba(212, 168, 67, 0.06)",
-              border: `1px solid ${videoSource === "runway" ? "rgba(139, 92, 246, 0.15)" : "rgba(212, 168, 67, 0.15)"}`,
+              backgroundColor: videoSource === "veo" ? "rgba(139, 92, 246, 0.06)" : "rgba(212, 168, 67, 0.06)",
+              border: `1px solid ${videoSource === "veo" ? "rgba(139, 92, 246, 0.15)" : "rgba(212, 168, 67, 0.15)"}`,
             }}
           >
             <span><strong>{adaptedScript.scenes.length}</strong> סצנות</span>
             <span><strong>{adaptedScript.totalDuration}</strong> שניות</span>
             <span>9:16</span>
-            <span>{videoSource === "runway" ? "Runway AI" : "Pexels B-Roll"}</span>
+            <span>{videoSource === "veo" ? "Google Veo AI" : "Pexels B-Roll"}</span>
           </div>
 
           {/* Scene cards */}
@@ -537,15 +536,15 @@ export default function VideoCreatorPage() {
               disabled={videoCount >= VIDEO_LIMIT}
               className="flex-1 py-3.5 rounded-xl text-white font-bold text-[15px] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                background: videoSource === "runway"
+                background: videoSource === "veo"
                   ? "linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)"
                   : "linear-gradient(135deg, #22C55E 0%, #16a34a 100%)",
-                boxShadow: videoSource === "runway"
+                boxShadow: videoSource === "veo"
                   ? "0 4px 16px rgba(139,92,246,0.3)"
                   : "0 4px 16px rgba(34,197,94,0.3)",
               }}
             >
-              {videoSource === "runway" ? "🤖 צור סרטון AI" : "🎬 צור סרטון MP4"}
+              {videoSource === "veo" ? "🤖 צור סרטון AI" : "🎬 צור סרטון MP4"}
             </button>
             <button
               onClick={() => handleAdaptScript(activeScript)}
@@ -556,10 +555,10 @@ export default function VideoCreatorPage() {
             </button>
           </div>
 
-          {/* Runway cost estimate */}
-          {videoSource === "runway" && (
+          {/* Veo cost note */}
+          {videoSource === "veo" && (
             <p className="text-[11px] text-center text-[var(--text-muted)] mt-2">
-              עלות משוערת: ~${(adaptedScript.scenes.length * 0.14).toFixed(2)} ({adaptedScript.scenes.length} קליפים x $0.14)
+              משתמש ב-Google AI API (Veo 3.1 Fast) — מגבלה: 2 בקשות/דקה, 10 ביום
             </p>
           )}
         </div>
@@ -569,7 +568,7 @@ export default function VideoCreatorPage() {
       {pageState === "generating" && (
         <div className="card-static rounded-xl p-6 animate-in">
           <h4 className="text-center font-bold text-[var(--text-primary)] mb-5">
-            {videoSource === "runway" ? "מייצר סרטון AI..." : "מייצר את הסרטון שלך..."}
+            {videoSource === "veo" ? "מייצר סרטון AI..." : "מייצר את הסרטון שלך..."}
           </h4>
 
           <div className="max-w-md mx-auto space-y-3">
@@ -585,14 +584,14 @@ export default function VideoCreatorPage() {
                   className="flex items-center gap-3 px-4 py-3 rounded-xl"
                   style={{
                     backgroundColor: isCurrent
-                      ? videoSource === "runway"
+                      ? videoSource === "veo"
                         ? "rgba(139, 92, 246, 0.08)"
                         : "rgba(212, 168, 67, 0.08)"
                       : isCompleted
                         ? "rgba(34, 197, 94, 0.06)"
                         : "var(--content-bg)",
                     border: isCurrent
-                      ? `1px solid ${videoSource === "runway" ? "rgba(139, 92, 246, 0.3)" : "rgba(212, 168, 67, 0.3)"}`
+                      ? `1px solid ${videoSource === "veo" ? "rgba(139, 92, 246, 0.3)" : "rgba(212, 168, 67, 0.3)"}`
                       : "1px solid transparent",
                   }}
                 >
@@ -602,7 +601,7 @@ export default function VideoCreatorPage() {
                     ) : isCurrent ? (
                       <div
                         className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
-                        style={{ borderColor: videoSource === "runway" ? "#8B5CF6" : "var(--gold)", borderTopColor: "transparent" }}
+                        style={{ borderColor: videoSource === "veo" ? "#8B5CF6" : "var(--gold)", borderTopColor: "transparent" }}
                       />
                     ) : (
                       <span className="text-lg opacity-30">○</span>
@@ -626,7 +625,7 @@ export default function VideoCreatorPage() {
           </div>
 
           <p className="text-center text-xs text-[var(--text-muted)] mt-4">
-            {videoSource === "runway"
+            {videoSource === "veo"
               ? "אל תסגור את הדף. ייצור AI לוקח 2-5 דקות."
               : "אל תסגור את הדף. ההרכבה לוקחת 30-90 שניות."
             }
@@ -670,7 +669,7 @@ export default function VideoCreatorPage() {
             <div>
               <h4 className="font-bold text-[var(--text-primary)]">סרטון MP4 מוכן!</h4>
               <p className="text-xs text-[var(--text-secondary)]">
-                {adaptedScript?.scenes.length || 10} סצנות | {videoSource === "runway" ? "AI ג׳נרטיבי" : "Pexels B-Roll"} | קריינות בעברית | כתוביות
+                {adaptedScript?.scenes.length || 10} סצנות | {videoSource === "veo" ? "Google Veo AI" : "Pexels B-Roll"} | קריינות Gemini | כתוביות
               </p>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { startRunwayGeneration, pollRunwayTask } from "@/lib/runway";
+import { startVideoGeneration, pollVideoOperation } from "@/lib/veo";
 import { logApiCall } from "@/lib/api-log";
 
 export const maxDuration = 300; // 5 minutes for video generation
@@ -7,15 +7,15 @@ export const maxDuration = 300; // 5 minutes for video generation
 /**
  * POST /api/video/generate-ai-clip
  *
- * Starts Runway Gen-3 video generation for a single scene.
- * Returns immediately with a task ID for polling.
+ * Starts Google Veo video generation for a single scene.
+ * Returns immediately with an operation name for polling.
  *
- * Body: { prompt: string, sceneNumber: number, duration?: 5|10 }
+ * Body: { prompt: string, sceneNumber: number }
  */
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   try {
-    const { prompt, sceneNumber, duration } = await req.json();
+    const { prompt, sceneNumber } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
       return NextResponse.json(
@@ -24,19 +24,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!process.env.RUNWAY_API_KEY) {
+    if (!process.env.GOOGLE_AI_API_KEY) {
       return NextResponse.json(
-        { error: "RUNWAY_API_KEY לא הוגדר. הוסף אותו בהגדרות Vercel." },
+        { error: "GOOGLE_AI_API_KEY לא הוגדר. הוסף אותו בהגדרות Vercel." },
         { status: 500 },
       );
     }
 
-    // Start async Runway generation (9:16 portrait for Reels/TikTok)
-    const taskId = await startRunwayGeneration(
-      prompt,
-      "9:16",
-      duration || 5,
-    );
+    // Start async Veo generation (9:16 portrait for Reels/TikTok)
+    const operation = await startVideoGeneration(prompt, "9:16");
 
     logApiCall({
       endpoint: "/api/video/generate-ai-clip",
@@ -45,7 +41,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({
-      taskId,
+      taskId: operation.name,
       sceneNumber,
       status: "generating",
     });
@@ -67,7 +63,7 @@ export async function POST(req: NextRequest) {
 /**
  * GET /api/video/generate-ai-clip?taskId=xxx
  *
- * Poll Runway task status. Returns status and video URL when ready.
+ * Poll Veo operation status. Returns status and video URL when ready.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -80,13 +76,33 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const result = await pollRunwayTask(taskId);
+    const result = await pollVideoOperation(taskId);
+
+    if (result.done) {
+      if (result.error) {
+        return NextResponse.json({
+          taskId,
+          status: "FAILED",
+          videoUrl: null,
+          error: result.error,
+        });
+      }
+
+      // Get the video URL from the operation result
+      const videoUri = result.operation.response?.generatedVideos?.[0]?.video?.uri;
+      return NextResponse.json({
+        taskId,
+        status: "SUCCEEDED",
+        videoUrl: videoUri || null,
+        error: null,
+      });
+    }
 
     return NextResponse.json({
       taskId,
-      status: result.status,
-      videoUrl: result.output?.[0] || null,
-      error: result.failure || null,
+      status: "RUNNING",
+      videoUrl: null,
+      error: null,
     });
   } catch (error) {
     console.error("poll-ai-clip error:", error);

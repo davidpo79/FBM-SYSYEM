@@ -15,7 +15,7 @@ const ADAPTATION_PROMPT = (scriptText: string, niche: string) => `
 - לכל סצנה: searchQuery — 2-4 מילות מפתח באנגלית לחיפוש סטוק וידאו (Pexels)
   * כשיש דמויות אנושיות בסצנה, הוסף "mediterranean" למילות החיפוש
   * כשאין דמויות: "business growth chart", "modern office workspace"
-- לכל סצנה: videoPromptEn — תיאור קולנועי באנגלית עבור מנוע וידאו AI (כמו Runway Gen-3)
+- לכל סצנה: videoPromptEn — תיאור קולנועי באנגלית עבור מנוע וידאו AI (Google Veo)
   * התיאור חייב להיות מפורט וקולנועי באנגלית טכנית
   * לכלול: סוג שוט (close-up, wide, tracking), תאורה (volumetric, golden hour), תנועת מצלמה (push-in, dolly), טקסטורות
   * דוגמה: "Cinematic close-up of a focused entrepreneur typing on laptop, golden hour lighting through window, shallow depth of field, lens flare, 8K quality"

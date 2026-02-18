@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getBestVideoFile } from "@/lib/pexels";
 import { composeVideo } from "@/lib/video-compose";
 import { generateTTS, generateTTSWithTimestamps } from "@/lib/tts";
-import { waitForRunwayVideo, buildCinematicPrompt, startRunwayGeneration } from "@/lib/runway";
+import { startVideoGeneration, pollVideoOperation, downloadVeoVideo } from "@/lib/veo";
 import { logApiCall } from "@/lib/api-log";
 import type { AdaptedScript, VoiceSettings, PexelsVideo, VideoSource } from "@/lib/video-types";
 import fs from "fs";
@@ -65,10 +65,9 @@ export async function POST(req: NextRequest) {
     debug.push(`Video source: ${source}`);
 
     // Check env vars
-    debug.push(`ELEVEN_LABS_API_KEY: ${process.env.ELEVEN_LABS_API_KEY ? "SET" : "NOT SET"}`);
+    debug.push(`GOOGLE_AI_API_KEY: ${process.env.GOOGLE_AI_API_KEY ? "SET" : "NOT SET"}`);
     debug.push(`GOOGLE_TTS_API_KEY: ${process.env.GOOGLE_TTS_API_KEY ? "SET" : "NOT SET"}`);
     debug.push(`PEXELS_API_KEY: ${process.env.PEXELS_API_KEY ? "SET" : "NOT SET"}`);
-    debug.push(`RUNWAY_API_KEY: ${process.env.RUNWAY_API_KEY ? "SET" : "NOT SET"}`);
 
     // Validate scenes based on source
     const selectedScenes: SelectedScene[] = [];
@@ -79,7 +78,7 @@ export async function POST(req: NextRequest) {
           { status: 400 },
         );
       }
-      if (source === "runway" && !scene.videoPromptEn && !scene.aiClipUrl) {
+      if (source === "veo" && !scene.videoPromptEn && !scene.aiClipUrl) {
         return NextResponse.json(
           { error: `סצנה ${scene.number} חסר תיאור AI. ודא שכל הסצנות כוללות videoPromptEn.` },
           { status: 400 },
@@ -103,26 +102,50 @@ export async function POST(req: NextRequest) {
     const ttsEngines: string[] = [];
     let ttsAvailable = true;
     let ttsFailureReason = "";
-    const useTimestamps = source === "runway"; // Use word-level sync for AI clips
+    const useTimestamps = source === "veo"; // Use word-level sync for AI clips
 
     // Download all video clips in parallel
     const videoPaths = await Promise.all(
       selectedScenes.map(async (scene, i) => {
         let videoPath: string;
 
-        if (source === "runway") {
-          // ── Runway AI-generated clip ──
+        if (source === "veo") {
+          // ── Google Veo AI-generated clip ──
           videoPath = path.join(tmpDir, `clip-${i}.mp4`);
 
           if (scene.aiClipUrl) {
             debug.push(`Scene ${i + 1}: Using pre-generated AI clip`);
             await downloadFile(scene.aiClipUrl, videoPath);
           } else {
-            debug.push(`Scene ${i + 1}: Generating AI clip with Runway...`);
-            const cinematicPrompt = buildCinematicPrompt(scene.videoPromptEn || "");
-            const taskId = await startRunwayGeneration(cinematicPrompt, "9:16", 10);
-            const clipUrl = await waitForRunwayVideo(taskId);
-            await downloadFile(clipUrl, videoPath);
+            debug.push(`Scene ${i + 1}: Generating AI clip with Veo...`);
+            const prompt = scene.videoPromptEn || "";
+            const operation = await startVideoGeneration(prompt, "9:16");
+
+            // Poll until done (max 5 min)
+            const maxWait = 300000;
+            const pollInterval = 10000;
+            const startPoll = Date.now();
+            let finalOp = operation;
+
+            while (Date.now() - startPoll < maxWait) {
+              const pollResult = await pollVideoOperation(finalOp);
+              if (pollResult.done) {
+                if (pollResult.error) {
+                  throw new Error(`Veo scene ${i + 1}: ${pollResult.error}`);
+                }
+                finalOp = pollResult.operation;
+                break;
+              }
+              finalOp = pollResult.operation;
+              debug.push(`Scene ${i + 1}: Veo generating... (${Math.round((Date.now() - startPoll) / 1000)}s)`);
+              await new Promise((r) => setTimeout(r, pollInterval));
+            }
+
+            if (Date.now() - startPoll >= maxWait) {
+              throw new Error(`Veo scene ${i + 1}: Timeout - video generation took too long`);
+            }
+
+            videoPath = await downloadVeoVideo(finalOp);
             debug.push(`Scene ${i + 1}: AI clip ready`);
           }
         } else {
@@ -138,7 +161,7 @@ export async function POST(req: NextRequest) {
       }),
     );
 
-    // ── Step 1b: Generate TTS sequentially (avoid ElevenLabs rate limits) ──
+    // ── Step 1b: Generate TTS sequentially ──
     const jobs: { videoPath: string; audioPath: string; subtitleText: string; duration: number }[] = [];
 
     for (let i = 0; i < selectedScenes.length; i++) {
@@ -253,7 +276,7 @@ export async function POST(req: NextRequest) {
       hasMusicTrack: composeResult.hasMusicTrack,
       debug,
       warning: !ttsAvailable
-        ? ttsFailureReason || "הסרטון נוצר ללא קריינות. הגדר ELEVEN_LABS_API_KEY (מומלץ) או GOOGLE_TTS_API_KEY בהגדרות Vercel."
+        ? ttsFailureReason || "הסרטון נוצר ללא קריינות. בדוק GOOGLE_AI_API_KEY בהגדרות Vercel."
         : undefined,
     });
   } catch (error) {

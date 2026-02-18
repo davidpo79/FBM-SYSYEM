@@ -1,3 +1,4 @@
+import { GoogleGenAI } from "@google/genai";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
@@ -6,20 +7,13 @@ import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import type { WordTimestamp } from "./video-types";
 
 const TTS_API_URL = "https://texttospeech.googleapis.com/v1/text:synthesize";
-const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech";
 const FFMPEG_PATH = ffmpegInstaller.path;
 
-// ElevenLabs premade multilingual voices
-const ELEVENLABS_VOICES = {
-  female: "EXAVITQu4vr4xnSDxMaL", // Sarah
-  male: "onwK4e9ZLuTAKqWW03F9",   // Daniel
+// Gemini TTS voices (auto-detect language, supports Hebrew)
+const GEMINI_VOICES = {
+  female: "Aoede",   // warm female
+  male: "Charon",    // deep male
 };
-
-// Model configs to try in order (first success wins)
-const ELEVENLABS_CONFIGS = [
-  { model_id: "eleven_turbo_v2_5", language_code: "he", label: "turbo-v2.5+he" },
-  { model_id: "eleven_multilingual_v2", language_code: undefined, label: "multilingual-v2" },
-] as const;
 
 // Track last failure reason for user-facing messages
 let lastTTSFailureReason = "";
@@ -28,223 +22,93 @@ let lastTTSFailureReason = "";
 function delay(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
 
 /**
- * Make a single ElevenLabs TTS request.
- * Returns audio buffer on success, null on failure.
+ * Convert raw PCM (audio/L16, 24kHz, mono) to WAV buffer.
  */
-async function elevenLabsRequest(
-  url: string,
-  apiKey: string,
-  text: string,
-  modelId: string,
-  languageCode: string | undefined,
-): Promise<Response> {
-  const body: Record<string, unknown> = {
-    text,
-    model_id: modelId,
-    voice_settings: {
-      stability: 0.45,
-      similarity_boost: 0.8,
-      style: 0.2,
-      use_speaker_boost: true,
-    },
-  };
-  if (languageCode) body.language_code = languageCode;
-
-  return fetch(url, {
-    method: "POST",
-    headers: {
-      "xi-api-key": apiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30000),
-  });
+function pcmToWav(pcmData: Buffer, sampleRate = 24000): Buffer {
+  const dataSize = pcmData.length;
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + dataSize, 4);
+  header.write("WAVE", 8);
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16);       // fmt chunk size
+  header.writeUInt16LE(1, 20);        // PCM format
+  header.writeUInt16LE(1, 22);        // mono
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(sampleRate * 2, 28); // byte rate
+  header.writeUInt16LE(2, 32);        // block align
+  header.writeUInt16LE(16, 34);       // bits per sample
+  header.write("data", 36);
+  header.writeUInt32LE(dataSize, 40);
+  return Buffer.concat([header, pcmData]);
 }
 
 /**
- * Try ElevenLabs TTS with model fallback and retry on 429.
- * Tries turbo-v2.5 with Hebrew enforcement first, then multilingual-v2 with auto-detect.
+ * Try Gemini TTS (uses GOOGLE_AI_API_KEY — same key as Gemini/Veo).
+ * Returns WAV audio buffer.
  */
-async function tryElevenLabsTTS(
+async function tryGeminiTTS(
   text: string,
   voice: "male" | "female",
 ): Promise<{ buffer: Buffer; engine: string } | null> {
-  const apiKey = process.env.ELEVEN_LABS_API_KEY;
+  const apiKey = process.env.GOOGLE_AI_API_KEY;
   if (!apiKey) {
-    console.log("ElevenLabs: ELEVEN_LABS_API_KEY not set, skipping");
-    lastTTSFailureReason = "ELEVEN_LABS_API_KEY לא הוגדר ב-Vercel";
+    console.log("Gemini TTS: GOOGLE_AI_API_KEY not set, skipping");
     return null;
   }
 
-  const voiceId = ELEVENLABS_VOICES[voice];
-  const url = `${ELEVENLABS_API_URL}/${voiceId}?output_format=mp3_44100_128`;
+  const voiceName = GEMINI_VOICES[voice];
+  console.log(`Gemini TTS: trying voice ${voiceName} (${voice})...`);
 
-  for (const config of ELEVENLABS_CONFIGS) {
-    const maxRetries = 3;
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text }] }],
+      config: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName },
+          },
+        },
+      },
+    });
 
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      if (attempt > 0) {
-        await delay(2000 * attempt);
-        console.log(`ElevenLabs [${config.label}]: Retry ${attempt}/${maxRetries}...`);
-      }
-
-      try {
-        console.log(`ElevenLabs: Trying ${config.label} (voice=${voice})...`);
-        const response = await elevenLabsRequest(url, apiKey, text, config.model_id, config.language_code);
-
-        if (response.status === 429) {
-          console.warn(`ElevenLabs [${config.label}]: Rate limited (429)`);
-          if (attempt < maxRetries - 1) continue;
-          lastTTSFailureReason = "ElevenLabs: חריגה ממגבלת בקשות (429)";
-          return null; // Rate limit applies to all models
-        }
-
-        if (response.status === 401) {
-          const errText = await response.text().catch(() => "");
-          lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
-          return null; // Auth failure = stop completely
-        }
-
-        if (!response.ok) {
-          const errText = await response.text().catch(() => "");
-          console.warn(`ElevenLabs [${config.label}] failed [${response.status}]: ${errText.substring(0, 150)}`);
-          break; // Try next model config
-        }
-
-        const audioBuffer = Buffer.from(await response.arrayBuffer());
-        if (audioBuffer.length < 200) {
-          console.warn(`ElevenLabs [${config.label}]: audio too small (${audioBuffer.length}b)`);
-          break; // Try next model
-        }
-
-        console.log(`ElevenLabs SUCCESS [${config.label}]: ${audioBuffer.length} bytes`);
-        lastTTSFailureReason = "";
-        return { buffer: audioBuffer, engine: `elevenlabs-${config.label}` };
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        console.error(`ElevenLabs [${config.label}] error:`, msg);
-        lastTTSFailureReason = `ElevenLabs: ${msg.substring(0, 150)}`;
-        break; // Try next model
-      }
+    const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+    if (!audioData?.data) {
+      console.warn("Gemini TTS: no audio data in response");
+      lastTTSFailureReason = "Gemini TTS: לא התקבל אודיו מהשרת";
+      return null;
     }
-  }
 
-  if (!lastTTSFailureReason) lastTTSFailureReason = "ElevenLabs: כל המודלים נכשלו";
-  return null;
-}
+    const pcmBuffer = Buffer.from(audioData.data, "base64");
+    if (pcmBuffer.length < 200) {
+      console.warn(`Gemini TTS: audio too small (${pcmBuffer.length}b)`);
+      lastTTSFailureReason = "Gemini TTS: אודיו קטן מדי";
+      return null;
+    }
 
-/**
- * Try ElevenLabs TTS with word-level timestamps and model fallback.
- */
-async function tryElevenLabsTTSWithTimestamps(
-  text: string,
-  voice: "male" | "female",
-): Promise<{
-  buffer: Buffer;
-  engine: string;
-  wordTimestamps: WordTimestamp[];
-} | null> {
-  const apiKey = process.env.ELEVEN_LABS_API_KEY;
-  if (!apiKey) {
-    console.log("ElevenLabs (timestamps): ELEVEN_LABS_API_KEY not set, skipping");
-    lastTTSFailureReason = "ELEVEN_LABS_API_KEY לא הוגדר ב-Vercel";
+    // Convert PCM to WAV
+    const wavBuffer = pcmToWav(pcmBuffer);
+    console.log(`Gemini TTS SUCCESS [${voiceName}]: ${wavBuffer.length} bytes`);
+    lastTTSFailureReason = "";
+    return { buffer: wavBuffer, engine: `gemini-tts-${voiceName}` };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("Gemini TTS error:", msg);
+    if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
+      lastTTSFailureReason = "Gemini TTS: חריגה ממגבלת בקשות. נסה שוב בעוד דקה.";
+    } else {
+      lastTTSFailureReason = `Gemini TTS: ${msg.substring(0, 150)}`;
+    }
     return null;
   }
-
-  const voiceId = ELEVENLABS_VOICES[voice];
-  const url = `${ELEVENLABS_API_URL}/${voiceId}/with-timestamps?output_format=mp3_44100_128`;
-
-  for (const config of ELEVENLABS_CONFIGS) {
-    const maxRetries = 3;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      if (attempt > 0) {
-        await delay(2000 * attempt);
-        console.log(`ElevenLabs timestamps [${config.label}]: Retry ${attempt}/${maxRetries}...`);
-      }
-
-      try {
-        console.log(`ElevenLabs timestamps: Trying ${config.label} (voice=${voice})...`);
-        const response = await elevenLabsRequest(url, apiKey, text, config.model_id, config.language_code);
-
-        if (response.status === 429) {
-          console.warn(`ElevenLabs timestamps [${config.label}]: Rate limited (429)`);
-          if (attempt < maxRetries - 1) continue;
-          lastTTSFailureReason = "ElevenLabs: חריגה ממגבלת בקשות (429)";
-          return null;
-        }
-
-        if (response.status === 401) {
-          const errText = await response.text().catch(() => "");
-          lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
-          return null;
-        }
-
-        if (!response.ok) {
-          const errText = await response.text().catch(() => "");
-          console.warn(`ElevenLabs timestamps [${config.label}] failed [${response.status}]: ${errText.substring(0, 150)}`);
-          break; // Try next model
-        }
-
-        const data = await response.json();
-        const audioBase64 = data.audio_base64;
-        if (!audioBase64) {
-          console.warn(`ElevenLabs timestamps [${config.label}]: no audio_base64`);
-          break;
-        }
-
-        const audioBuffer = Buffer.from(audioBase64, "base64");
-        if (audioBuffer.length < 200) {
-          console.warn(`ElevenLabs timestamps [${config.label}]: audio too small (${audioBuffer.length}b)`);
-          break;
-        }
-
-        // Parse word-level alignment
-        const wordTimestamps: WordTimestamp[] = [];
-        const alignment = data.alignment;
-        if (alignment?.characters && alignment?.character_start_times_seconds && alignment?.character_end_times_seconds) {
-          const chars: string[] = alignment.characters;
-          const starts: number[] = alignment.character_start_times_seconds;
-          const ends: number[] = alignment.character_end_times_seconds;
-
-          let currentWord = "";
-          let wordStart = 0;
-          let wordEnd = 0;
-
-          for (let i = 0; i < chars.length; i++) {
-            if (chars[i] === " " || i === chars.length - 1) {
-              if (i === chars.length - 1 && chars[i] !== " ") {
-                currentWord += chars[i];
-                wordEnd = ends[i];
-              }
-              if (currentWord.trim()) {
-                wordTimestamps.push({ word: currentWord.trim(), start: wordStart, end: wordEnd });
-              }
-              currentWord = "";
-              wordStart = i + 1 < starts.length ? starts[i + 1] : 0;
-            } else {
-              if (currentWord === "") wordStart = starts[i];
-              currentWord += chars[i];
-              wordEnd = ends[i];
-            }
-          }
-        }
-
-        console.log(`ElevenLabs timestamps SUCCESS [${config.label}]: ${audioBuffer.length}b, ${wordTimestamps.length} words`);
-        return { buffer: audioBuffer, engine: `elevenlabs-${config.label}`, wordTimestamps };
-      } catch (e) {
-        console.error(`ElevenLabs timestamps [${config.label}] error:`, e instanceof Error ? e.message : e);
-        break;
-      }
-    }
-  }
-
-  if (!lastTTSFailureReason) lastTTSFailureReason = "ElevenLabs: כל המודלים נכשלו";
-  return null;
 }
 
 /**
  * Try Google Cloud TTS with Wavenet → Standard fallback.
+ * Requires GOOGLE_TTS_API_KEY (separate from GOOGLE_AI_API_KEY).
  */
 async function tryCloudTTS(
   text: string,
@@ -346,7 +210,8 @@ export interface TTSResult {
 
 /**
  * Generate Hebrew TTS audio.
- * Pipeline: ElevenLabs (turbo-v2.5 → multilingual-v2) → Google Cloud TTS → Silence.
+ * Pipeline: Gemini TTS → Google Cloud TTS → Silence.
+ * Uses GOOGLE_AI_API_KEY (same key as Gemini/Veo — no extra cost).
  */
 export async function generateTTS(
   text: string,
@@ -357,11 +222,13 @@ export async function generateTTS(
 ): Promise<TTSResult> {
   console.log(`\n=== TTS for: "${text.substring(0, 60)}..." ===`);
 
-  const elevenResult = await tryElevenLabsTTS(text, voice);
-  if (elevenResult) {
-    return { audioBuffer: elevenResult.buffer, usedTTS: true, engine: elevenResult.engine };
+  // 1. Try Gemini TTS (free with GOOGLE_AI_API_KEY)
+  const geminiResult = await tryGeminiTTS(text, voice);
+  if (geminiResult) {
+    return { audioBuffer: geminiResult.buffer, usedTTS: true, engine: geminiResult.engine };
   }
 
+  // 2. Try Google Cloud TTS (requires separate GOOGLE_TTS_API_KEY)
   const cloudResult = await tryCloudTTS(text, voice, rate, pitch);
   if (cloudResult) {
     return { audioBuffer: cloudResult.buffer, usedTTS: true, engine: cloudResult.engine };
@@ -370,17 +237,19 @@ export async function generateTTS(
   console.warn("=== ALL TTS ENGINES FAILED - generating silence ===");
   console.warn(`Last failure reason: ${lastTTSFailureReason}`);
 
+  // 3. Fallback: silence
   const silenceBuffer = generateSilence(durationFallbackSec);
   return {
     audioBuffer: silenceBuffer,
     usedTTS: false,
     engine: "silence",
-    failureReason: lastTTSFailureReason || "כל מנועי הקריינות נכשלו",
+    failureReason: lastTTSFailureReason || "כל מנועי הקריינות נכשלו. בדוק GOOGLE_AI_API_KEY.",
   };
 }
 
 /**
  * Generate Hebrew TTS audio WITH word-level timestamps.
+ * Gemini TTS doesn't support timestamps, so falls back to regular TTS.
  */
 export async function generateTTSWithTimestamps(
   text: string,
@@ -389,18 +258,7 @@ export async function generateTTSWithTimestamps(
   pitch: number = 0,
   durationFallbackSec: number = 10,
 ): Promise<TTSResult> {
-  console.log(`\n=== TTS (with timestamps) for: "${text.substring(0, 60)}..." ===`);
-
-  const elevenResult = await tryElevenLabsTTSWithTimestamps(text, voice);
-  if (elevenResult) {
-    return {
-      audioBuffer: elevenResult.buffer,
-      usedTTS: true,
-      engine: elevenResult.engine,
-      wordTimestamps: elevenResult.wordTimestamps,
-    };
-  }
-
+  // Gemini TTS doesn't provide word-level timestamps, use regular TTS
   return generateTTS(text, voice, rate, pitch, durationFallbackSec);
 }
 
@@ -419,6 +277,6 @@ export async function generateTTSBase64(
   }
   throw new Error(
     result.failureReason ||
-      "קריינות לא זמינה - בדוק ELEVEN_LABS_API_KEY בהגדרות Vercel.",
+      "קריינות לא זמינה - בדוק GOOGLE_AI_API_KEY בהגדרות Vercel.",
   );
 }

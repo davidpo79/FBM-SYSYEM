@@ -16,8 +16,8 @@ export interface PexelsVideo {
   videoFiles: PexelsVideoFile[];
 }
 
-/** Video source: stock footage (Pexels) or AI-generated (Runway/Veo) */
-export type VideoSource = "pexels" | "runway" | "veo";
+/** Video source: stock footage (Pexels) or AI-generated (Google Veo) */
+export type VideoSource = "pexels" | "veo";
 
 /** Word-level timestamp for precise subtitle sync */
 export interface WordTimestamp {
@@ -38,9 +38,9 @@ export interface VideoScene {
   /* Clip selection (Pexels mode) */
   selectedClip?: PexelsVideo;
   clipOptions?: PexelsVideo[];
-  /* AI video clip (Runway/Veo mode) */
+  /* AI video clip (Veo mode) */
   aiClipUrl?: string;          // URL of AI-generated clip
-  aiClipTaskId?: string;       // Runway task ID (for polling)
+  aiClipTaskId?: string;       // Veo operation name (for polling)
   aiClipStatus?: "pending" | "generating" | "ready" | "failed";
   /* Word-level timestamps from TTS (for precise subtitle sync) */
   wordTimestamps?: WordTimestamp[];
@@ -59,12 +59,9 @@ export interface VoiceSettings {
   pitch: number;  // -10 – +10
 }
 
-/** ElevenLabs voice settings for cinematic quality */
-export interface ElevenLabsVoiceConfig {
-  stability: number;          // 0.0–1.0 (lower = more expressive)
-  similarity_boost: number;   // 0.0–1.0
-  style: number;              // 0.0–1.0 (adds human roughness)
-  use_speaker_boost: boolean;
+/** Gemini TTS voice options */
+export interface GeminiVoiceConfig {
+  voiceName: string;          // e.g., "Aoede", "Charon"
 }
 
 export interface VideoProject {
