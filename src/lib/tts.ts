@@ -15,6 +15,9 @@ const ELEVENLABS_VOICES = {
   male: "onwK4e9ZLuTAKqWW03F9",   // Daniel
 };
 
+// Track last failure reason for user-facing messages
+let lastTTSFailureReason = "";
+
 /**
  * Try ElevenLabs TTS (best quality, requires ELEVEN_LABS_API_KEY).
  * Uses multilingual v2 model with Hebrew language code.
@@ -26,6 +29,7 @@ async function tryElevenLabsTTS(
   const apiKey = process.env.ELEVEN_LABS_API_KEY;
   if (!apiKey) {
     console.log("ElevenLabs: ELEVEN_LABS_API_KEY not set, skipping");
+    lastTTSFailureReason = "ELEVEN_LABS_API_KEY לא הוגדר ב-Vercel";
     return null;
   }
 
@@ -59,19 +63,33 @@ async function tryElevenLabsTTS(
     if (!response.ok) {
       const errText = await response.text().catch(() => "");
       console.error(`ElevenLabs failed [${response.status}]: ${errText}`);
+
+      if (response.status === 401) {
+        lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
+      } else if (response.status === 403) {
+        lastTTSFailureReason = `ElevenLabs: אין הרשאה (403). ${errText.substring(0, 150)}`;
+      } else if (response.status === 429) {
+        lastTTSFailureReason = `ElevenLabs: חריגה ממגבלת בקשות (429)`;
+      } else {
+        lastTTSFailureReason = `ElevenLabs: שגיאה [${response.status}]: ${errText.substring(0, 150)}`;
+      }
       return null;
     }
 
     const audioBuffer = Buffer.from(await response.arrayBuffer());
     if (audioBuffer.length < 200) {
       console.warn("ElevenLabs: audio too small:", audioBuffer.length);
+      lastTTSFailureReason = "ElevenLabs: תשובה ריקה מהשרת";
       return null;
     }
 
     console.log(`ElevenLabs SUCCESS: ${audioBuffer.length} bytes`);
+    lastTTSFailureReason = "";
     return { buffer: audioBuffer, engine: "elevenlabs" };
   } catch (e) {
-    console.error("ElevenLabs error:", e instanceof Error ? e.message : e);
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("ElevenLabs error:", msg);
+    lastTTSFailureReason = `ElevenLabs: ${msg.substring(0, 150)}`;
     return null;
   }
 }
@@ -92,6 +110,7 @@ async function tryElevenLabsTTSWithTimestamps(
   const apiKey = process.env.ELEVEN_LABS_API_KEY;
   if (!apiKey) {
     console.log("ElevenLabs (timestamps): ELEVEN_LABS_API_KEY not set, skipping");
+    lastTTSFailureReason = "ELEVEN_LABS_API_KEY לא הוגדר ב-Vercel";
     return null;
   }
 
@@ -125,6 +144,13 @@ async function tryElevenLabsTTSWithTimestamps(
     if (!response.ok) {
       const errText = await response.text().catch(() => "");
       console.error(`ElevenLabs timestamps failed [${response.status}]: ${errText}`);
+      if (response.status === 401) {
+        lastTTSFailureReason = `ElevenLabs: מפתח API לא תקין (401). ${errText.substring(0, 150)}`;
+      } else if (response.status === 403) {
+        lastTTSFailureReason = `ElevenLabs: אין הרשאה (403). ${errText.substring(0, 150)}`;
+      } else {
+        lastTTSFailureReason = `ElevenLabs: שגיאה [${response.status}]: ${errText.substring(0, 150)}`;
+      }
       return null;
     }
 
@@ -289,6 +315,7 @@ export interface TTSResult {
   usedTTS: boolean;
   engine: string;
   wordTimestamps?: WordTimestamp[];
+  failureReason?: string; // Why TTS failed (for user-facing messages)
 }
 
 /**
@@ -317,10 +344,16 @@ export async function generateTTS(
   }
 
   console.warn("=== ALL TTS ENGINES FAILED - generating silence ===");
+  console.warn(`Last failure reason: ${lastTTSFailureReason}`);
 
   // 3. Fallback: silence
   const silenceBuffer = generateSilence(durationFallbackSec);
-  return { audioBuffer: silenceBuffer, usedTTS: false, engine: "silence" };
+  return {
+    audioBuffer: silenceBuffer,
+    usedTTS: false,
+    engine: "silence",
+    failureReason: lastTTSFailureReason || "כל מנועי הקריינות נכשלו",
+  };
 }
 
 /**
@@ -365,5 +398,8 @@ export async function generateTTSBase64(
   if (result.usedTTS) {
     return result.audioBuffer.toString("base64");
   }
-  throw new Error("קריינות לא זמינה - בדוק ELEVEN_LABS_API_KEY בהגדרות Vercel.");
+  throw new Error(
+    result.failureReason ||
+      "קריינות לא זמינה - בדוק ELEVEN_LABS_API_KEY בהגדרות Vercel.",
+  );
 }

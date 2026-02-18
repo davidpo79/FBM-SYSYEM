@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
     // ── Step 1: Download/generate clips + Generate TTS (parallel) ──
     const ttsEngines: string[] = [];
     let ttsAvailable = true;
+    let ttsFailureReason = "";
     const useTimestamps = source === "runway"; // Use word-level sync for AI clips
 
     const jobs = await Promise.all(
@@ -152,7 +153,10 @@ export async function POST(req: NextRequest) {
             );
 
         ttsEngines.push(ttsResult.engine);
-        if (!ttsResult.usedTTS) ttsAvailable = false;
+        if (!ttsResult.usedTTS) {
+          ttsAvailable = false;
+          if (ttsResult.failureReason) ttsFailureReason = ttsResult.failureReason;
+        }
 
         const audioPath = path.join(tmpDir, `vo-${i}.wav`);
         fs.writeFileSync(audioPath, ttsResult.audioBuffer);
@@ -242,7 +246,7 @@ export async function POST(req: NextRequest) {
       hasMusicTrack: composeResult.hasMusicTrack,
       debug,
       warning: !ttsAvailable
-        ? "הסרטון נוצר ללא קריינות. הגדר ELEVEN_LABS_API_KEY (מומלץ) או GOOGLE_TTS_API_KEY בהגדרות Vercel."
+        ? ttsFailureReason || "הסרטון נוצר ללא קריינות. הגדר ELEVEN_LABS_API_KEY (מומלץ) או GOOGLE_TTS_API_KEY בהגדרות Vercel."
         : undefined,
     });
   } catch (error) {
