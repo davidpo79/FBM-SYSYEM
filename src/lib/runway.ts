@@ -47,12 +47,12 @@ export async function startRunwayGeneration(
   aspectRatio: "16:9" | "9:16" = "9:16",
   duration: 5 | 10 = 5,
 ): Promise<string> {
-  const url = `${RUNWAY_API_BASE}/image_to_video`; // text_to_video uses same endpoint
+  const url = `${RUNWAY_API_BASE}/text_to_video`;
 
   const payload = {
     model: "gen3a_turbo",
     promptText: prompt,
-    ratio: aspectRatio === "9:16" ? "portrait" : "landscape",
+    ratio: aspectRatio === "9:16" ? "768:1280" : "1280:768",
     duration,
   };
 
