@@ -242,7 +242,7 @@ export async function POST(req: NextRequest) {
       hasMusicTrack: composeResult.hasMusicTrack,
       debug,
       warning: !ttsAvailable
-        ? "הסרטון נוצר ללא קריינות. הגדר ELEVEN_LABS_API_KEY ב-Vercel."
+        ? "הסרטון נוצר ללא קריינות. הגדר ELEVEN_LABS_API_KEY (מומלץ) או GOOGLE_TTS_API_KEY בהגדרות Vercel."
         : undefined,
     });
   } catch (error) {
