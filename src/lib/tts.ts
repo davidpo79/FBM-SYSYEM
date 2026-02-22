@@ -44,7 +44,7 @@ function pcmToWav(pcmData: Buffer, sampleRate = 24000): Buffer {
 }
 
 /**
- * Try Gemini TTS (uses GOOGLE_AI_API_KEY — same key as Gemini/Veo).
+ * Try Gemini TTS (uses GOOGLE_AI_API_KEY).
  * Returns WAV audio buffer.
  */
 async function tryGeminiTTS(
@@ -235,7 +235,7 @@ export interface TTSResult {
 /**
  * Generate Hebrew TTS audio.
  * Pipeline: Gemini TTS → Google Cloud TTS → Silence.
- * Uses GOOGLE_AI_API_KEY (same key as Gemini/Veo — no extra cost).
+ * Uses GOOGLE_AI_API_KEY (no extra cost).
  */
 export async function generateTTS(
   text: string,

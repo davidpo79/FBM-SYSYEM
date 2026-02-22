@@ -3,27 +3,25 @@ import { callAI } from "@/lib/ai";
 import { logApiCall } from "@/lib/api-log";
 
 const ADAPTATION_PROMPT = (scriptText: string, niche: string) => `
-אתה מומחה לייצור וידאו שיווקי ברמה קולנועית.
+אתה מומחה לייצור וידאו שיווקי ברמה מקצועית.
 
 משימה: המר את תסריט ה-FBM הבא לתסריט וידאו קצר של 60 שניות.
-הסרטון מורכב מקליפי B-Roll (סטוק וידאו או וידאו ג'נרטיבי AI) עם Voice Over בעברית וכתוביות.
+הסרטון מורכב מקליפי B-Roll (סטוק וידאו מ-Pexels) עם קריינות בעברית, כתוביות, ומוזיקת רקע.
 
 כללים:
 - בדיוק 10 סצנות B-Roll (קצרות ודינמיות, חיתוכים מהירים)
 - כל סצנה בדיוק 6 שניות (סה"כ = 60 שניות)
 - פורמט 9:16 (portrait / רילס)
-- לכל סצנה: searchQuery — 2-4 מילות מפתח באנגלית לחיפוש סטוק וידאו (Pexels)
+- לכל סצנה: searchQuery — 2-4 מילות מפתח באנגלית לחיפוש סטוק וידאו ב-Pexels
   * כשיש דמויות אנושיות בסצנה, הוסף "mediterranean" למילות החיפוש
   * כשאין דמויות: "business growth chart", "modern office workspace"
-- לכל סצנה: videoPromptEn — תיאור קולנועי באנגלית עבור מנוע וידאו AI (Google Veo)
-  * התיאור חייב להיות מפורט וקולנועי באנגלית טכנית
-  * לכלול: סוג שוט (close-up, wide, tracking), תאורה (volumetric, golden hour), תנועת מצלמה (push-in, dolly), טקסטורות
-  * דוגמה: "Cinematic close-up of a focused entrepreneur typing on laptop, golden hour lighting through window, shallow depth of field, lens flare, 8K quality"
-  * אל תכלול טקסט, לוגואים או watermarks בתיאור
+  * השתמש במילות חיפוש כלליות ופופולריות שיניבו תוצאות טובות ב-Pexels
 - לכל סצנה: visualDescription — תיאור ויזואלי קצר בעברית (לממשק המשתמש)
 - לכל סצנה: voiceOverText — טקסט קריינות בעברית, משפט אחד עד שניים קצרים
-  * השתמש בפיסוק מרובה (פסיקים ונקודות) כדי שהקריינות תישמע טבעית
+  * חשוב מאוד: השתמש בפיסוק מרובה (פסיקים ונקודות) כדי שהקריינות תישמע טבעית
   * הוסף עצירות טבעיות בטקסט לנשימה
+  * הטקסט ישמש גם ככתוביות על הסרטון — וודא שהוא קריא וברור
+  * התאם את אורך הטקסט ל-6 שניות של דיבור (כ-15-20 מילים לסצנה)
 - הטקסט חייב להתאים לוויזואל
 - סצנה ראשונה = Hook חזק שתופס תשומת לב
 - סצנה אחרונה = CTA ברור
@@ -54,7 +52,7 @@ ${scriptText}
       "number": 1,
       "duration": 6,
       "searchQuery": "mediterranean frustrated business owner desk",
-      "videoPromptEn": "Extreme close-up of a stressed business owner rubbing his temples at a cluttered desk, warm office lighting, shallow depth of field, cinematic color grading, slight camera push-in, photorealistic skin texture, 8K quality",
+      "videoPromptEn": "",
       "visualDescription": "בעל עסק מתוסכל ליד המחשב",
       "voiceOverText": "טקסט קריינות בעברית, עם פסיקים טבעיים.",
       "notes": "Hook — תופס תשומת לב"

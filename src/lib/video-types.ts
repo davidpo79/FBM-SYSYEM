@@ -16,8 +16,8 @@ export interface PexelsVideo {
   videoFiles: PexelsVideoFile[];
 }
 
-/** Video source: stock footage (Pexels) or AI-generated (Google Veo) */
-export type VideoSource = "pexels" | "veo";
+/** Video source: stock footage (Pexels) */
+export type VideoSource = "pexels";
 
 /** Word-level timestamp for precise subtitle sync */
 export interface WordTimestamp {
@@ -38,9 +38,9 @@ export interface VideoScene {
   /* Clip selection (Pexels mode) */
   selectedClip?: PexelsVideo;
   clipOptions?: PexelsVideo[];
-  /* AI video clip (Veo mode) */
-  aiClipUrl?: string;          // URL of AI-generated clip
-  aiClipTaskId?: string;       // Veo operation name (for polling)
+  /* AI video clip (reserved for future use) */
+  aiClipUrl?: string;
+  aiClipTaskId?: string;
   aiClipStatus?: "pending" | "generating" | "ready" | "failed";
   /* Word-level timestamps from TTS (for precise subtitle sync) */
   wordTimestamps?: WordTimestamp[];
