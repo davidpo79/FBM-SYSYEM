@@ -578,7 +578,7 @@ export default function CreativePage() {
             showCta: true,
             showOwnerProfile: true,
             ownerName: project?.user_name || "",
-            ownerTitle: selectedNiche?.name || "",
+            ownerTitle: (selectedNiche?.name || "").split(/\s*[-–—]\s*/)[0].trim(),
             syncTextStyle: true,
           },
         }));
@@ -1031,57 +1031,62 @@ export default function CreativePage() {
                           />
                         </div>
                         {creative.showOwnerProfile && (
-                          <div className="flex items-center gap-3">
-                            {creative.ownerPhoto ? (
-                              <div className="relative">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={creative.ownerPhoto}
-                                  alt=""
-                                  className="w-14 h-14 rounded-full object-cover border-2 border-[var(--gold)]"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => updateField(idx, "ownerPhoto", "")}
-                                  className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center cursor-pointer hover:bg-red-600"
-                                  title="הסר תמונה"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            ) : (
-                              <label className="w-14 h-14 rounded-full border-2 border-dashed border-[var(--card-border)] flex items-center justify-center text-[var(--text-muted)] hover:border-[var(--gold)] cursor-pointer transition-all">
-                                <span className="text-xl">📷</span>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    const reader = new FileReader();
-                                    reader.onload = () => handleUploadOwnerPhoto(reader.result as string, idx);
-                                    reader.readAsDataURL(file);
-                                  }}
-                                />
-                              </label>
-                            )}
-                            <div className="flex-1 space-y-2">
-                              <input
-                                type="text"
-                                value={creative.ownerName}
-                                onChange={(e) => updateField(idx, "ownerName", e.target.value)}
-                                placeholder="שם בעל העסק"
-                                className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
-                              />
-                              <input
-                                type="text"
-                                value={creative.ownerTitle}
-                                onChange={(e) => updateField(idx, "ownerTitle", e.target.value)}
-                                placeholder="למשל: מומחה שיווק, יועץ משכנתאות"
-                                className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
-                              />
+                          <div className="space-y-3">
+                            {/* Owner name - right aligned under toggle */}
+                            <input
+                              type="text"
+                              value={creative.ownerName}
+                              onChange={(e) => updateField(idx, "ownerName", e.target.value)}
+                              placeholder="שם בעל העסק"
+                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+                            />
+
+                            {/* Photo - centered */}
+                            <div className="flex justify-center">
+                              {creative.ownerPhoto ? (
+                                <div className="relative">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={creative.ownerPhoto}
+                                    alt=""
+                                    className="w-14 h-14 rounded-full object-cover border-2 border-[var(--gold)]"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => updateField(idx, "ownerPhoto", "")}
+                                    className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center cursor-pointer hover:bg-red-600"
+                                    title="הסר תמונה"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <label className="w-14 h-14 rounded-full border-2 border-dashed border-[var(--card-border)] flex items-center justify-center text-[var(--text-muted)] hover:border-[var(--gold)] cursor-pointer transition-all">
+                                  <span className="text-xl">📷</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const reader = new FileReader();
+                                      reader.onload = () => handleUploadOwnerPhoto(reader.result as string, idx);
+                                      reader.readAsDataURL(file);
+                                    }}
+                                  />
+                                </label>
+                              )}
                             </div>
+
+                            {/* Owner title / niche */}
+                            <input
+                              type="text"
+                              value={creative.ownerTitle}
+                              onChange={(e) => updateField(idx, "ownerTitle", e.target.value)}
+                              placeholder="תיאור קהל היעד"
+                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+                            />
                           </div>
                         )}
                       </div>
