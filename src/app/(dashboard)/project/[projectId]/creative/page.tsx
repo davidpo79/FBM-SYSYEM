@@ -611,7 +611,16 @@ export default function CreativePage() {
             showCta: true,
             showOwnerProfile: true,
             ownerName: project?.user_name || "",
-            ownerTitle: (selectedNiche?.name || "").split(/\s*[-–—]\s*/)[0].trim(),
+            ownerTitle: (() => {
+              const raw = (selectedNiche?.name || "").split(/\s*[-–—]\s*/)[0].trim();
+              // Strip ages, numbers, and filler text to keep core audience
+              const core = raw
+                .replace(/\s*(בגילא[יי]ם?\s+\d+[-–]\d+|בני\s+\d+[-–]\d+|\d+[-–]\d+)/g, "")
+                .replace(/\s*(מתמחים ב|שעוסקים ב|שמתמחים ב|העוסקים ב)/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+              return core ? `מומחה שיווק מבוסס תדר ל${core}` : "";
+            })(),
             syncTextStyle: true,
           },
         }));
