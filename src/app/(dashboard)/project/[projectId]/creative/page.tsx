@@ -210,6 +210,39 @@ function TextStylePanel({
         </div>
       </div>
 
+      {/* Text Color */}
+      <div>
+        <label className="block text-[11px] text-[var(--text-muted)] mb-1">צבע טקסט</label>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5 flex-wrap flex-1">
+            {["#FFFFFF", "#000000", "#D4A843", "#FF4444", "#22C55E", "#3B82F6", "#F59E0B", "#A855F7"].map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onChange({ ...style, color: c })}
+                className="w-7 h-7 rounded-lg cursor-pointer transition-all"
+                style={{
+                  backgroundColor: c,
+                  border: (style.color || "#FFFFFF") === c
+                    ? "2px solid var(--gold)"
+                    : "2px solid var(--card-border)",
+                  boxShadow: (style.color || "#FFFFFF") === c ? "0 0 0 1px var(--gold)" : "none",
+                }}
+                title={c}
+              />
+            ))}
+          </div>
+          <input
+            type="color"
+            value={style.color || "#FFFFFF"}
+            onChange={(e) => onChange({ ...style, color: e.target.value })}
+            className="w-7 h-7 rounded-lg cursor-pointer border border-[var(--card-border)]"
+            title="צבע מותאם"
+            style={{ padding: 0 }}
+          />
+        </div>
+      </div>
+
       {/* Preview */}
       <div
         className="p-3 rounded-lg bg-black/80 text-center overflow-hidden"
@@ -219,7 +252,7 @@ function TextStylePanel({
           fontWeight: style.fontWeight || "normal",
           fontStyle: style.fontStyle || "normal",
           textDecoration: style.textDecoration || "none",
-          color: "#fff",
+          color: style.color || "#fff",
           direction: "rtl",
           lineHeight: 1.4,
         }}

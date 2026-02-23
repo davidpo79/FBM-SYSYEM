@@ -14,6 +14,7 @@ export interface TextStyleProps {
   fontWeight?: string;
   fontStyle?: string; // "normal" | "italic"
   textDecoration?: string; // "none" | "underline"
+  color?: string; // text color override
 }
 
 interface TemplatePreviewProps {
@@ -201,7 +202,7 @@ export default function TemplatePreview({
           x={headlinePos.x}
           y={headlinePos.y}
           fontSize={headlineStyle?.fontSize ?? template.headline.fontSize}
-          color={template.headline.color}
+          color={headlineStyle?.color ?? template.headline.color}
           fontWeight={headlineStyle?.fontWeight ?? template.headline.fontWeight}
           fontFamily={headlineStyle?.fontFamily}
           fontStyle={headlineStyle?.fontStyle}
@@ -220,7 +221,7 @@ export default function TemplatePreview({
           x={subtitlePos.x}
           y={subtitlePos.y}
           fontSize={subtitleStyle?.fontSize ?? template.subtitle.fontSize}
-          color={template.subtitle.color}
+          color={subtitleStyle?.color ?? template.subtitle.color}
           fontWeight={subtitleStyle?.fontWeight ?? (template.subtitle.fontWeight || "normal")}
           fontFamily={subtitleStyle?.fontFamily}
           fontStyle={subtitleStyle?.fontStyle}

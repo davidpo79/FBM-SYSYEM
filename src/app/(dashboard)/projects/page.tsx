@@ -129,18 +129,25 @@ export default function ProjectsPage() {
   }, []);
 
   const handleDelete = useCallback(async (projectId: string) => {
-    if (!confirm("למחוק את הפרויקט?")) return;
+    if (!confirm("למחוק את הפרויקט? פעולה זו בלתי הפיכה.")) return;
 
-    const res = await fetch("/api/delete-project", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId }),
-    });
+    try {
+      const res = await fetch("/api/delete-project", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
 
-    if (res.ok) {
-      setProjects((prev) => prev.filter((p) => p.id !== projectId));
-      localStorage.removeItem(`fbm-pipeline-${projectId}`);
-      localStorage.removeItem(`album_${projectId}`);
+      if (res.ok) {
+        setProjects((prev) => prev.filter((p) => p.id !== projectId));
+        localStorage.removeItem(`fbm-pipeline-${projectId}`);
+        localStorage.removeItem(`album_${projectId}`);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "שגיאה במחיקת הפרויקט. נסה שוב.");
+      }
+    } catch {
+      alert("שגיאה במחיקת הפרויקט. נסה שוב.");
     }
   }, []);
 
