@@ -508,18 +508,6 @@ export default function QuestionnairePage() {
             className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-lg"
           />
 
-          {/* FBM marketer hint - only in client mode */}
-          {projectMode === "client" && (
-            <div className="mt-4 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-              <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
-                למשווקי FBM
-              </p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
-                בתוכנית ההכשרה של דוד, יש להשאיר את השדה הזה ריק והשאלון יותאם עבורך
-              </p>
-            </div>
-          )}
-
           {projectMode === "self" && (
             <div className="mt-4 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
               <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
