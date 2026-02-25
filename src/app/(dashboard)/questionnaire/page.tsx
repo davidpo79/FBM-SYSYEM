@@ -491,7 +491,8 @@ export default function QuestionnairePage() {
                   return;
                 }
                 setError("");
-                setFlowStage("niche");
+                // Self mode: skip niche — the system helps them find it later
+                setFlowStage(projectMode === "self" ? "modeSelect" : "niche");
               }}
               className="px-6 py-2.5 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer"
             >
@@ -670,7 +671,7 @@ export default function QuestionnairePage() {
           <div className="flex justify-start mt-4">
             <button
               type="button"
-              onClick={() => setFlowStage("niche")}
+              onClick={() => setFlowStage(projectMode === "self" ? "name" : "niche")}
               className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
             >
               הקודם ←
