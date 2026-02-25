@@ -559,7 +559,7 @@ export default function CreativePage() {
       showHeadline: true,
       showSubtitle: true,
       showCta: true,
-      showOwnerProfile: true,
+      showOwnerProfile: false,
       ownerName: "",
       ownerTitle: "",
       syncTextStyle: true,
@@ -610,7 +610,7 @@ export default function CreativePage() {
             showHeadline: true,
             showSubtitle: true,
             showCta: true,
-            showOwnerProfile: true,
+            showOwnerProfile: false,
             ownerName: project?.user_name || "",
             ownerTitle: (() => {
               if (projectMode === "client") {

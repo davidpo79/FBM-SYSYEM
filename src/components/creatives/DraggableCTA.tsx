@@ -134,6 +134,7 @@ export default function DraggableCTA({
         style={{
           right: `${pos.x}%`,
           top: `${pos.y}%`,
+          maxWidth: "85%",
           cursor: isDragging ? "grabbing" : "grab",
           outline: isDragging ? "2px dashed rgba(212,168,67,0.8)" : "none",
           outlineOffset: "4px",
@@ -154,7 +155,6 @@ export default function DraggableCTA({
             fontSize: `${fontSize}px`,
             fontWeight: "bold",
             textAlign: "center",
-            whiteSpace: "nowrap",
             boxShadow: shadow,
             direction: "rtl",
           }}

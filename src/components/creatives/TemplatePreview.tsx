@@ -55,7 +55,7 @@ export default function TemplatePreview({
   const [headlinePos, setHeadlinePos] = useState({ x: template.headline.x, y: template.headline.y });
   const [subtitlePos, setSubtitlePos] = useState({ x: template.subtitle.x, y: template.subtitle.y });
   const [ctaPos, setCtaPos] = useState({ x: template.cta.x, y: template.cta.y });
-  const [profilePos, setProfilePos] = useState({ x: 5, y: 88 });
+  const [profilePos, setProfilePos] = useState({ x: 28, y: 88 });
 
   const handleExportPng = useCallback(async () => {
     if (!canvasRef.current) return;
