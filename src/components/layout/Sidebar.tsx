@@ -65,6 +65,7 @@ export default function Sidebar({
         { href: "/admin/subscriptions", label: "מנויים ותשלומים", emoji: "\u{1F4B3}" },
         { href: "/admin/consultations", label: "שעות ייעוץ", emoji: "\u{1F4DE}" },
         { href: "/admin/analytics", label: "אנליטיקס", emoji: "\u{1F4CA}" },
+        { href: "/admin/feedback", label: "ניתוח פידבק", emoji: "\u{1F4DD}" },
         { href: "/admin/suggestions", label: "הצעות ייעול", emoji: "\u{1F4AC}", badge: newSuggestionsCount > 0 ? newSuggestionsCount : undefined },
         { href: "/admin/settings", label: "הגדרות מערכת", emoji: "\u{1F527}" },
       ]

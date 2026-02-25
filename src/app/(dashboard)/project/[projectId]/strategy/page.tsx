@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "../layout";
 import MarkdownContent from "@/components/MarkdownContent";
+import FeedbackPanel from "@/components/FeedbackPanel";
 
 function CountdownTimer({ seconds }: { seconds: number }) {
   const [remaining, setRemaining] = useState(seconds);
@@ -41,10 +42,12 @@ export default function StrategyPage() {
     setStrategyApproved,
     handleDownloadPdf,
     downloading,
+    versionHistory,
+    pushVersion,
+    restoreVersion,
   } = useProject();
 
   const [isGenerating, setIsGenerating] = useState(false);
-  const [strategyFeedback, setStrategyFeedback] = useState("");
   const [isRefining, setIsRefining] = useState(false);
   const [error, setError] = useState("");
   const generationAttempted = useRef(false);
@@ -80,22 +83,35 @@ export default function StrategyPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project, strategy]);
 
-  const handleRefineStrategy = async () => {
-    if (!strategyFeedback.trim()) return;
+  const handleRefine = async (feedback: string) => {
     setIsRefining(true);
     try {
+      // Save current version before refining
+      pushVersion("strategy", strategy);
+
       const res = await fetch("/api/refine-strategy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           currentStrategy: strategy,
-          feedback: strategyFeedback,
+          feedback,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setStrategy(json.strategy);
-      setStrategyFeedback("");
+
+      // Log feedback
+      fetch("/api/log-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project?.id,
+          stepName: "strategy",
+          feedbackType: "refine",
+          feedbackText: feedback,
+        }),
+      }).catch(() => {});
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "שגיאה בעדכון המסמך");
     } finally {
@@ -104,6 +120,17 @@ export default function StrategyPage() {
   };
 
   const handleApprove = () => {
+    // Log approval
+    fetch("/api/log-feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId: project?.id,
+        stepName: "strategy",
+        feedbackType: "approve",
+      }),
+    }).catch(() => {});
+
     setStrategyApproved(true);
     router.push(`/project/${project?.id}/niches`);
   };
@@ -141,7 +168,7 @@ export default function StrategyPage() {
   return (
     <div>
       <div className={`flex flex-col lg:flex-row gap-6${!strategyApproved ? " pb-4" : ""}`}>
-        {/* Main content - strategy document — Rule 9: max-width, more padding */}
+        {/* Main content - strategy document */}
         <div className="flex-1">
           <div className="card-static overflow-hidden animate-in">
             <div className="p-8 border-b border-[var(--card-border)]">
@@ -210,51 +237,18 @@ export default function StrategyPage() {
         </div>
       </div>
 
-      {/* Sticky approval flow - floats at bottom while scrolling */}
-      {!strategyApproved && (
-        <div
-          className="sticky bottom-0 z-20 -mx-6 lg:-mx-8 px-6 lg:px-8 py-4 mt-6"
-          style={{
-            backgroundColor: "rgba(248, 249, 252, 0.95)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            borderTop: "1px solid var(--card-border)",
-            boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.06)",
-          }}
-        >
-          <div className="max-w-4xl">
-            <h3 className="font-bold text-[var(--text-primary)] text-base mb-2">
-              האם המסמך מאפיין אותך?
-            </h3>
-            <p className="text-sm text-[var(--text-secondary)] mb-3">
-              תרצה לדייק או לשנות משהו? כתוב את ההערות שלך ונתקן את המסמך.
-            </p>
-            <textarea
-              value={strategyFeedback}
-              onChange={(e) => setStrategyFeedback(e.target.value)}
-              placeholder="לדוגמה: אני עובד בתחום כבר 10 שנים ולא 5, הניסיון שלי הוא בעיקר עם עסקים קטנים..."
-              rows={2}
-              className="w-full px-4 py-3 rounded-[10px] border border-[var(--card-border)] bg-white text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] resize-none focus:outline-none focus:ring-2 focus:ring-[var(--gold)] transition-colors text-sm"
-            />
-            <div className="flex gap-3 mt-3">
-              <button
-                onClick={handleRefineStrategy}
-                disabled={isRefining || !strategyFeedback.trim()}
-                className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-[10px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {isRefining ? "מעדכן את המסמך..." : "עדכן מסמך"}
-              </button>
-              <button
-                onClick={handleApprove}
-                disabled={isRefining}
-                className="px-5 py-2.5 bg-[var(--gold)] hover:opacity-90 text-white font-semibold rounded-[10px] transition-opacity disabled:opacity-50 cursor-pointer"
-              >
-                המסמך מדויק, אפשר להמשיך
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Feedback Panel */}
+      <FeedbackPanel
+        stepName="strategy"
+        onApprove={handleApprove}
+        onRefine={handleRefine}
+        isRefining={isRefining}
+        isApproved={strategyApproved}
+        approveLabel="המסמך מדויק, אפשר להמשיך"
+        versionCount={versionHistory.strategy.length}
+        onRestoreVersion={(idx) => restoreVersion("strategy", idx)}
+        versionTimestamps={versionHistory.strategy.map((v) => v.timestamp)}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
 import MarkdownContent from "@/components/MarkdownContent";
+import FeedbackPanel from "@/components/FeedbackPanel";
 
 function CountdownTimer({ seconds }: { seconds: number }) {
   const [remaining, setRemaining] = useState(seconds);
@@ -42,9 +43,14 @@ export default function ScriptsPage() {
     setScripts,
     handleDownloadPdf,
     downloading,
+    versionHistory,
+    pushVersion,
+    restoreVersion,
   } = useProject();
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
+  const [scriptsApproved, setScriptsApproved] = useState(false);
   const [error, setError] = useState("");
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editedScripts, setEditedScripts] = useState<Record<number, string>>({});
@@ -89,6 +95,68 @@ export default function ScriptsPage() {
     return parts.filter((p) => p.trim().length > 0);
   };
 
+  const handleRefine = async (feedback: string) => {
+    setIsRefining(true);
+    try {
+      pushVersion("scripts", scripts);
+
+      // Apply any manual edits before refining
+      const scriptParts = splitScripts(scripts);
+      const currentScripts = scriptParts.map((s, i) => editedScripts[i] ?? s).join("\n\n");
+
+      const res = await fetch("/api/refine-scripts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentScripts,
+          feedback,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setScripts(json.scripts);
+      setEditedScripts({});
+      setEditingIdx(null);
+
+      fetch("/api/log-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project?.id,
+          stepName: "scripts",
+          feedbackType: "refine",
+          feedbackText: feedback,
+        }),
+      }).catch(() => {});
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "שגיאה בעדכון התסריטים");
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
+  const handleApprove = () => {
+    // Save any manual edits
+    if (Object.keys(editedScripts).length > 0) {
+      const scriptParts = splitScripts(scripts);
+      const finalScripts = scriptParts.map((s, i) => editedScripts[i] ?? s).join("\n\n");
+      setScripts(finalScripts);
+    }
+
+    fetch("/api/log-feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId: project?.id,
+        stepName: "scripts",
+        feedbackType: "approve",
+      }),
+    }).catch(() => {});
+
+    setScriptsApproved(true);
+    router.push(`/project/${projectId}/creative`);
+  };
+
   if (error) {
     return (
       <div className="text-center py-20">
@@ -119,7 +187,10 @@ export default function ScriptsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-[var(--text-primary)]">תסריטים</h2>
+        <h2 className="text-xl font-bold text-[var(--text-primary)]">
+          תסריטים
+          {scriptsApproved && <span className="text-[var(--success)] text-base font-medium mr-2">(אושר)</span>}
+        </h2>
         <button
           onClick={() => {
             const finalScripts = scriptParts.map((s, i) => editedScripts[i] ?? s).join("\n\n");
@@ -186,6 +257,7 @@ export default function ScriptsPage() {
         })}
       </div>
 
+      {/* Back button */}
       <div className="flex gap-3 mt-6">
         <button
           onClick={() => router.push(`/project/${projectId}/pains`)}
@@ -193,13 +265,20 @@ export default function ScriptsPage() {
         >
           &larr; חזרה לניתוח כאבים
         </button>
-        <button
-          onClick={() => router.push(`/project/${projectId}/creative`)}
-          className="px-5 py-2.5 bg-[var(--gold)] text-white font-semibold rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
-        >
-          המשך לקריאייטיב
-        </button>
       </div>
+
+      {/* Feedback Panel */}
+      <FeedbackPanel
+        stepName="scripts"
+        onApprove={handleApprove}
+        onRefine={handleRefine}
+        isRefining={isRefining}
+        isApproved={scriptsApproved}
+        approveLabel="התסריטים מדויקים, המשך לקריאייטיב"
+        versionCount={versionHistory.scripts.length}
+        onRestoreVersion={(idx) => restoreVersion("scripts", idx)}
+        versionTimestamps={versionHistory.scripts.map((v) => v.timestamp)}
+      />
     </div>
   );
 }

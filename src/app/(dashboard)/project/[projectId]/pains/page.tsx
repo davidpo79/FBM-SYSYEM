@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
 import MarkdownContent from "@/components/MarkdownContent";
+import FeedbackPanel from "@/components/FeedbackPanel";
 
 function CountdownTimer({ seconds }: { seconds: number }) {
   const [remaining, setRemaining] = useState(seconds);
@@ -42,9 +43,14 @@ export default function PainsPage() {
     setPainAnalysis,
     handleDownloadPdf,
     downloading,
+    versionHistory,
+    pushVersion,
+    restoreVersion,
   } = useProject();
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
+  const [painsApproved, setPainsApproved] = useState(false);
   const [error, setError] = useState("");
   const generationAttempted = useRef(false);
 
@@ -85,6 +91,56 @@ export default function PainsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNiche, strategy, painAnalysis]);
 
+  const handleRefine = async (feedback: string) => {
+    setIsRefining(true);
+    try {
+      pushVersion("painAnalysis", painAnalysis);
+
+      const res = await fetch("/api/refine-pains", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPainAnalysis: painAnalysis,
+          feedback,
+          selectedNiche: selectedNiche?.name || "",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setPainAnalysis(json.painAnalysis);
+
+      fetch("/api/log-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project?.id,
+          stepName: "pains",
+          feedbackType: "refine",
+          feedbackText: feedback,
+        }),
+      }).catch(() => {});
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "שגיאה בעדכון ניתוח הכאבים");
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
+  const handleApprove = () => {
+    fetch("/api/log-feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId: project?.id,
+        stepName: "pains",
+        feedbackType: "approve",
+      }),
+    }).catch(() => {});
+
+    setPainsApproved(true);
+    router.push(`/project/${projectId}/scripts`);
+  };
+
   if (error) {
     return (
       <div className="text-center py-20">
@@ -117,6 +173,7 @@ export default function PainsPage() {
         <div className="p-6 border-b border-[var(--card-border)] flex items-center justify-between">
           <h2 className="text-xl font-bold text-[var(--text-primary)]">
             ניתוח כאבים - {selectedNiche?.name}
+            {painsApproved && <span className="text-[var(--success)] text-base font-medium mr-2">(אושר)</span>}
           </h2>
           <button
             onClick={() =>
@@ -137,6 +194,7 @@ export default function PainsPage() {
         </div>
       </div>
 
+      {/* Back button */}
       <div className="flex gap-3 mt-4">
         <button
           onClick={() => router.push(`/project/${projectId}/niches`)}
@@ -144,13 +202,20 @@ export default function PainsPage() {
         >
           &larr; חזרה לנישות
         </button>
-        <button
-          onClick={() => router.push(`/project/${projectId}/scripts`)}
-          className="px-5 py-2.5 bg-[var(--gold)] text-white font-semibold rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
-        >
-          המשך לתסריטים
-        </button>
       </div>
+
+      {/* Feedback Panel */}
+      <FeedbackPanel
+        stepName="pains"
+        onApprove={handleApprove}
+        onRefine={handleRefine}
+        isRefining={isRefining}
+        isApproved={painsApproved}
+        approveLabel="הניתוח מדויק, המשך לתסריטים"
+        versionCount={versionHistory.painAnalysis.length}
+        onRestoreVersion={(idx) => restoreVersion("painAnalysis", idx)}
+        versionTimestamps={versionHistory.painAnalysis.map((v) => v.timestamp)}
+      />
     </div>
   );
 }
