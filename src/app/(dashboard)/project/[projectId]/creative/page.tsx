@@ -491,6 +491,7 @@ export default function CreativePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const {
     project,
+    projectMode,
     scripts,
     selectedNiche,
     generatedImages,
@@ -612,8 +613,12 @@ export default function CreativePage() {
             showOwnerProfile: true,
             ownerName: project?.user_name || "",
             ownerTitle: (() => {
+              if (projectMode === "client") {
+                // Client mode: show the client's profession (e.g., "מאמן כושר")
+                return project?.owner_niche || "";
+              }
+              // Self mode: show "מומחה שיווק מבוסס תדר ל[target niche]"
               const raw = (selectedNiche?.name || "").split(/\s*[-–—]\s*/)[0].trim();
-              // Strip ages, numbers, and filler text to keep core audience
               const core = raw
                 .replace(/\s*(בגילא[יי]ם?\s+\d+[-–]\d+|בני\s+\d+[-–]\d+|\d+[-–]\d+)/g, "")
                 .replace(/\s*(מתמחים ב|שעוסקים ב|שמתמחים ב|העוסקים ב)/g, "")
@@ -668,7 +673,7 @@ export default function CreativePage() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scripts, selectedNiche, project, setGeneratedImages],
+    [scripts, selectedNiche, project, projectMode, setGeneratedImages],
   );
 
   /* ── Auto-create on page load for WOW effect ── */

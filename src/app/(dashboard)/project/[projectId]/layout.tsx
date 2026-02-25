@@ -10,10 +10,13 @@ import { downloadAllAsZip } from "@/lib/zip-export";
 
 /* ──────────────── types ──────────────── */
 
+export type ProjectMode = "self" | "client";
+
 export interface ProjectRow {
   id: string;
   user_name: string;
   answers_map: Record<string, string>;
+  owner_niche?: string;
   status: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pipeline_data?: Record<string, any> | null;
@@ -30,6 +33,7 @@ export interface Niche {
 
 export interface ProjectContextValue {
   project: ProjectRow | null;
+  projectMode: ProjectMode;
   loading: boolean;
   error: string;
   // Strategy
@@ -105,7 +109,7 @@ export default function ProjectLayout({
     async function load() {
       const { data, error: dbErr } = await supabase
         .from("projects")
-        .select("id, user_name, answers_map, status, pipeline_data")
+        .select("id, user_name, answers_map, owner_niche, status, pipeline_data")
         .eq("id", projectId)
         .single();
 
@@ -304,6 +308,7 @@ export default function ProjectLayout({
     <ProjectContext.Provider
       value={{
         project,
+        projectMode: (project?.answers_map?._project_mode as ProjectMode) || "client",
         loading,
         error,
         strategy,
