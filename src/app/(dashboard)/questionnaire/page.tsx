@@ -15,7 +15,7 @@ import AnswerReview from "@/components/questionnaire/AnswerReview";
 const STORAGE_KEY = "fbm_questionnaire_progress";
 
 type Mode = "manual" | "record" | "upload";
-type ProjectMode = "self" | "client";
+type ProjectMode = "self" | "client" | "owner";
 type FlowStage =
   | "projectMode"
   | "name"
@@ -415,6 +415,32 @@ export default function QuestionnairePage() {
                 </div>
               </div>
             </button>
+
+            {/* Owner mode */}
+            <button
+              type="button"
+              onClick={() => {
+                setProjectMode("owner");
+                setFlowStage("name");
+              }}
+              className={`w-full text-right p-5 rounded-xl border-2 transition-all cursor-pointer ${
+                projectMode === "owner"
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                  : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className="text-3xl">💼</div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
+                    אני בעל עסק שירות
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    אני בעל עסק ורוצה לבנות לעצמי שיווק מבוסס תדר
+                  </p>
+                </div>
+              </div>
+            </button>
           </div>
         </div>
       )}
@@ -426,15 +452,15 @@ export default function QuestionnairePage() {
           dir="rtl"
         >
           <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
-            {projectMode === "self" ? "הפרטים שלך" : "לפני שמתחילים"}
+            {projectMode === "client" ? "לפני שמתחילים" : "הפרטים שלך"}
           </span>
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2 mb-2">
-            {projectMode === "self" ? "מה השם שלך?" : "מה השם של בעל העסק?"}
+            {projectMode === "client" ? "מה השם של בעל העסק?" : "מה השם שלך?"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            {projectMode === "self"
-              ? "השם שלך ישמש לבניית מסמך האסטרטגיה האישי"
-              : "השם ישמש לבניית מסמך האסטרטגיה האישי"}
+            {projectMode === "client"
+              ? "השם ישמש לבניית מסמך האסטרטגיה האישי"
+              : "השם שלך ישמש לבניית מסמך האסטרטגיה האישי"}
           </p>
           <input
             type="text"
@@ -487,12 +513,16 @@ export default function QuestionnairePage() {
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2 mb-2">
             {projectMode === "self"
               ? "מה תחום השיווק שלך?"
-              : "מה בעל העסק עושה?"}
+              : projectMode === "owner"
+                ? "מה אתה עושה?"
+                : "מה בעל העסק עושה?"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             {projectMode === "self"
               ? "הנישה תשמש להתאמת האסטרטגיה לתחום שלך"
-              : "הנישה תשמש להתאמת השאלות לתחום הספציפי שלך"}
+              : projectMode === "owner"
+                ? "התחום שלך ישמש להתאמת כל התהליך עבורך"
+                : "הנישה תשמש להתאמת השאלות לתחום הספציפי שלך"}
           </p>
           <input
             type="text"
@@ -503,7 +533,8 @@ export default function QuestionnairePage() {
             }}
             placeholder={projectMode === "self"
               ? "למשל: מאמני כושר, יועצי משכנתאות, עורכי דין..."
-              : "למשל: מאמן כושר, יועצת משכנתאות, קוסמטיקאית, עורך דין..."}
+              : "למשל: מאמן כושר, יועצת משכנתאות, קוסמטיקאית, עורך דין..."
+            }
             dir="rtl"
             className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-lg"
           />
@@ -516,13 +547,23 @@ export default function QuestionnairePage() {
             </div>
           )}
 
+          {projectMode === "owner" && (
+            <div className="mt-4 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+              <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
+                הזן את התחום שלך — מה העסק שלך עושה. למשל: מאמן כושר, יועץ משכנתאות, מעצבת פנים
+              </p>
+            </div>
+          )}
+
           {ownerNiche.trim() && (
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 flex items-center gap-1">
               <span>💡</span>
               <span>
                 {projectMode === "self"
                   ? `האסטרטגיה תותאם למכירת שירותי שיווק ל${ownerNiche.trim()}`
-                  : `השאלון יותאם ל${ownerNiche.trim()} — מלא את התשובות כאילו בעל העסק מדבר`}
+                  : projectMode === "owner"
+                    ? `התהליך יותאם עבורך כ${ownerNiche.trim()}`
+                    : `השאלון יותאם ל${ownerNiche.trim()} — מלא את התשובות כאילו בעל העסק מדבר`}
               </span>
             </p>
           )}

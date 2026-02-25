@@ -613,8 +613,8 @@ export default function CreativePage() {
             showOwnerProfile: false,
             ownerName: project?.user_name || "",
             ownerTitle: (() => {
-              if (projectMode === "client") {
-                // Client mode: show the client's profession (e.g., "מאמן כושר")
+              if (projectMode === "client" || projectMode === "owner") {
+                // Client/Owner mode: show the profession (e.g., "מאמן כושר")
                 return project?.owner_niche || "";
               }
               // Self mode: show "מומחה שיווק מבוסס תדר ל[target niche]"

@@ -10,7 +10,7 @@ import { downloadAllAsZip } from "@/lib/zip-export";
 
 /* ──────────────── types ──────────────── */
 
-export type ProjectMode = "self" | "client";
+export type ProjectMode = "self" | "client" | "owner";
 
 export interface ProjectRow {
   id: string;
