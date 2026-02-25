@@ -682,7 +682,10 @@ export default function CreativePage() {
     const parts = splitScripts(scripts);
     if (parts.length > 0 && !scriptCreatives[0]) {
       autoCreatedRef.current = true;
-      handleCreateCreative(0, true);
+      // Silently handle failure — don't show error banner on auto-create
+      handleCreateCreative(0, true).catch(() => {
+        setCreativeError("");
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scripts]);
