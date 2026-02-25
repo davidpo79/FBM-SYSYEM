@@ -167,9 +167,9 @@ export default function TemplatePreview({
         className="relative overflow-hidden rounded-2xl border-2 border-[var(--card-border)] mx-auto"
         style={{
           aspectRatio: format === "story" ? "9 / 16" : "1 / 1",
-          width: "100%",
-          maxWidth: format === "story" ? "450px" : "500px",
-          maxHeight: "70vh",
+          ...(format === "story"
+            ? { height: "70vh", maxHeight: "700px", width: "auto", maxWidth: "100%" }
+            : { width: "100%", maxWidth: "500px", maxHeight: "70vh" }),
         }}
       >
         {/* Layer 1: Background — custom image or template gradient */}
