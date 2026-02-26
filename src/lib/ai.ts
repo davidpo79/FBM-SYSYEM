@@ -9,25 +9,46 @@ function getClient(): GoogleGenAI {
   return _ai;
 }
 
+const MAX_RETRIES = 2;
+const RETRY_DELAYS = [2000, 4000]; // ms between retries
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function callAI(
   systemPrompt: string,
   userMessage: string,
   _maxTokens = 8000,
   options?: { jsonMode?: boolean },
 ): Promise<string> {
-  const response = await getClient().models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: userMessage,
-    config: {
-      temperature: 0.7,
-      ...(systemPrompt ? { systemInstruction: systemPrompt } : {}),
-      ...(options?.jsonMode ? { responseMimeType: "application/json" } : {}),
-    },
-  });
+  let lastError: unknown;
 
-  const text = response.text;
-  if (!text) {
-    throw new Error("Empty response from Gemini");
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await getClient().models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: userMessage,
+        config: {
+          temperature: 0.7,
+          ...(systemPrompt ? { systemInstruction: systemPrompt } : {}),
+          ...(options?.jsonMode ? { responseMimeType: "application/json" } : {}),
+        },
+      });
+
+      const text = response.text;
+      if (!text) {
+        throw new Error("Empty response from Gemini");
+      }
+      return text;
+    } catch (e) {
+      lastError = e;
+      if (attempt < MAX_RETRIES) {
+        console.warn(`callAI attempt ${attempt + 1} failed, retrying in ${RETRY_DELAYS[attempt]}ms...`, e instanceof Error ? e.message : e);
+        await sleep(RETRY_DELAYS[attempt]);
+      }
+    }
   }
-  return text;
+
+  throw lastError;
 }

@@ -424,35 +424,27 @@ export default function NichesPage() {
     }
   }, [strategyApproved, strategy, router, projectId]);
 
-  // Generate niches (with automatic retry on transient failure)
+  // Generate niches (callAI handles retries automatically)
   useEffect(() => {
     if (!strategy || !strategyApproved || niches.length > 0 || generationAttempted.current) return;
     generationAttempted.current = true;
     setIsGenerating(true);
 
     (async () => {
-      let lastError: unknown;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const res = await fetch("/api/generate-niches", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ strategyDocument: strategy }),
-          });
-          const json = await res.json();
-          if (!res.ok) throw new Error(json.error);
-          setNiches(json.niches ?? []);
-          return; // success — exit
-        } catch (e: unknown) {
-          lastError = e;
-          if (attempt === 0) {
-            // Wait 2s before retry
-            await new Promise((r) => setTimeout(r, 2000));
-          }
-        }
+      try {
+        const res = await fetch("/api/generate-niches", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ strategyDocument: strategy }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error);
+        setNiches(json.niches ?? []);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "שגיאה בזיהוי נישות");
+      } finally {
+        setIsGenerating(false);
       }
-      setError(lastError instanceof Error ? lastError.message : "שגיאה בזיהוי נישות");
-      setIsGenerating(false);
     })();
   }, [strategy, strategyApproved, niches.length, setNiches]);
 
@@ -462,27 +454,20 @@ export default function NichesPage() {
     setIsGenerating(true);
 
     (async () => {
-      let lastError: unknown;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const res = await fetch("/api/generate-niches", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ strategyDocument: strategy }),
-          });
-          const json = await res.json();
-          if (!res.ok) throw new Error(json.error);
-          setNiches(json.niches ?? []);
-          return;
-        } catch (e: unknown) {
-          lastError = e;
-          if (attempt === 0) {
-            await new Promise((r) => setTimeout(r, 2000));
-          }
-        }
+      try {
+        const res = await fetch("/api/generate-niches", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ strategyDocument: strategy }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error);
+        setNiches(json.niches ?? []);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "שגיאה בזיהוי נישות");
+      } finally {
+        setIsGenerating(false);
       }
-      setError(lastError instanceof Error ? lastError.message : "שגיאה בזיהוי נישות");
-      setIsGenerating(false);
     })();
   };
 
