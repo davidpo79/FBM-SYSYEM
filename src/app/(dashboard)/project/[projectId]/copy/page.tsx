@@ -6,33 +6,8 @@ import { useProject } from "../layout";
 import FeedbackPanel from "@/components/FeedbackPanel";
 import { useToast } from "@/components/Toast";
 import StepCelebration from "@/components/StepCelebration";
-
-/* ── Countdown Timer ── */
-function CountdownTimer({ seconds }: { seconds: number }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const startRef = useRef(Date.now());
-
-  useEffect(() => {
-    startRef.current = Date.now();
-    setRemaining(seconds);
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
-      setRemaining(Math.max(0, seconds - elapsed));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [seconds]);
-
-  return (
-    <div className="inline-flex flex-col items-center">
-      <div className="text-4xl font-bold text-[var(--gold)] tabular-nums">
-        {remaining > 0 ? remaining : "..."}
-      </div>
-      <span className="text-sm text-[var(--text-muted)] mt-1">
-        {remaining > 0 ? "שניות לסיום המשוער" : "עוד רגע..."}
-      </span>
-    </div>
-  );
-}
+import StepProgress from "@/components/ui/StepProgress";
+import Button from "@/components/ui/Button";
 
 /* ── Chatbot result type ── */
 interface ChatbotResult {
@@ -242,10 +217,11 @@ export default function CopyPage() {
               {/* ── State: GENERATING ── */}
               {isGenerating && (
                 <div className="p-8 text-center">
-                  <CountdownTimer seconds={8} />
-                  <p className="text-sm text-[var(--text-muted)] mt-3">
-                    FBM Studio כותב קופי מותאם לתסריט...
-                  </p>
+                  <p className="text-sm font-semibold text-[var(--text-primary)] mb-4">כותב קופי מותאם...</p>
+                  <StepProgress
+                    steps={["מנתח תסריט", "כותב קופי", "מסיים"]}
+                    estimatedSeconds={8}
+                  />
                   <div className="max-w-sm mx-auto mt-5 p-4 rounded-xl text-right" style={{ background: "var(--gold-soft)", border: "1px solid rgba(212, 168, 67, 0.2)" }} dir="rtl">
                     <p className="text-[10px] font-bold text-[var(--gold)] mb-1">שיטת FBM</p>
                     <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -426,10 +402,11 @@ export default function CopyPage() {
         {/* Loading state */}
         {chatbotGenerating && (
           <div className="p-8 text-center card-static rounded-2xl mb-4">
-            <CountdownTimer seconds={5} />
-            <p className="text-sm text-[var(--text-muted)] mt-3">
-              FBM Studio בונה צ&apos;אטבוט מותאם לנישה...
-            </p>
+            <p className="text-sm font-semibold text-[var(--text-primary)] mb-4">בונה צ&apos;אטבוט מותאם...</p>
+            <StepProgress
+              steps={["מנתח נישה", "בונה תסריט צ'אט", "מסיים"]}
+              estimatedSeconds={5}
+            />
           </div>
         )}
 

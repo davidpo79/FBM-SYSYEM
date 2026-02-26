@@ -4,6 +4,30 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { PLAN_LABELS } from "@/lib/plan-limits";
+import {
+  LayoutDashboard,
+  FolderOpen,
+  Target,
+  Search,
+  HeartCrack,
+  FileText,
+  Palette,
+  Video,
+  ClipboardList,
+  Camera,
+  BotMessageSquare,
+  Lightbulb,
+  Settings,
+  Shield,
+  GraduationCap,
+  CreditCard,
+  Phone,
+  BarChart3,
+  MessageSquareText,
+  MessageCircle,
+  Wrench,
+  LogOut,
+} from "lucide-react";
 
 interface SidebarProps {
   userEmail: string;
@@ -17,6 +41,17 @@ interface SidebarProps {
   currentPlan?: string;
   onLogout: () => void;
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type NavItem = {
+  href: string;
+  label: string;
+  icon: any;
+  badge?: number | string;
+  isExpert?: boolean;
+  isSuggest?: boolean;
+  disabled?: boolean;
+};
 
 export default function Sidebar({
   userEmail,
@@ -34,44 +69,117 @@ export default function Sidebar({
 
   const isActive = (href: string) => pathname === href;
 
-  const mainNav = [
-    { href: "/dashboard", label: "דשבורד", emoji: "\u{1F3E0}" },
-    { href: "/projects", label: "הפרויקטים שלי", emoji: "\u{1F4C1}", badge: projectCount > 0 ? projectCount : undefined },
+  const mainNav: NavItem[] = [
+    { href: "/dashboard", label: "דשבורד", icon: LayoutDashboard },
+    { href: "/projects", label: "הפרויקטים שלי", icon: FolderOpen, badge: projectCount > 0 ? projectCount : undefined },
   ];
 
-  const fbmNav = projectId
+  const fbmNav: NavItem[] = projectId
     ? [
-        { href: `/project/${projectId}/strategy`, label: "אסטרטגיית FBM", emoji: "\u{1F3AF}" },
-        { href: `/project/${projectId}/niches`, label: "מחקר נישות", emoji: "\u{1F50D}" },
-        { href: `/project/${projectId}/pains`, label: "ניתוח כאבים", emoji: "\u{1F494}" },
-        { href: `/project/${projectId}/scripts`, label: "תסריטים", emoji: "\u{1F4DD}" },
-        { href: `/project/${projectId}/creative`, label: "קריאייטיב", emoji: "\u{1F3A8}" },
-        { href: `/project/${projectId}/video-creator`, label: "יצירת וידאו", emoji: "\u{1F3AC}" },
-        { href: `/project/${projectId}/copy`, label: "קופי", emoji: "\u{1F4CB}" },
-        { href: `/project/${projectId}/album`, label: "אלבום וסיכום", emoji: "\u{1F4F8}", badge: albumCount > 0 ? albumCount : undefined },
+        { href: `/project/${projectId}/strategy`, label: "אסטרטגיית FBM", icon: Target },
+        { href: `/project/${projectId}/niches`, label: "מחקר נישות", icon: Search },
+        { href: `/project/${projectId}/pains`, label: "ניתוח כאבים", icon: HeartCrack },
+        { href: `/project/${projectId}/scripts`, label: "תסריטים", icon: FileText },
+        { href: `/project/${projectId}/creative`, label: "קריאייטיב", icon: Palette },
+        { href: `/project/${projectId}/video-creator`, label: "יצירת וידאו", icon: Video },
+        { href: `/project/${projectId}/copy`, label: "קופי", icon: ClipboardList },
+        { href: `/project/${projectId}/album`, label: "אלבום וסיכום", icon: Camera, badge: albumCount > 0 ? albumCount : undefined },
       ]
     : [];
 
-  const toolsNav = [
-    { href: "#expert", label: "מומחה FBM", emoji: "\u{1F916}", badge: "●", disabled: false, isExpert: true },
-    { href: "#suggest", label: "הצעה לייעול", emoji: "\u{1F4A1}", disabled: false, isSuggest: true },
-    { href: "/settings", label: "הגדרות", emoji: "\u2699\uFE0F", disabled: false },
+  const toolsNav: NavItem[] = [
+    { href: "#expert", label: "מומחה FBM", icon: BotMessageSquare, badge: "●", isExpert: true },
+    { href: "#suggest", label: "הצעה לייעול", icon: Lightbulb, isSuggest: true },
+    { href: "/settings", label: "הגדרות", icon: Settings },
   ];
 
-  const adminNav = isAdmin
+  const adminNav: NavItem[] = isAdmin
     ? [
-        { href: "/admin", label: "דשבורד אדמין", emoji: "\u{1F6E1}\uFE0F" },
-        { href: "/admin/students", label: "ניהול תלמידים", emoji: "\u{1F393}" },
-        { href: "/admin/subscriptions", label: "מנויים ותשלומים", emoji: "\u{1F4B3}" },
-        { href: "/admin/consultations", label: "שעות ייעוץ", emoji: "\u{1F4DE}" },
-        { href: "/admin/analytics", label: "אנליטיקס", emoji: "\u{1F4CA}" },
-        { href: "/admin/feedback", label: "ניתוח פידבק", emoji: "\u{1F4DD}" },
-        { href: "/admin/suggestions", label: "הצעות ייעול", emoji: "\u{1F4AC}", badge: newSuggestionsCount > 0 ? newSuggestionsCount : undefined },
-        { href: "/admin/settings", label: "הגדרות מערכת", emoji: "\u{1F527}" },
+        { href: "/admin", label: "דשבורד אדמין", icon: Shield },
+        { href: "/admin/students", label: "ניהול תלמידים", icon: GraduationCap },
+        { href: "/admin/subscriptions", label: "מנויים ותשלומים", icon: CreditCard },
+        { href: "/admin/consultations", label: "שעות ייעוץ", icon: Phone },
+        { href: "/admin/analytics", label: "אנליטיקס", icon: BarChart3 },
+        { href: "/admin/feedback", label: "ניתוח פידבק", icon: MessageSquareText },
+        { href: "/admin/suggestions", label: "הצעות ייעול", icon: MessageCircle, badge: newSuggestionsCount > 0 ? newSuggestionsCount : undefined },
+        { href: "/admin/settings", label: "הגדרות מערכת", icon: Wrench },
       ]
     : [];
 
   const displayName = userName || userEmail?.split("@")[0] || "";
+
+  const renderNavItem = (item: NavItem) => {
+    const Icon = item.icon;
+    const active = isActive(item.href);
+
+    if (item.isExpert) {
+      return (
+        <button
+          key={item.label}
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("toggle-fbm-expert"))}
+          className="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer"
+          style={{ color: "#9DA3B4", transition: "all 0.2s ease" }}
+        >
+          <Icon size={18} strokeWidth={1.8} />
+          <span className="flex-1 text-right">{item.label}</span>
+          <span className="text-[10px]" style={{ color: "#22C55E" }}>●</span>
+        </button>
+      );
+    }
+
+    if (item.isSuggest) {
+      return (
+        <button
+          key={item.label}
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("toggle-suggest-improvement"))}
+          className="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer"
+          style={{ color: "#9DA3B4", transition: "all 0.2s ease" }}
+        >
+          <Icon size={18} strokeWidth={1.8} />
+          <span className="flex-1 text-right">{item.label}</span>
+        </button>
+      );
+    }
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className="sidebar-nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm relative"
+        style={{
+          transition: "all 0.2s ease",
+          ...(active
+            ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 }
+            : { color: "#9DA3B4" }),
+        }}
+      >
+        {active && (
+          <span
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-l"
+            style={{ backgroundColor: "#D4A843", boxShadow: "0 0 8px rgba(212, 168, 67, 0.4)" }}
+          />
+        )}
+        <Icon size={18} strokeWidth={1.8} style={active ? { color: "#D4A843" } : undefined} />
+        <span className="flex-1">{item.label}</span>
+        {item.badge !== undefined && typeof item.badge === "number" && (
+          <span
+            className="text-[10px] min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-bold"
+            style={
+              adminNav.some((a) => a.href === item.href)
+                ? { backgroundColor: "rgba(239, 68, 68, 0.2)", color: "#EF4444" }
+                : fbmNav.some((f) => f.href === item.href)
+                  ? { backgroundColor: "rgba(212, 168, 67, 0.2)", color: "#D4A843" }
+                  : { backgroundColor: "#1A1D2A", color: "#9DA3B4" }
+            }
+          >
+            {item.badge}
+          </span>
+        )}
+      </Link>
+    );
+  };
 
   return (
     <aside
@@ -79,7 +187,7 @@ export default function Sidebar({
       className="fixed top-0 right-0 h-screen w-[260px] border-l flex-col hidden lg:flex z-50"
       dir="rtl"
     >
-      {/* Logo header — vertical layout */}
+      {/* Logo header */}
       <div className="px-5 pt-5 pb-4 flex flex-col items-center gap-2 mb-1">
         <Image src="/logo-fbm.png" alt="FBM" width={80} height={80} className="rounded" />
         <div className="flex items-center gap-2">
@@ -97,10 +205,9 @@ export default function Sidebar({
           <span className="font-bold" style={{ color: "#D4A843" }}>M</span>arketing
         </p>
       </div>
-      {/* Gradient separator line */}
       <div className="mx-4 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
 
-      {/* Project selector (if on project page) */}
+      {/* Project selector */}
       {projectId && (
         <div className="px-4 py-3" style={{ borderBottom: "1px solid #2A2D3A" }}>
           <div
@@ -122,111 +229,23 @@ export default function Sidebar({
           <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>
             ראשי
           </p>
-          <div className="space-y-1">
-            {mainNav.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm relative"
-                style={{
-                  transition: "all 0.2s ease",
-                  ...(isActive(item.href)
-                    ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 }
-                    : { color: "#9DA3B4" }),
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive(item.href)) {
-                    e.currentTarget.style.backgroundColor = "#1A1D2A";
-                    e.currentTarget.style.transform = "scale(1.01)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive(item.href)) {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.transform = "scale(1)";
-                  }
-                }}
-              >
-                {isActive(item.href) && (
-                  <span
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-l"
-                    style={{ backgroundColor: "#D4A843", boxShadow: "0 0 8px rgba(212, 168, 67, 0.4)" }}
-                  />
-                )}
-                <span className="text-base">{item.emoji}</span>
-                <span className="flex-1">{item.label}</span>
-                {item.badge !== undefined && (
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: "#1A1D2A", color: "#9DA3B4" }}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            ))}
-          </div>
+          <div className="space-y-1">{mainNav.map(renderNavItem)}</div>
         </div>
 
-        {/* Divider */}
         {fbmNav.length > 0 && (
           <div className="mx-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
         )}
 
-        {/* FBM Process section */}
+        {/* FBM Pipeline */}
         {fbmNav.length > 0 && (
           <div>
             <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>
               תהליך FBM
             </p>
-            <div className="space-y-1">
-              {fbmNav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm relative"
-                  style={{
-                    transition: "all 0.2s ease",
-                    ...(isActive(item.href)
-                      ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 }
-                      : { color: "#9DA3B4" }),
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive(item.href)) {
-                      e.currentTarget.style.backgroundColor = "#1A1D2A";
-                      e.currentTarget.style.transform = "scale(1.01)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive(item.href)) {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                      e.currentTarget.style.transform = "scale(1)";
-                    }
-                  }}
-                >
-                  {isActive(item.href) && (
-                    <span
-                      className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-l"
-                      style={{ backgroundColor: "#D4A843", boxShadow: "0 0 8px rgba(212, 168, 67, 0.4)" }}
-                    />
-                  )}
-                  <span className="text-base">{item.emoji}</span>
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge !== undefined && (
-                    <span
-                      className="text-[10px] min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-bold"
-                      style={{ backgroundColor: "rgba(212, 168, 67, 0.2)", color: "#D4A843" }}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              ))}
-            </div>
+            <div className="space-y-1">{fbmNav.map(renderNavItem)}</div>
           </div>
         )}
 
-        {/* Divider */}
         <div className="mx-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
 
         {/* Tools section */}
@@ -234,83 +253,7 @@ export default function Sidebar({
           <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>
             כלים
           </p>
-          <div className="space-y-1">
-            {toolsNav.map((item) =>
-              item.isExpert ? (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent("toggle-fbm-expert"))}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer"
-                  style={{ color: "#9DA3B4", transition: "all 0.2s ease" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#1A1D2A";
-                    e.currentTarget.style.transform = "scale(1.01)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.transform = "scale(1)";
-                  }}
-                >
-                  <span className="text-base">{item.emoji}</span>
-                  <span className="flex-1 text-right">{item.label}</span>
-                  <span className="text-[10px]" style={{ color: "#22C55E" }}>●</span>
-                </button>
-              ) : ("isSuggest" in item && item.isSuggest) ? (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent("toggle-suggest-improvement"))}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer"
-                  style={{ color: "#9DA3B4", transition: "all 0.2s ease" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#1A1D2A";
-                    e.currentTarget.style.transform = "scale(1.01)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.transform = "scale(1)";
-                  }}
-                >
-                  <span className="text-base">{item.emoji}</span>
-                  <span className="flex-1 text-right">{item.label}</span>
-                </button>
-              ) : (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm relative"
-                  style={{
-                    transition: "all 0.2s ease",
-                    ...(isActive(item.href)
-                      ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 }
-                      : { color: "#9DA3B4" }),
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive(item.href)) {
-                      e.currentTarget.style.backgroundColor = "#1A1D2A";
-                      e.currentTarget.style.transform = "scale(1.01)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive(item.href)) {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                      e.currentTarget.style.transform = "scale(1)";
-                    }
-                  }}
-                >
-                  {isActive(item.href) && (
-                    <span
-                      className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-l"
-                      style={{ backgroundColor: "#D4A843", boxShadow: "0 0 8px rgba(212, 168, 67, 0.4)" }}
-                    />
-                  )}
-                  <span className="text-base">{item.emoji}</span>
-                  <span className="flex-1">{item.label}</span>
-                </Link>
-              ),
-            )}
-          </div>
+          <div className="space-y-1">{toolsNav.map(renderNavItem)}</div>
         </div>
 
         {/* Admin section */}
@@ -321,56 +264,13 @@ export default function Sidebar({
               <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#D4A843" }}>
                 אדמין
               </p>
-              <div className="space-y-1">
-                {adminNav.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm relative"
-                    style={{
-                      transition: "all 0.2s ease",
-                      ...(isActive(item.href)
-                        ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 }
-                        : { color: "#9DA3B4" }),
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive(item.href)) {
-                        e.currentTarget.style.backgroundColor = "#1A1D2A";
-                        e.currentTarget.style.transform = "scale(1.01)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive(item.href)) {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                        e.currentTarget.style.transform = "scale(1)";
-                      }
-                    }}
-                  >
-                    {isActive(item.href) && (
-                      <span
-                        className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-l"
-                        style={{ backgroundColor: "#D4A843", boxShadow: "0 0 8px rgba(212, 168, 67, 0.4)" }}
-                      />
-                    )}
-                    <span className="text-base">{item.emoji}</span>
-                    <span className="flex-1">{item.label}</span>
-                    {item.badge !== undefined && (
-                      <span
-                        className="text-[10px] min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-bold animate-pulse"
-                        style={{ backgroundColor: "rgba(239, 68, 68, 0.2)", color: "#EF4444" }}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                ))}
-              </div>
+              <div className="space-y-1">{adminNav.map(renderNavItem)}</div>
             </div>
           </>
         )}
       </nav>
 
-      {/* User profile at bottom — Rule 6: gradient border-top */}
+      {/* User profile at bottom */}
       <div className="px-3 py-4">
         <div className="h-px mb-3 mx-1" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
         <div className="flex items-center gap-3 px-3 py-2">
@@ -388,17 +288,13 @@ export default function Sidebar({
           </div>
           <button
             onClick={onLogout}
-            className="cursor-pointer"
+            className="sidebar-nav-item cursor-pointer p-1 rounded"
             style={{ color: "#9DA3B4", transition: "all 0.2s ease" }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "#FFFFFF"; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = "#9DA3B4"; }}
             title="יציאה"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
+            <LogOut size={16} strokeWidth={2} />
           </button>
         </div>
       </div>

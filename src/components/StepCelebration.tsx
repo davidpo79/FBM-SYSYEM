@@ -1,18 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Button from "@/components/ui/Button";
 
 interface StepCelebrationProps {
-  /** Step name for display */
   stepLabel: string;
-  /** Subtitle message */
   subtitle: string;
-  /** Next step label */
   nextStepLabel: string;
-  /** Called when user clicks continue */
   onContinue: () => void;
-  /** Auto-continue after N ms (0 = disabled) */
   autoAdvanceMs?: number;
+  /** Optional summary of what was achieved, e.g. "מסמך אסטרטגיה עם 450 מילים" */
+  summary?: string;
 }
 
 const CONFETTI_COLORS = ["#D4A843", "#22C55E", "#3B82F6", "#F59E0B", "#EC4899", "#8B5CF6"];
@@ -37,7 +35,8 @@ export default function StepCelebration({
   subtitle,
   nextStepLabel,
   onContinue,
-  autoAdvanceMs = 3000,
+  autoAdvanceMs = 5000,
+  summary,
 }: StepCelebrationProps) {
   const [show, setShow] = useState(true);
   const [countdown, setCountdown] = useState(Math.ceil(autoAdvanceMs / 1000));
@@ -94,16 +93,22 @@ export default function StepCelebration({
         <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
           {stepLabel} הושלם!
         </h2>
-        <p className="text-[var(--text-secondary)] mb-6">
+        <p className="text-[var(--text-secondary)] mb-2">
           {subtitle}
         </p>
 
-        <button
-          onClick={() => { setShow(false); setTimeout(onContinue, 100); }}
-          className="btn-gold text-base !px-8 !py-3"
-        >
+        {/* Summary */}
+        {summary && (
+          <p className="text-xs text-[var(--text-muted)] bg-gray-50 rounded-lg py-2 px-4 mb-5 inline-block">
+            {summary}
+          </p>
+        )}
+
+        {!summary && <div className="mb-4" />}
+
+        <Button variant="primary" size="lg" onClick={() => { setShow(false); setTimeout(onContinue, 100); }}>
           {nextStepLabel}
-        </button>
+        </Button>
 
         {autoAdvanceMs > 0 && countdown > 0 && (
           <p className="text-xs text-[var(--text-muted)] mt-3">

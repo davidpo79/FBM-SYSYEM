@@ -7,32 +7,8 @@ import MarkdownContent from "@/components/MarkdownContent";
 import FeedbackPanel from "@/components/FeedbackPanel";
 import { useToast } from "@/components/Toast";
 import StepCelebration from "@/components/StepCelebration";
-
-function CountdownTimer({ seconds }: { seconds: number }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const startRef = useRef(Date.now());
-
-  useEffect(() => {
-    startRef.current = Date.now();
-    setRemaining(seconds);
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
-      setRemaining(Math.max(0, seconds - elapsed));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [seconds]);
-
-  return (
-    <div className="inline-flex flex-col items-center">
-      <div className="text-4xl font-bold text-[var(--gold)] tabular-nums">
-        {remaining > 0 ? remaining : "..."}
-      </div>
-      <span className="text-sm text-[var(--text-muted)] mt-1">
-        {remaining > 0 ? "שניות לסיום המשוער" : "עוד רגע..."}
-      </span>
-    </div>
-  );
-}
+import StepProgress from "@/components/ui/StepProgress";
+import Button from "@/components/ui/Button";
 
 export default function StrategyPage() {
   const router = useRouter();
@@ -145,12 +121,9 @@ export default function StrategyPage() {
       <div className="text-center py-20">
         <h2 className="text-xl font-bold text-red-600 mb-2">שגיאה</h2>
         <p className="text-[var(--text-secondary)] mb-4">{error}</p>
-        <button
-          onClick={() => { generationAttempted.current = false; generateStrategy(); }}
-          className="px-5 py-2.5 bg-[var(--gold)] hover:opacity-90 text-white font-semibold rounded-[10px] transition-opacity cursor-pointer"
-        >
+        <Button variant="primary" onClick={() => { generationAttempted.current = false; generateStrategy(); }}>
           נסה שוב
-        </button>
+        </Button>
       </div>
     );
   }
@@ -159,13 +132,13 @@ export default function StrategyPage() {
   if (!strategy) {
     return (
       <div className="text-center py-20">
-        <CountdownTimer seconds={30} />
-        <h2 className="text-xl font-bold mt-4 text-[var(--text-primary)]">
+        <h2 className="text-xl font-bold mb-6 text-[var(--text-primary)]">
           יוצר אסטרטגיית FBM...
         </h2>
-        <p className="text-[var(--text-muted)] mt-2">
-          FBM Studio מנתח את התשובות שלך ובונה מסמך אסטרטגיה מותאם אישית
-        </p>
+        <StepProgress
+          steps={["מנתח את התשובות שלך", "בונה מסמך אסטרטגיה", "מסיים עיצוב"]}
+          estimatedSeconds={30}
+        />
         <div className="max-w-md mx-auto mt-8 p-5 rounded-2xl text-right" style={{ background: "var(--gold-soft)", border: "1px solid rgba(212, 168, 67, 0.2)" }} dir="rtl">
           <p className="text-xs font-bold text-[var(--gold)] mb-1.5">שיטת FBM</p>
           <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
@@ -268,6 +241,7 @@ export default function StrategyPage() {
           subtitle="מסמך האסטרטגיה אושר — ממשיכים לבחירת נישות!"
           nextStepLabel="המשך לנישות"
           onContinue={() => router.push(`/project/${project?.id}/niches`)}
+          summary={strategy ? `מסמך אסטרטגיה עם ${strategy.split(/\s+/).length.toLocaleString()} מילים` : undefined}
         />
       )}
     </div>

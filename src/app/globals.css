@@ -111,26 +111,29 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 0 20px var(--gold-glow), 0 0 40px rgba(212, 168, 67, 0.1);
 }
 
-/* ──────────────── Rule 1: Glass Cards ──────────────── */
+/* ──────────────── Rule 1: Card Hierarchy (3 levels) ──────────────── */
+
+/* Level 1 — Primary action cards (clickable, prominent) */
 .card-elevated {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(232, 234, 240, 0.6);
   border-radius: 20px;
   box-shadow:
-    0 1px 3px rgba(0,0,0,0.04),
-    0 4px 12px rgba(0,0,0,0.03);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    0 2px 6px rgba(0,0,0,0.04),
+    0 8px 24px rgba(0,0,0,0.04);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .card-elevated:hover {
   box-shadow:
-    0 4px 16px rgba(0,0,0,0.08),
-    0 8px 32px rgba(0,0,0,0.04);
-  transform: translateY(-2px);
-  border-color: rgba(212, 168, 67, 0.3);
+    0 8px 28px rgba(0,0,0,0.08),
+    0 12px 40px rgba(0,0,0,0.04);
+  transform: translateY(-4px);
+  border-color: rgba(212, 168, 67, 0.35);
 }
 
+/* Level 2 — Content cards (static, main content) */
 .card-static {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
@@ -138,6 +141,13 @@ input[type="range"]::-moz-range-thumb {
   border: 1px solid rgba(232, 234, 240, 0.6);
   border-radius: 20px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* Level 3 — Info/secondary cards (subtle, background) */
+.card-subtle {
+  background: rgba(248, 249, 252, 0.7);
+  border: 1px solid rgba(232, 234, 240, 0.4);
+  border-radius: 16px;
 }
 
 /* ──────────────── Rule 3: Unified Buttons ──────────────── */
@@ -447,4 +457,23 @@ input[type="range"]::-moz-range-thumb {
 }
 .auto-save-pulse {
   animation: savePulse 2s ease forwards;
+}
+
+/* ──────────────── Sidebar nav item hover ──────────────── */
+.sidebar-nav-item:hover {
+  background-color: #1A1D2A;
+}
+
+/* ──────────────── Markdown content — breathing room ──────────────── */
+.markdown-content {
+  max-width: 720px;
+}
+
+/* ──────────────── Mobile bottom nav ──────────────── */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.mobile-bottom-nav {
+  animation: slideUp 0.3s ease forwards;
 }

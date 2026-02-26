@@ -12,7 +12,24 @@ import TrialBanner from "@/components/TrialBanner";
 import { PLAN_LABELS } from "@/lib/plan-limits";
 import { shouldShowTrialBanner } from "@/lib/trial-utils";
 import Image from "next/image";
+import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
+import {
+  LayoutDashboard,
+  Workflow,
+  BotMessageSquare,
+  Settings,
+  FolderOpen,
+  Target,
+  Search,
+  HeartCrack,
+  FileText,
+  Palette,
+  Video,
+  ClipboardList,
+  Camera,
+  LogOut,
+} from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -277,7 +294,7 @@ export default function DashboardLayout({
           <div />
           <NotificationBell />
         </div>
-        <main className="p-6 lg:p-8 min-h-screen">
+        <main className="p-6 lg:p-8 min-h-screen pb-20 lg:pb-8">
           {/* Trial warning banner (3 days or less remaining) */}
           {shouldShowTrialBanner(billingPlan, billingDaysLeft) && (
             <TrialBanner
@@ -295,16 +312,64 @@ export default function DashboardLayout({
         </main>
       </div>
 
-      {/* Mobile menu toggle */}
-      <button
-        onClick={() => setSidebarOpen(true)}
-        className="fixed bottom-4 right-4 lg:hidden w-12 h-12 text-white rounded-full shadow-lg flex items-center justify-center z-30 cursor-pointer"
-        style={{ backgroundColor: "#0F1117" }}
+      {/* Mobile bottom navigation bar */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 lg:hidden z-30 mobile-bottom-nav"
+        style={{
+          backgroundColor: "rgba(15, 17, 23, 0.97)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          borderTop: "1px solid #2A2D3A",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
+        dir="rtl"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" />
-        </svg>
-      </button>
+        <div className="flex items-center justify-around h-14">
+          <Link
+            href="/dashboard"
+            className="flex flex-col items-center gap-0.5 px-3 py-1.5"
+            style={{ color: pathname === "/dashboard" ? "#D4A843" : "#9DA3B4" }}
+          >
+            <LayoutDashboard size={20} strokeWidth={1.8} />
+            <span className="text-[10px] font-medium">דשבורד</span>
+          </Link>
+          {activeProjectId ? (
+            <Link
+              href={`/project/${activeProjectId}/strategy`}
+              className="flex flex-col items-center gap-0.5 px-3 py-1.5"
+              style={{ color: pathname.includes("/project/") ? "#D4A843" : "#9DA3B4" }}
+            >
+              <Workflow size={20} strokeWidth={1.8} />
+              <span className="text-[10px] font-medium">Pipeline</span>
+            </Link>
+          ) : (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="flex flex-col items-center gap-0.5 px-3 py-1.5 cursor-pointer"
+              style={{ color: "#9DA3B4" }}
+            >
+              <Workflow size={20} strokeWidth={1.8} />
+              <span className="text-[10px] font-medium">Pipeline</span>
+            </button>
+          )}
+          <button
+            onClick={() => setShowExpert((v) => !v)}
+            className="flex flex-col items-center gap-0.5 px-3 py-1.5 cursor-pointer"
+            style={{ color: showExpert ? "#D4A843" : "#9DA3B4" }}
+          >
+            <BotMessageSquare size={20} strokeWidth={1.8} />
+            <span className="text-[10px] font-medium">מומחה</span>
+          </button>
+          <Link
+            href="/settings"
+            className="flex flex-col items-center gap-0.5 px-3 py-1.5"
+            style={{ color: pathname === "/settings" ? "#D4A843" : "#9DA3B4" }}
+          >
+            <Settings size={20} strokeWidth={1.8} />
+            <span className="text-[10px] font-medium">הגדרות</span>
+          </Link>
+        </div>
+      </nav>
 
       {/* FBM Expert Panel */}
       <FBMExpertPanel
@@ -347,26 +412,26 @@ function MobileSidebarContent({
   const planLabel = PLAN_LABELS[currentPlan] || currentPlan;
 
   const mainNav = [
-    { href: "/dashboard", label: "דשבורד", emoji: "\u{1F3E0}" },
-    { href: "/projects", label: "הפרויקטים שלי", emoji: "\u{1F4C1}", badge: projectCount > 0 ? projectCount : undefined },
+    { href: "/dashboard", label: "דשבורד", icon: LayoutDashboard },
+    { href: "/projects", label: "הפרויקטים שלי", icon: FolderOpen, badge: projectCount > 0 ? projectCount : undefined },
   ];
 
   const fbmNav = projectId
     ? [
-        { href: `/project/${projectId}/strategy`, label: "אסטרטגיית FBM", emoji: "\u{1F3AF}" },
-        { href: `/project/${projectId}/niches`, label: "מחקר נישות", emoji: "\u{1F50D}" },
-        { href: `/project/${projectId}/pains`, label: "ניתוח כאבים", emoji: "\u{1F494}" },
-        { href: `/project/${projectId}/scripts`, label: "תסריטים", emoji: "\u{1F4DD}" },
-        { href: `/project/${projectId}/creative`, label: "קריאייטיב", emoji: "\u{1F3A8}" },
-        { href: `/project/${projectId}/video-creator`, label: "יצירת וידאו", emoji: "\u{1F3AC}" },
-        { href: `/project/${projectId}/copy`, label: "קופי", emoji: "\u{1F4CB}" },
-        { href: `/project/${projectId}/album`, label: "אלבום וסיכום", emoji: "\u{1F4F8}", badge: albumCount > 0 ? albumCount : undefined },
+        { href: `/project/${projectId}/strategy`, label: "אסטרטגיית FBM", icon: Target },
+        { href: `/project/${projectId}/niches`, label: "מחקר נישות", icon: Search },
+        { href: `/project/${projectId}/pains`, label: "ניתוח כאבים", icon: HeartCrack },
+        { href: `/project/${projectId}/scripts`, label: "תסריטים", icon: FileText },
+        { href: `/project/${projectId}/creative`, label: "קריאייטיב", icon: Palette },
+        { href: `/project/${projectId}/video-creator`, label: "יצירת וידאו", icon: Video },
+        { href: `/project/${projectId}/copy`, label: "קופי", icon: ClipboardList },
+        { href: `/project/${projectId}/album`, label: "אלבום וסיכום", icon: Camera, badge: albumCount > 0 ? albumCount : undefined },
       ]
     : [];
 
   const toolsNav = [
-    { href: "#expert", label: "מומחה FBM", emoji: "\u{1F916}", badge: "●", disabled: false, isExpert: true },
-    { href: "/settings", label: "הגדרות", emoji: "\u2699\uFE0F", disabled: false },
+    { href: "#expert", label: "מומחה FBM", icon: BotMessageSquare, badge: "●", isExpert: true },
+    { href: "/settings", label: "הגדרות", icon: Settings },
   ];
 
   return (
@@ -402,22 +467,25 @@ function MobileSidebarContent({
         <div>
           <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>ראשי</p>
           <div className="space-y-1">
-            {mainNav.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm"
-                style={isActive(item.href) ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 } : { color: "#9DA3B4" }}
-              >
-                <span className="text-base">{item.emoji}</span>
-                <span className="flex-1">{item.label}</span>
-                {item.badge !== undefined && (
-                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#1A1D2A", color: "#9DA3B4" }}>
-                    {item.badge}
-                  </span>
-                )}
-              </a>
-            ))}
+            {mainNav.map((item) => {
+              const Icon = item.icon;
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="sidebar-nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm"
+                  style={isActive(item.href) ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 } : { color: "#9DA3B4" }}
+                >
+                  <Icon size={18} strokeWidth={1.8} />
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge !== undefined && (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "#1A1D2A", color: "#9DA3B4" }}>
+                      {item.badge}
+                    </span>
+                  )}
+                </a>
+              );
+            })}
           </div>
         </div>
 
@@ -426,25 +494,28 @@ function MobileSidebarContent({
           <div>
             <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>תהליך FBM</p>
             <div className="space-y-1">
-              {fbmNav.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm"
-                  style={isActive(item.href) ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 } : { color: "#9DA3B4" }}
-                >
-                  <span className="text-base">{item.emoji}</span>
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge !== undefined && (
-                    <span
-                      className="text-[10px] min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-bold"
-                      style={{ backgroundColor: "rgba(212, 168, 67, 0.2)", color: "#D4A843" }}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </a>
-              ))}
+              {fbmNav.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="sidebar-nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm"
+                    style={isActive(item.href) ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 } : { color: "#9DA3B4" }}
+                  >
+                    <Icon size={18} strokeWidth={1.8} />
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge !== undefined && (
+                      <span
+                        className="text-[10px] min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-bold"
+                        style={{ backgroundColor: "rgba(212, 168, 67, 0.2)", color: "#D4A843" }}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </a>
+                );
+              })}
             </div>
           </div>
         )}
@@ -453,26 +524,27 @@ function MobileSidebarContent({
         <div>
           <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>כלים</p>
           <div className="space-y-1">
-            {toolsNav.map((item) =>
-              item.isExpert ? (
+            {toolsNav.map((item) => {
+              const Icon = item.icon;
+              return item.isExpert ? (
                 <button
                   key={item.label}
                   type="button"
                   onClick={() => window.dispatchEvent(new CustomEvent("toggle-fbm-expert"))}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer"
+                  className="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer"
                   style={{ color: "#9DA3B4" }}
                 >
-                  <span className="text-base">{item.emoji}</span>
+                  <Icon size={18} strokeWidth={1.8} />
                   <span className="flex-1 text-right">{item.label}</span>
                   <span className="text-[10px]" style={{ color: "#22C55E" }}>●</span>
                 </button>
               ) : (
-                <a key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm" style={isActive(item.href) ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 } : { color: "#9DA3B4" }}>
-                  <span className="text-base">{item.emoji}</span>
+                <a key={item.href} href={item.href} className="sidebar-nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm" style={isActive(item.href) ? { backgroundColor: "#1E2235", color: "#FFFFFF", fontWeight: 500 } : { color: "#9DA3B4" }}>
+                  <Icon size={18} strokeWidth={1.8} />
                   <span className="flex-1">{item.label}</span>
                 </a>
-              ),
-            )}
+              );
+            })}
           </div>
         </div>
       </nav>
@@ -491,11 +563,7 @@ function MobileSidebarContent({
             <p className="text-[11px] truncate" style={{ color: "#9DA3B4" }}>תוכנית {planLabel}</p>
           </div>
           <button onClick={onLogout} className="cursor-pointer" style={{ color: "#9DA3B4" }} title="יציאה">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
+            <LogOut size={16} strokeWidth={2} />
           </button>
         </div>
       </div>

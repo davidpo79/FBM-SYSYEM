@@ -7,32 +7,8 @@ import MarkdownContent from "@/components/MarkdownContent";
 import FeedbackPanel from "@/components/FeedbackPanel";
 import { useToast } from "@/components/Toast";
 import StepCelebration from "@/components/StepCelebration";
-
-function CountdownTimer({ seconds }: { seconds: number }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const startRef = useRef(Date.now());
-
-  useEffect(() => {
-    startRef.current = Date.now();
-    setRemaining(seconds);
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
-      setRemaining(Math.max(0, seconds - elapsed));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [seconds]);
-
-  return (
-    <div className="inline-flex flex-col items-center">
-      <div className="text-4xl font-bold text-[var(--gold)] tabular-nums">
-        {remaining > 0 ? remaining : "..."}
-      </div>
-      <span className="text-sm text-[var(--text-muted)] mt-1">
-        {remaining > 0 ? "שניות לסיום המשוער" : "עוד רגע..."}
-      </span>
-    </div>
-  );
-}
+import StepProgress from "@/components/ui/StepProgress";
+import Button from "@/components/ui/Button";
 
 export default function PainsPage() {
   const router = useRouter();
@@ -151,12 +127,9 @@ export default function PainsPage() {
       <div className="text-center py-20">
         <h2 className="text-xl font-bold text-red-600 mb-2">שגיאה</h2>
         <p className="text-[var(--text-secondary)] mb-4">{error}</p>
-        <button
-          onClick={() => { generationAttempted.current = false; generatePains(); }}
-          className="px-5 py-2.5 bg-[var(--gold)] hover:opacity-90 text-white font-semibold rounded-[10px] transition-opacity cursor-pointer"
-        >
+        <Button variant="primary" onClick={() => { generationAttempted.current = false; generatePains(); }}>
           נסה שוב
-        </button>
+        </Button>
       </div>
     );
   }
@@ -164,13 +137,13 @@ export default function PainsPage() {
   if (!painAnalysis) {
     return (
       <div className="text-center py-20">
-        <CountdownTimer seconds={20} />
-        <h2 className="text-xl font-bold mt-4 text-[var(--text-primary)]">
+        <h2 className="text-xl font-bold mb-6 text-[var(--text-primary)]">
           מנתח כאבים של &quot;{selectedNiche?.name}&quot;...
         </h2>
-        <p className="text-[var(--text-muted)] mt-2">
-          מזהה את הכאבים העמוקים של קהל היעד שלך
-        </p>
+        <StepProgress
+          steps={["מזהה כאבים עמוקים", "מנתח שפת כאב", "בונה מסמך ניתוח"]}
+          estimatedSeconds={20}
+        />
         <div className="max-w-md mx-auto mt-8 p-5 rounded-2xl text-right" style={{ background: "var(--gold-soft)", border: "1px solid rgba(212, 168, 67, 0.2)" }} dir="rtl">
           <p className="text-xs font-bold text-[var(--gold)] mb-1.5">שיטת FBM</p>
           <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
@@ -184,12 +157,14 @@ export default function PainsPage() {
   return (
     <div>
       <div className="card-static overflow-hidden">
-        <div className="p-6 border-b border-[var(--card-border)] flex items-center justify-between">
+        <div className="p-8 border-b border-[var(--card-border)] flex items-center justify-between">
           <h2 className="text-xl font-bold text-[var(--text-primary)]">
             ניתוח כאבים - {selectedNiche?.name}
             {painsApproved && <span className="text-[var(--success)] text-base font-medium mr-2">(אושר)</span>}
           </h2>
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() =>
               handleDownloadPdf(
                 `ניתוח כאבים - ${selectedNiche?.name ?? ""}`,
@@ -198,24 +173,20 @@ export default function PainsPage() {
               )
             }
             disabled={downloading?.includes("מסמך נישות")}
-            className="px-4 py-2 text-sm font-medium bg-white border border-[var(--card-border)] text-[var(--text-secondary)] rounded-[10px] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
           >
             {downloading?.includes("מסמך נישות") ? "מייצא..." : "הורד כ-PDF"}
-          </button>
+          </Button>
         </div>
-        <div className="p-6">
+        <div className="p-8">
           <MarkdownContent content={painAnalysis} />
         </div>
       </div>
 
       {/* Back button */}
       <div className="flex gap-3 mt-4">
-        <button
-          onClick={() => router.push(`/project/${projectId}/niches`)}
-          className="px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-        >
+        <Button variant="ghost" size="sm" onClick={() => router.push(`/project/${projectId}/niches`)}>
           &larr; חזרה לנישות
-        </button>
+        </Button>
       </div>
 
       {/* Feedback Panel */}
@@ -238,6 +209,7 @@ export default function PainsPage() {
           subtitle="ניתוח הכאבים אושר — ממשיכים לכתיבת תסריטים!"
           nextStepLabel="המשך לתסריטים"
           onContinue={() => router.push(`/project/${projectId}/scripts`)}
+          summary={`ניתוח כאבים לנישת "${selectedNiche?.name}"`}
         />
       )}
     </div>

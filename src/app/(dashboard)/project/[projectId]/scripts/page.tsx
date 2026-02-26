@@ -7,32 +7,8 @@ import MarkdownContent from "@/components/MarkdownContent";
 import FeedbackPanel from "@/components/FeedbackPanel";
 import { useToast } from "@/components/Toast";
 import StepCelebration from "@/components/StepCelebration";
-
-function CountdownTimer({ seconds }: { seconds: number }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const startRef = useRef(Date.now());
-
-  useEffect(() => {
-    startRef.current = Date.now();
-    setRemaining(seconds);
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
-      setRemaining(Math.max(0, seconds - elapsed));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [seconds]);
-
-  return (
-    <div className="inline-flex flex-col items-center">
-      <div className="text-4xl font-bold text-[var(--gold)] tabular-nums">
-        {remaining > 0 ? remaining : "..."}
-      </div>
-      <span className="text-sm text-[var(--text-muted)] mt-1">
-        {remaining > 0 ? "שניות לסיום המשוער" : "עוד רגע..."}
-      </span>
-    </div>
-  );
-}
+import StepProgress from "@/components/ui/StepProgress";
+import Button from "@/components/ui/Button";
 
 export default function ScriptsPage() {
   const router = useRouter();
@@ -167,12 +143,9 @@ export default function ScriptsPage() {
       <div className="text-center py-20">
         <h2 className="text-xl font-bold text-red-600 mb-2">שגיאה</h2>
         <p className="text-[var(--text-secondary)] mb-4">{error}</p>
-        <button
-          onClick={() => { generationAttempted.current = false; generateScripts(); }}
-          className="px-5 py-2.5 bg-[var(--gold)] hover:opacity-90 text-white font-semibold rounded-[10px] transition-opacity cursor-pointer"
-        >
+        <Button variant="primary" onClick={() => { generationAttempted.current = false; generateScripts(); }}>
           נסה שוב
-        </button>
+        </Button>
       </div>
     );
   }
@@ -180,9 +153,11 @@ export default function ScriptsPage() {
   if (!scripts) {
     return (
       <div className="text-center py-20">
-        <CountdownTimer seconds={25} />
-        <h2 className="text-xl font-bold mt-4 text-[var(--text-primary)]">כותב תסריטים...</h2>
-        <p className="text-[var(--text-muted)] mt-2">3 תסריטי וידאו מותאמים אישית</p>
+        <h2 className="text-xl font-bold mb-6 text-[var(--text-primary)]">כותב תסריטים...</h2>
+        <StepProgress
+          steps={["מנתח את הכאבים", "כותב 3 תסריטים", "מסיים עריכה"]}
+          estimatedSeconds={25}
+        />
         <div className="max-w-md mx-auto mt-8 p-5 rounded-2xl text-right" style={{ background: "var(--gold-soft)", border: "1px solid rgba(212, 168, 67, 0.2)" }} dir="rtl">
           <p className="text-xs font-bold text-[var(--gold)] mb-1.5">שיטת FBM</p>
           <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
@@ -202,16 +177,17 @@ export default function ScriptsPage() {
           תסריטים
           {scriptsApproved && <span className="text-[var(--success)] text-base font-medium mr-2">(אושר)</span>}
         </h2>
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => {
             const finalScripts = scriptParts.map((s, i) => editedScripts[i] ?? s).join("\n\n");
             handleDownloadPdf("תסריטי וידאו FBM", finalScripts, `${project?.user_name ?? "export"} תסריטים.pdf`);
           }}
           disabled={downloading?.includes("תסריטים")}
-          className="px-4 py-2 text-sm font-medium bg-white border border-[var(--card-border)] text-[var(--text-secondary)] rounded-[10px] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
         >
           {downloading?.includes("תסריטים") ? "מייצא..." : "הורד תסריטים כ-PDF"}
-        </button>
+        </Button>
       </div>
 
       <div className="space-y-4">
@@ -270,12 +246,9 @@ export default function ScriptsPage() {
 
       {/* Back button */}
       <div className="flex gap-3 mt-6">
-        <button
-          onClick={() => router.push(`/project/${projectId}/pains`)}
-          className="px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-        >
+        <Button variant="ghost" size="sm" onClick={() => router.push(`/project/${projectId}/pains`)}>
           &larr; חזרה לניתוח כאבים
-        </button>
+        </Button>
       </div>
 
       {/* Feedback Panel */}
@@ -298,6 +271,7 @@ export default function ScriptsPage() {
           subtitle="התסריטים אושרו — ממשיכים ליצירת קריאייטיב!"
           nextStepLabel="המשך לקריאייטיב"
           onContinue={() => router.push(`/project/${projectId}/creative`)}
+          summary={scripts ? `${splitScripts(scripts).length} תסריטי וידאו מותאמים` : undefined}
         />
       )}
     </div>
