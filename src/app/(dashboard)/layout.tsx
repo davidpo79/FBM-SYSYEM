@@ -340,7 +340,7 @@ export default function DashboardLayout({
               style={{ color: pathname.includes("/project/") ? "#D4A843" : "#9DA3B4" }}
             >
               <Workflow size={20} strokeWidth={1.8} />
-              <span className="text-[10px] font-medium">Pipeline</span>
+              <span className="text-[10px] font-medium">תהליך</span>
             </Link>
           ) : (
             <button
@@ -349,7 +349,7 @@ export default function DashboardLayout({
               style={{ color: "#9DA3B4" }}
             >
               <Workflow size={20} strokeWidth={1.8} />
-              <span className="text-[10px] font-medium">Pipeline</span>
+              <span className="text-[10px] font-medium">תהליך</span>
             </button>
           )}
           <button

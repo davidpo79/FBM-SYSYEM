@@ -61,7 +61,7 @@ export default function QuestionnairePage() {
     summary: string;
   } | null>(null);
 
-  const questions = getQuestions(ownerNiche);
+  const questions = getQuestions(ownerNiche, projectMode);
 
   // Listen for GHL booking confirmation from iframe
   useEffect(() => {
@@ -197,6 +197,7 @@ export default function QuestionnairePage() {
             transcript: text,
             ownerName,
             ownerNiche,
+            projectMode,
           }),
         });
 
@@ -720,6 +721,7 @@ export default function QuestionnairePage() {
       {flowStage === "review" && extractedData && (
         <AnswerReview
           ownerNiche={ownerNiche}
+          projectMode={projectMode}
           extractedData={extractedData}
           onApprove={(finalAnswers) => handleSubmit(finalAnswers)}
           onRecordMore={() => {

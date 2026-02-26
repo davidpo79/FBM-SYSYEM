@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { getQuestions } from "@/lib/questions";
+import { getQuestions, type ProjectMode } from "@/lib/questions";
 import { logApiCall } from "@/lib/api-log";
 
 let _ai: GoogleGenAI | null = null;
@@ -8,13 +8,13 @@ function getAI() { return (_ai ??= new GoogleGenAI({ apiKey: process.env.GOOGLE_
 export async function POST(req: Request) {
   const startTime = Date.now();
   try {
-    const { transcript, ownerName, ownerNiche } = await req.json();
+    const { transcript, ownerName, ownerNiche, projectMode } = await req.json();
 
     if (!transcript) {
       return Response.json({ error: "No transcript" }, { status: 400 });
     }
 
-    const questions = getQuestions(ownerNiche);
+    const questions = getQuestions(ownerNiche, projectMode as ProjectMode | undefined);
     const hasNiche = ownerNiche && ownerNiche.trim() !== "";
 
     const contextLine = hasNiche
