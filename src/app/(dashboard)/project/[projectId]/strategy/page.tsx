@@ -166,6 +166,12 @@ export default function StrategyPage() {
         <p className="text-[var(--text-muted)] mt-2">
           FBM Studio מנתח את התשובות שלך ובונה מסמך אסטרטגיה מותאם אישית
         </p>
+        <div className="max-w-md mx-auto mt-8 p-5 rounded-2xl text-right" style={{ background: "var(--gold-soft)", border: "1px solid rgba(212, 168, 67, 0.2)" }} dir="rtl">
+          <p className="text-xs font-bold text-[var(--gold)] mb-1.5">שיטת FBM</p>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            בשיטת שיווק מבוסס תדר, האסטרטגיה מבוססת על התדר הייחודי של בעל העסק — הערכים, האמונות והאנרגיה שלו. כך נבנה מסר שיווקי שמושך את הלקוחות הנכונים בדיוק.
+          </p>
+        </div>
       </div>
     );
   }

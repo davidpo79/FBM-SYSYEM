@@ -534,7 +534,16 @@ export default function NichesPage() {
     return (
       <div className="text-center py-20">
         <CountdownTimer seconds={15} />
-        <p className="mt-4 text-[var(--text-muted)]">מזהה נישות מתאימות עבור התדר שלך...</p>
+        <h2 className="text-xl font-bold mt-4 text-[var(--text-primary)]">
+          מזהה נישות...
+        </h2>
+        <p className="mt-2 text-[var(--text-muted)]">מזהה נישות מתאימות עבור התדר שלך</p>
+        <div className="max-w-md mx-auto mt-8 p-5 rounded-2xl text-right" style={{ background: "var(--gold-soft)", border: "1px solid rgba(212, 168, 67, 0.2)" }} dir="rtl">
+          <p className="text-xs font-bold text-[var(--gold)] mb-1.5">שיטת FBM</p>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            בשיווק מבוסס תדר, הנישה היא לא רק קהל יעד — היא קבוצת אנשים שהתדר שלהם מהדהד עם התדר של בעל העסק. ככל שהמיקוד מדויק יותר, ההתאמה חזקה יותר.
+          </p>
+        </div>
       </div>
     );
   }

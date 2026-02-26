@@ -168,6 +168,15 @@ export default function PainsPage() {
         <h2 className="text-xl font-bold mt-4 text-[var(--text-primary)]">
           מנתח כאבים של &quot;{selectedNiche?.name}&quot;...
         </h2>
+        <p className="text-[var(--text-muted)] mt-2">
+          מזהה את הכאבים העמוקים של קהל היעד שלך
+        </p>
+        <div className="max-w-md mx-auto mt-8 p-5 rounded-2xl text-right" style={{ background: "var(--gold-soft)", border: "1px solid rgba(212, 168, 67, 0.2)" }} dir="rtl">
+          <p className="text-xs font-bold text-[var(--gold)] mb-1.5">שיטת FBM</p>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            בשיטת שיווק מבוסס תדר, ניתוח הכאבים הוא לא רק הבנת הבעיות — אלא חיבור עמוק לרגשות ולתחושות של קהל היעד. כשמדברים בשפת הכאב שלהם, התדר שלנו מגיע אליהם ישירות.
+          </p>
+        </div>
       </div>
     );
   }

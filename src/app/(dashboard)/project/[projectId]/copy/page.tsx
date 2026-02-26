@@ -246,6 +246,12 @@ export default function CopyPage() {
                   <p className="text-sm text-[var(--text-muted)] mt-3">
                     FBM Studio כותב קופי מותאם לתסריט...
                   </p>
+                  <div className="max-w-sm mx-auto mt-5 p-4 rounded-xl text-right" style={{ background: "var(--gold-soft)", border: "1px solid rgba(212, 168, 67, 0.2)" }} dir="rtl">
+                    <p className="text-[10px] font-bold text-[var(--gold)] mb-1">שיטת FBM</p>
+                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                      הקופי משלב את שפת הכאב של הנישה עם התדר הייחודי של בעל העסק. הטקסט נכתב כך שיעצור את הסקרולל של בדיוק האנשים שצריכים לראות את המסר.
+                    </p>
+                  </div>
                 </div>
               )}
 
