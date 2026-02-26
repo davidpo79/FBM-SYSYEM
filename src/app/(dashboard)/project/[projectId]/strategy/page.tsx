@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useProject } from "../layout";
 import MarkdownContent from "@/components/MarkdownContent";
 import FeedbackPanel from "@/components/FeedbackPanel";
+import { useToast } from "@/components/Toast";
+import StepCelebration from "@/components/StepCelebration";
 
 function CountdownTimer({ seconds }: { seconds: number }) {
   const [remaining, setRemaining] = useState(seconds);
@@ -50,7 +52,9 @@ export default function StrategyPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [error, setError] = useState("");
+  const [showCelebration, setShowCelebration] = useState(false);
   const generationAttempted = useRef(false);
+  const toast = useToast();
 
   const generateStrategy = async () => {
     if (!project) return;
@@ -100,6 +104,7 @@ export default function StrategyPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setStrategy(json.strategy);
+      toast.success("המסמך עודכן בהצלחה");
 
       // Log feedback
       fetch("/api/log-feedback", {
@@ -132,7 +137,7 @@ export default function StrategyPage() {
     }).catch(() => {});
 
     setStrategyApproved(true);
-    router.push(`/project/${project?.id}/niches`);
+    setShowCelebration(true);
   };
 
   if (error && !strategy) {
@@ -249,6 +254,16 @@ export default function StrategyPage() {
         onRestoreVersion={(idx) => restoreVersion("strategy", idx)}
         versionTimestamps={versionHistory.strategy.map((v) => v.timestamp)}
       />
+
+      {/* Step Celebration */}
+      {showCelebration && (
+        <StepCelebration
+          stepLabel="האסטרטגיה"
+          subtitle="מסמך האסטרטגיה אושר — ממשיכים לבחירת נישות!"
+          nextStepLabel="המשך לנישות"
+          onContinue={() => router.push(`/project/${project?.id}/niches`)}
+        />
+      )}
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
 import MarkdownContent from "@/components/MarkdownContent";
 import FeedbackPanel from "@/components/FeedbackPanel";
+import { useToast } from "@/components/Toast";
+import StepCelebration from "@/components/StepCelebration";
 
 function CountdownTimer({ seconds }: { seconds: number }) {
   const [remaining, setRemaining] = useState(seconds);
@@ -52,7 +54,9 @@ export default function PainsPage() {
   const [isRefining, setIsRefining] = useState(false);
   const [painsApproved, setPainsApproved] = useState(false);
   const [error, setError] = useState("");
+  const [showCelebration, setShowCelebration] = useState(false);
   const generationAttempted = useRef(false);
+  const toast = useToast();
 
   // Redirect if no niche selected
   useEffect(() => {
@@ -108,6 +112,7 @@ export default function PainsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setPainAnalysis(json.painAnalysis);
+      toast.success("הניתוח עודכן בהצלחה");
 
       fetch("/api/log-feedback", {
         method: "POST",
@@ -138,7 +143,7 @@ export default function PainsPage() {
     }).catch(() => {});
 
     setPainsApproved(true);
-    router.push(`/project/${projectId}/scripts`);
+    setShowCelebration(true);
   };
 
   if (error) {
@@ -216,6 +221,16 @@ export default function PainsPage() {
         onRestoreVersion={(idx) => restoreVersion("painAnalysis", idx)}
         versionTimestamps={versionHistory.painAnalysis.map((v) => v.timestamp)}
       />
+
+      {/* Step Celebration */}
+      {showCelebration && (
+        <StepCelebration
+          stepLabel="ניתוח הכאבים"
+          subtitle="ניתוח הכאבים אושר — ממשיכים לכתיבת תסריטים!"
+          nextStepLabel="המשך לתסריטים"
+          onContinue={() => router.push(`/project/${projectId}/scripts`)}
+        />
+      )}
     </div>
   );
 }

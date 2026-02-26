@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
 import FeedbackPanel from "@/components/FeedbackPanel";
+import { useToast } from "@/components/Toast";
+import StepCelebration from "@/components/StepCelebration";
 
 /* ── Countdown Timer ── */
 function CountdownTimer({ seconds }: { seconds: number }) {
@@ -56,6 +58,8 @@ export default function CopyPage() {
   const [feedbackIdx, setFeedbackIdx] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [copyApproved, setCopyApproved] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const toast = useToast();
 
   // Chatbot state
   const [ownerGender, setOwnerGender] = useState<OwnerGender>("male");
@@ -151,6 +155,7 @@ export default function CopyPage() {
         setAdCopy(json.copy);
         setFeedbackIdx(null);
         setFeedbackText("");
+        toast.success("הקופי עודכן בהצלחה");
 
         fetch("/api/log-feedback", {
           method: "POST",
@@ -550,13 +555,23 @@ export default function CopyPage() {
               }),
             }).catch(() => {});
             setCopyApproved(true);
-            router.push(`/project/${projectId}/album`);
+            setShowCelebration(true);
           }}
           onRefine={async () => {
             // Individual copy refinement is handled per-card above
           }}
           isApproved={copyApproved}
           approveLabel="הקופי מוכן, עבור לאלבום"
+        />
+      )}
+
+      {/* Step Celebration */}
+      {showCelebration && (
+        <StepCelebration
+          stepLabel="הקופי"
+          subtitle="הקופי אושר — ממשיכים לאלבום הקריאטיבים!"
+          nextStepLabel="המשך לאלבום"
+          onContinue={() => router.push(`/project/${projectId}/album`)}
         />
       )}
     </div>

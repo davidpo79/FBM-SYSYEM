@@ -5,6 +5,7 @@ import { useParams, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import PipelineStepper from "@/components/layout/PipelineStepper";
 import TopBar from "@/components/layout/TopBar";
+import AutoSaveIndicator from "@/components/AutoSaveIndicator";
 import { exportToPdf, downloadBlob } from "@/lib/pdf-export";
 import { downloadAllAsZip } from "@/lib/zip-export";
 
@@ -150,6 +151,8 @@ export default function ProjectLayout({
 
   // Persistence
   const [hydrated, setHydrated] = useState(false);
+  const [saveTrigger, setSaveTrigger] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -226,6 +229,7 @@ export default function ProjectLayout({
   useEffect(() => {
     if (!hydrated) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    setIsSaving(true);
     saveTimeoutRef.current = setTimeout(() => {
       const data = {
         strategy,
@@ -255,6 +259,8 @@ export default function ProjectLayout({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, pipelineData: data }),
       }).catch(() => { /* ignore — localStorage is the primary store */ });
+      setIsSaving(false);
+      setSaveTrigger((prev) => prev + 1);
     }, 500);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [hydrated, projectId, strategy, strategyApproved, niches, selectedNiche, painAnalysis, scripts, generatedImages, adCopy, versionHistory]);
@@ -391,7 +397,8 @@ export default function ProjectLayout({
             { label: pageLabels[currentStepKey] ?? "" },
           ]}
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <AutoSaveIndicator trigger={saveTrigger} saving={isSaving} />
               <FbmExpertButton />
             </div>
           }

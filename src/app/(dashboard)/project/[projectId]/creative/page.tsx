@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
+import { useToast } from "@/components/Toast";
 import TemplatePreview from "@/components/creatives/TemplatePreview";
 import type { TextStyleProps } from "@/components/creatives/TemplatePreview";
 import { TEMPLATES, suggestTemplate } from "@/components/creatives/templates";
@@ -503,7 +504,9 @@ export default function CreativePage() {
   const [isGeneratingBg, setIsGeneratingBg] = useState<Record<number, boolean>>({});
   const [chatOpen, setChatOpen] = useState<number | null>(null);
   const [chatMessages, setChatMessages] = useState<Record<number, ChatMessage[]>>({});
+  const [advancedOpen, setAdvancedOpen] = useState<Record<number, boolean>>({});
   const autoCreatedRef = useRef(false);
+  const toast = useToast();
 
   /* ── Get or init chat messages for a script ── */
   const getChatMessages = useCallback((idx: number): ChatMessage[] => {
@@ -809,14 +812,15 @@ export default function CreativePage() {
         try {
           localStorage.setItem(albumStorageKey, JSON.stringify(next));
           window.dispatchEvent(new StorageEvent("storage", { key: albumStorageKey }));
+          toast.success("נשמר לאלבום בהצלחה");
         } catch (e) {
           console.error("localStorage save failed:", e);
-          setCreativeError("שגיאה בשמירה לאלבום — נפח האחסון מלא. נסה להוריד PNG ישירות.");
+          toast.error("שגיאה בשמירה לאלבום — נפח האחסון מלא");
         }
         return next;
       });
     },
-    [albumStorageKey],
+    [albumStorageKey, toast],
   );
 
   if (!scripts) return null;
@@ -1016,178 +1020,190 @@ export default function CreativePage() {
                         )}
                       </div>
 
-                      {/* ── Text Styling Section ── */}
-                      <div className="border border-[var(--card-border)] rounded-xl p-3 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <label className="text-sm font-bold text-[var(--text-primary)]">
-                            עיצוב טקסט
-                          </label>
-                        </div>
+                      {/* ── Advanced Options (Collapsible) ── */}
+                      <button
+                        type="button"
+                        onClick={() => setAdvancedOpen(prev => ({ ...prev, [idx]: !prev[idx] }))}
+                        className="w-full flex items-center justify-between py-2.5 px-3 rounded-xl border border-[var(--card-border)] text-sm font-semibold text-[var(--text-secondary)] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-all cursor-pointer"
+                      >
+                        <span>הגדרות מתקדמות</span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                          className="transition-transform"
+                          style={{ transform: advancedOpen[idx] ? "rotate(180deg)" : "rotate(0deg)" }}
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </button>
 
-                        {/* Headline style */}
-                        <TextStylePanel
-                          label="כותרת ראשית"
-                          style={creative.headlineStyle || { fontSize: template.headline.fontSize, fontWeight: template.headline.fontWeight, fontFamily: "Rubik, sans-serif", fontStyle: "normal", textDecoration: "none" }}
-                          onChange={(s) => updateTextStyle(idx, "headline", s)}
-                        />
-
-                        {/* Sync toggle */}
-                        <div className="flex items-center justify-between py-2 px-1">
-                          <label className="text-xs font-semibold text-[var(--text-secondary)]">
-                            עיצוב זהה לכותרת ותת-כותרת
-                          </label>
-                          <ToggleSwitch
-                            enabled={creative.syncTextStyle ?? true}
-                            onChange={(v) => {
-                              updateField(idx, "syncTextStyle", v);
-                              // When turning sync ON, apply headline style to subtitle
-                              if (v && creative.headlineStyle) {
-                                const subStyle: TextStyleProps = {
-                                  ...creative.headlineStyle,
-                                  fontSize: creative.headlineStyle.fontSize
-                                    ? Math.max(12, Math.round(creative.headlineStyle.fontSize * 0.6))
-                                    : undefined,
-                                };
-                                setScriptCreatives((prev) => ({
-                                  ...prev,
-                                  [idx]: { ...prev[idx], subtitleStyle: subStyle, syncTextStyle: true },
-                                }));
-                              }
-                            }}
-                            label="סנכרון עיצוב"
-                          />
-                        </div>
-
-                        {/* Subtitle style - only when NOT synced */}
-                        {!creative.syncTextStyle && (
-                          <TextStylePanel
-                            label="תת-כותרת"
-                            style={creative.subtitleStyle || { fontSize: template.subtitle.fontSize, fontWeight: template.subtitle.fontWeight || "normal", fontFamily: "Rubik, sans-serif", fontStyle: "normal", textDecoration: "none" }}
-                            onChange={(s) => updateTextStyle(idx, "subtitle", s)}
-                          />
-                        )}
-                      </div>
-
-                      {/* Owner photo upload section */}
-                      <div className="border border-[var(--card-border)] rounded-xl p-3 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <label className="text-sm font-bold text-[var(--text-primary)]">
-                            תמונת בעל העסק
-                          </label>
-                          <ToggleSwitch
-                            enabled={creative.showOwnerProfile}
-                            onChange={(v) => updateField(idx, "showOwnerProfile", v)}
-                            label="הצג תמונת בעל העסק"
-                          />
-                        </div>
-                        {creative.showOwnerProfile && (
-                          <div className="space-y-3">
-                            {/* Owner name - right aligned under toggle */}
-                            <input
-                              type="text"
-                              value={creative.ownerName}
-                              onChange={(e) => updateField(idx, "ownerName", e.target.value)}
-                              placeholder="שם בעל העסק"
-                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
-                            />
-
-                            {/* Photo - centered */}
-                            <div className="flex justify-center">
-                              {creative.ownerPhoto ? (
-                                <div className="relative">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={creative.ownerPhoto}
-                                    alt=""
-                                    className="w-14 h-14 rounded-full object-cover border-2 border-[var(--gold)]"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => updateField(idx, "ownerPhoto", "")}
-                                    className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center cursor-pointer hover:bg-red-600"
-                                    title="הסר תמונה"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ) : (
-                                <label className="w-14 h-14 rounded-full border-2 border-dashed border-[var(--card-border)] flex items-center justify-center text-[var(--text-muted)] hover:border-[var(--gold)] cursor-pointer transition-all">
-                                  <span className="text-xl">📷</span>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (!file) return;
-                                      const reader = new FileReader();
-                                      reader.onload = () => handleUploadOwnerPhoto(reader.result as string, idx);
-                                      reader.readAsDataURL(file);
-                                    }}
-                                  />
-                                </label>
-                              )}
+                      {advancedOpen[idx] && (
+                        <div className="space-y-4 animate-in">
+                          {/* Text Styling Section */}
+                          <div className="border border-[var(--card-border)] rounded-xl p-3 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <label className="text-sm font-bold text-[var(--text-primary)]">
+                                עיצוב טקסט
+                              </label>
                             </div>
 
-                            {/* Owner title / niche */}
-                            <input
-                              type="text"
-                              value={creative.ownerTitle}
-                              onChange={(e) => updateField(idx, "ownerTitle", e.target.value)}
-                              placeholder="תיאור קהל היעד"
-                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+                            <TextStylePanel
+                              label="כותרת ראשית"
+                              style={creative.headlineStyle || { fontSize: template.headline.fontSize, fontWeight: template.headline.fontWeight, fontFamily: "Rubik, sans-serif", fontStyle: "normal", textDecoration: "none" }}
+                              onChange={(s) => updateTextStyle(idx, "headline", s)}
                             />
+
+                            <div className="flex items-center justify-between py-2 px-1">
+                              <label className="text-xs font-semibold text-[var(--text-secondary)]">
+                                עיצוב זהה לכותרת ותת-כותרת
+                              </label>
+                              <ToggleSwitch
+                                enabled={creative.syncTextStyle ?? true}
+                                onChange={(v) => {
+                                  updateField(idx, "syncTextStyle", v);
+                                  if (v && creative.headlineStyle) {
+                                    const subStyle: TextStyleProps = {
+                                      ...creative.headlineStyle,
+                                      fontSize: creative.headlineStyle.fontSize
+                                        ? Math.max(12, Math.round(creative.headlineStyle.fontSize * 0.6))
+                                        : undefined,
+                                    };
+                                    setScriptCreatives((prev) => ({
+                                      ...prev,
+                                      [idx]: { ...prev[idx], subtitleStyle: subStyle, syncTextStyle: true },
+                                    }));
+                                  }
+                                }}
+                                label="סנכרון עיצוב"
+                              />
+                            </div>
+
+                            {!creative.syncTextStyle && (
+                              <TextStylePanel
+                                label="תת-כותרת"
+                                style={creative.subtitleStyle || { fontSize: template.subtitle.fontSize, fontWeight: template.subtitle.fontWeight || "normal", fontFamily: "Rubik, sans-serif", fontStyle: "normal", textDecoration: "none" }}
+                                onChange={(s) => updateTextStyle(idx, "subtitle", s)}
+                              />
+                            )}
                           </div>
-                        )}
-                      </div>
 
-                      {/* Format */}
-                      <div>
-                        <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-                          פורמט
-                        </label>
-                        <div className="flex gap-2">
-                          {(["story", "feed"] as FormatType[]).map((f) => (
-                            <button
-                              key={f}
-                              type="button"
-                              onClick={() => updateField(idx, "format", f)}
-                              className={`flex-1 px-3 py-2 rounded-[10px] border text-sm cursor-pointer transition-all ${
-                                creative.format === f
-                                  ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
-                                  : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
-                              }`}
-                            >
-                              {f === "feed" ? "פיד 1:1" : "סטורי 9:16"}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                          {/* Owner photo upload section */}
+                          <div className="border border-[var(--card-border)] rounded-xl p-3 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <label className="text-sm font-bold text-[var(--text-primary)]">
+                                תמונת בעל העסק
+                              </label>
+                              <ToggleSwitch
+                                enabled={creative.showOwnerProfile}
+                                onChange={(v) => updateField(idx, "showOwnerProfile", v)}
+                                label="הצג תמונת בעל העסק"
+                              />
+                            </div>
+                            {creative.showOwnerProfile && (
+                              <div className="space-y-3">
+                                <input
+                                  type="text"
+                                  value={creative.ownerName}
+                                  onChange={(e) => updateField(idx, "ownerName", e.target.value)}
+                                  placeholder="שם בעל העסק"
+                                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+                                />
+                                <div className="flex justify-center">
+                                  {creative.ownerPhoto ? (
+                                    <div className="relative">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={creative.ownerPhoto}
+                                        alt=""
+                                        className="w-14 h-14 rounded-full object-cover border-2 border-[var(--gold)]"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => updateField(idx, "ownerPhoto", "")}
+                                        className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center cursor-pointer hover:bg-red-600"
+                                        title="הסר תמונה"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <label className="w-14 h-14 rounded-full border-2 border-dashed border-[var(--card-border)] flex items-center justify-center text-[var(--text-muted)] hover:border-[var(--gold)] cursor-pointer transition-all">
+                                      <span className="text-xl">📷</span>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (!file) return;
+                                          const reader = new FileReader();
+                                          reader.onload = () => handleUploadOwnerPhoto(reader.result as string, idx);
+                                          reader.readAsDataURL(file);
+                                        }}
+                                      />
+                                    </label>
+                                  )}
+                                </div>
+                                <input
+                                  type="text"
+                                  value={creative.ownerTitle}
+                                  onChange={(e) => updateField(idx, "ownerTitle", e.target.value)}
+                                  placeholder="תיאור קהל היעד"
+                                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right text-xs focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+                                />
+                              </div>
+                            )}
+                          </div>
 
-                      {/* Template strip */}
-                      <div>
-                        <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
-                          תבנית
-                        </label>
-                        <div className="flex gap-2 overflow-x-auto pb-1">
-                          {TEMPLATES.map((t) => (
-                            <button
-                              key={t.id}
-                              type="button"
-                              onClick={() => handleChangeTemplate(idx, t.id)}
-                              className={`flex-shrink-0 w-14 h-14 rounded-[10px] border-2 flex flex-col items-center justify-center text-xs cursor-pointer transition-all ${
-                                creative.templateId === t.id
-                                  ? "border-[var(--gold)] ring-2 ring-[var(--gold)]/30"
-                                  : "border-[var(--card-border)] hover:border-[var(--text-muted)]"
-                              }`}
-                              style={{ background: t.background }}
-                              title={t.name}
-                            >
-                              <span className="text-lg">{t.preview}</span>
-                            </button>
-                          ))}
+                          {/* Format */}
+                          <div>
+                            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+                              פורמט
+                            </label>
+                            <div className="flex gap-2">
+                              {(["story", "feed"] as FormatType[]).map((f) => (
+                                <button
+                                  key={f}
+                                  type="button"
+                                  onClick={() => updateField(idx, "format", f)}
+                                  className={`flex-1 px-3 py-2 rounded-[10px] border text-sm cursor-pointer transition-all ${
+                                    creative.format === f
+                                      ? "border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] font-semibold"
+                                      : "border-[var(--card-border)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                                  }`}
+                                >
+                                  {f === "feed" ? "פיד 1:1" : "סטורי 9:16"}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Template strip */}
+                          <div>
+                            <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+                              תבנית
+                            </label>
+                            <div className="flex gap-2 overflow-x-auto pb-1">
+                              {TEMPLATES.map((t) => (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => handleChangeTemplate(idx, t.id)}
+                                  className={`flex-shrink-0 w-14 h-14 rounded-[10px] border-2 flex flex-col items-center justify-center text-xs cursor-pointer transition-all ${
+                                    creative.templateId === t.id
+                                      ? "border-[var(--gold)] ring-2 ring-[var(--gold)]/30"
+                                      : "border-[var(--card-border)] hover:border-[var(--text-muted)]"
+                                  }`}
+                                  style={{ background: t.background }}
+                                  title={t.name}
+                                >
+                                  <span className="text-lg">{t.preview}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Design Vision — AI prompt for background */}
                       <div>

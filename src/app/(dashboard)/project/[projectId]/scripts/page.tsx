@@ -5,6 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
 import MarkdownContent from "@/components/MarkdownContent";
 import FeedbackPanel from "@/components/FeedbackPanel";
+import { useToast } from "@/components/Toast";
+import StepCelebration from "@/components/StepCelebration";
 
 function CountdownTimer({ seconds }: { seconds: number }) {
   const [remaining, setRemaining] = useState(seconds);
@@ -54,7 +56,9 @@ export default function ScriptsPage() {
   const [error, setError] = useState("");
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editedScripts, setEditedScripts] = useState<Record<number, string>>({});
+  const [showCelebration, setShowCelebration] = useState(false);
   const generationAttempted = useRef(false);
+  const toast = useToast();
 
   // Redirect if no pain analysis
   useEffect(() => {
@@ -117,6 +121,7 @@ export default function ScriptsPage() {
       setScripts(json.scripts);
       setEditedScripts({});
       setEditingIdx(null);
+      toast.success("התסריטים עודכנו בהצלחה");
 
       fetch("/api/log-feedback", {
         method: "POST",
@@ -154,7 +159,7 @@ export default function ScriptsPage() {
     }).catch(() => {});
 
     setScriptsApproved(true);
-    router.push(`/project/${projectId}/creative`);
+    setShowCelebration(true);
   };
 
   if (error) {
@@ -279,6 +284,16 @@ export default function ScriptsPage() {
         onRestoreVersion={(idx) => restoreVersion("scripts", idx)}
         versionTimestamps={versionHistory.scripts.map((v) => v.timestamp)}
       />
+
+      {/* Step Celebration */}
+      {showCelebration && (
+        <StepCelebration
+          stepLabel="התסריטים"
+          subtitle="התסריטים אושרו — ממשיכים ליצירת קריאייטיב!"
+          nextStepLabel="המשך לקריאייטיב"
+          onContinue={() => router.push(`/project/${projectId}/creative`)}
+        />
+      )}
     </div>
   );
 }
