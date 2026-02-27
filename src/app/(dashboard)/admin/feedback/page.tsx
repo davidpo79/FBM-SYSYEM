@@ -26,20 +26,34 @@ interface FeedbackData {
 
 const STEP_LABELS: Record<string, string> = {
   strategy: "אסטרטגיה",
+  niches: "נישות",
   pains: "ניתוח כאבים",
   scripts: "תסריטים",
   copy: "קופי",
+  creative: "קריאייטיב",
 };
 
 export default function AdminFeedbackPage() {
   const [data, setData] = useState<FeedbackData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/feedback")
-      .then((r) => r.json())
-      .then((json) => setData(json))
-      .catch(console.error)
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch feedback data");
+        return r.json();
+      })
+      .then((json) => {
+        if (!json.stats || !json.summary) {
+          throw new Error("Invalid response format");
+        }
+        setData(json);
+      })
+      .catch((err) => {
+        console.error("Feedback fetch error:", err);
+        setError("שגיאה בטעינת נתוני פידבק");
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -47,6 +61,20 @@ export default function AdminFeedbackPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="w-10 h-10 border-3 border-[var(--gold)]/30 border-t-[var(--gold)] rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={() => { setError(""); setLoading(true); window.location.reload(); }}
+          className="px-4 py-2 rounded-xl bg-[var(--gold)] text-white font-semibold cursor-pointer"
+        >
+          נסה שוב
+        </button>
       </div>
     );
   }
