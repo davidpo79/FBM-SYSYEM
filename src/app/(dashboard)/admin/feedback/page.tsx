@@ -109,36 +109,42 @@ export default function AdminFeedbackPage() {
           <h2 className="font-bold text-[var(--text-primary)]">פירוט לפי שלב</h2>
         </div>
         <div className="divide-y divide-[var(--card-border)]">
-          {Object.entries(data.stats).map(([step, counts]) => {
-            const total = counts.approve + counts.refine;
-            const rate = total > 0 ? Math.round((counts.approve / total) * 100) : 0;
-            return (
-              <div key={step} className="p-5 flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-[var(--text-primary)]">
-                    {STEP_LABELS[step] || step}
+          {Object.keys(data.stats).length === 0 ? (
+            <div className="p-8 text-center text-[var(--text-muted)]">
+              עדיין לא נאסף פידבק. כשמשתמשים יאשרו או יבקשו שיפור בשלבי ה-Pipeline, הנתונים יופיעו כאן.
+            </div>
+          ) : (
+            Object.entries(data.stats).map(([step, counts]) => {
+              const total = counts.approve + counts.refine;
+              const rate = total > 0 ? Math.round((counts.approve / total) * 100) : 0;
+              return (
+                <div key={step} className="p-5 flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-[var(--text-primary)]">
+                      {STEP_LABELS[step] || step}
+                    </div>
+                    <div className="text-xs text-[var(--text-muted)] mt-1">
+                      {counts.approve} אישורים | {counts.refine} שיפורים
+                    </div>
                   </div>
-                  <div className="text-xs text-[var(--text-muted)] mt-1">
-                    {counts.approve} אישורים | {counts.refine} שיפורים
+                  <div className="flex items-center gap-3">
+                    <div className="w-32 bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="h-2.5 rounded-full transition-all"
+                        style={{
+                          width: `${rate}%`,
+                          backgroundColor: rate >= 70 ? "#22C55E" : rate >= 40 ? "#F59E0B" : "#EF4444",
+                        }}
+                      />
+                    </div>
+                    <span className="text-sm font-bold text-[var(--text-secondary)] w-12 text-left">
+                      {rate}%
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-32 bg-gray-200 rounded-full h-2.5">
-                    <div
-                      className="h-2.5 rounded-full transition-all"
-                      style={{
-                        width: `${rate}%`,
-                        backgroundColor: rate >= 70 ? "#22C55E" : rate >= 40 ? "#F59E0B" : "#EF4444",
-                      }}
-                    />
-                  </div>
-                  <span className="text-sm font-bold text-[var(--text-secondary)] w-12 text-left">
-                    {rate}%
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
 

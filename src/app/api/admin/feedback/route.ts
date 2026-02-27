@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
+const EMPTY_RESPONSE = {
+  stats: {},
+  recentFeedback: [],
+  summary: { totalApproves: 0, totalRefines: 0, approvalRate: 0 },
+};
+
 export async function GET() {
   try {
     // Get feedback stats by step
@@ -8,7 +14,11 @@ export async function GET() {
       .from("feedback_logs")
       .select("step_name, feedback_type");
 
-    if (stepErr) throw stepErr;
+    // If table doesn't exist or query fails, return empty data gracefully
+    if (stepErr) {
+      console.warn("feedback_logs query failed (table may not exist):", stepErr.message);
+      return NextResponse.json(EMPTY_RESPONSE);
+    }
 
     // Aggregate stats per step
     const stats: Record<string, { approve: number; refine: number }> = {};
@@ -29,7 +39,9 @@ export async function GET() {
       .order("created_at", { ascending: false })
       .limit(50);
 
-    if (recentErr) throw recentErr;
+    if (recentErr) {
+      console.warn("feedback_logs recent query failed:", recentErr.message);
+    }
 
     // Total counts
     const totalApproves = Object.values(stats).reduce((sum, s) => sum + s.approve, 0);
@@ -49,9 +61,7 @@ export async function GET() {
     });
   } catch (error) {
     console.error("admin/feedback error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch feedback data" },
-      { status: 500 },
-    );
+    // Return empty data instead of 500 so the page renders gracefully
+    return NextResponse.json(EMPTY_RESPONSE);
   }
 }
