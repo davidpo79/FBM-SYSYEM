@@ -25,12 +25,18 @@ const SECTION_TITLES: Record<QuestionSection, string> = {
   legacy: 'חזון ומורשת',
 };
 
-export function getQuestions(niche?: string): Question[] {
+export type ProjectMode = 'self' | 'client' | 'owner';
+
+export function getQuestions(niche?: string, projectMode?: ProjectMode): Question[] {
   // אם אין נישה = משווק FBM שממלא על עצמו
-  // אם יש נישה = משווק ממלא עבור בעל העסק
   if (!niche || niche.trim() === '') {
     return getMarketerQuestions();
   }
+  // בעל עסק שממלא על עצמו = שאלות בגוף שני
+  if (projectMode === 'owner') {
+    return getOwnerSelfQuestions(niche);
+  }
+  // משווק ממלא עבור בעל העסק = שאלות בגוף שלישי
   return getBusinessOwnerQuestions(niche);
 }
 
@@ -209,6 +215,97 @@ function getBusinessOwnerQuestions(niche: string): Question[] {
       sectionTitle: SECTION_TITLES.legacy,
       title: 'המורשת',
       text: `בעוד שנתיים, כשהעסק של ה${n} בשיא, מה הוא היה רוצה שלקוחות יגידו עליו ועל העבודה שלו איתם? מה יהיה ה-Legacy שלו?`,
+    },
+  ];
+}
+
+// ========================================
+// גרסה ג': שאלות לבעל עסק שממלא על עצמו (גוף שני)
+// niche = הנישה של בעל העסק, למשל "מאמן כושר"
+// ========================================
+
+function getOwnerSelfQuestions(niche: string): Question[] {
+  const n = niche.trim();
+
+  return [
+    // ── חלק א': פיצוח הזהות ──
+    {
+      id: '1',
+      section: 'identity',
+      sectionTitle: SECTION_TITLES.identity,
+      title: 'שאלת "הלמה" האמיתי',
+      text: `מעבר לרצון להרוויח כסף, מה באמת מניע אותך לעשות את מה שאתה עושה כ${n}? למה דווקא התחום הזה? ספר על רגע או תקופה בחיים שהובילו אותך להבנה שזה מה שאתה רוצה לעשות.`,
+    },
+    {
+      id: '2',
+      section: 'identity',
+      sectionTitle: SECTION_TITLES.identity,
+      title: 'סיפור המקור שלך',
+      text: `ספר על חוויה אישית או מקצועית שבה הרגשת שאתה "מפצח" את הדרך שלך כ${n} — הרגע שהבנת שזה מה שאתה אמור לעשות. זה יכול להיות מהצבא, מעבודה קודמת, מתחביב או מהמשפחה.`,
+    },
+    {
+      id: '3',
+      section: 'identity',
+      sectionTitle: SECTION_TITLES.identity,
+      title: 'התשוקה לעזור',
+      text: `איזה סוג של הצלחה אצל לקוח שלך תגרום לך להרגיש את הסיפוק הגדול ביותר? למשל: לראות לקוח שמקבל ביטחון, חוסך כסף, משיג תוצאות.`,
+    },
+
+    // ── חלק ב': גשר האמפתיה ──
+    {
+      id: '4',
+      section: 'empathy',
+      sectionTitle: SECTION_TITLES.empathy,
+      title: 'הלקוח האידיאלי שלך',
+      text: `עם איזה סוג של לקוחות אתה הכי נהנה לעבוד? תאר את הלקוח האידיאלי שלך — מה האופי שלו? מה הוא מחפש? למה הוא צריך ${n}?`,
+    },
+    {
+      id: '5',
+      section: 'empathy',
+      sectionTitle: SECTION_TITLES.empathy,
+      title: 'הפחדים והתסכולים שאתה מזהה',
+      text: `מה התסכול הכי גדול שאתה מזהה אצל הלקוחות שלך? מה הפחד הכי עמוק שלדעתך מנהל אותם? מה מונע מהם לפעול?`,
+    },
+
+    // ── חלק ג': ההוכחה והשיטה ──
+    {
+      id: '6',
+      section: 'proof',
+      sectionTitle: SECTION_TITLES.proof,
+      title: 'החוזקות שלך',
+      text: `מהן 3-5 החוזקות הכי גדולות שלך כ${n}? מה אתה מביא איתך לשולחן שמבדל אותך מאחרים בתחום? למשל: ידע, ניסיון, גישה ייחודית, יכולת הקשבה, יצירתיות.`,
+    },
+    {
+      id: '7',
+      section: 'proof',
+      sectionTitle: SECTION_TITLES.proof,
+      title: 'החזון — התוצאה הסופית',
+      text: `תאר את התוצאה הסופית האידיאלית של לקוח שעובד איתך. איך ייראו החיים שלו בעוד שנה? מה ישתנה?`,
+    },
+
+    // ── חלק ד': הקיטוב ──
+    {
+      id: '8',
+      section: 'polarize',
+      sectionTitle: SECTION_TITLES.polarize,
+      title: '"הדעה הלא פופולרית" שלך',
+      text: `מהי דעה או אמונה שיש לך על התחום שלך שעומדת בניגוד למה ש"כולם" חושבים או עושים? מה אתה יודע שאחרים לא?`,
+    },
+    {
+      id: '9',
+      section: 'polarize',
+      sectionTitle: SECTION_TITLES.polarize,
+      title: '"הלקוח מהגיהנום" — המסננת שלך',
+      text: `תאר את סוג הלקוח שאתה בשום אופן לא מוכן לעבוד איתו. מה מאפיין אותם? למה הם לא מתאימים לך?`,
+    },
+
+    // ── חלק ה': חזון ומורשת ──
+    {
+      id: '10',
+      section: 'legacy',
+      sectionTitle: SECTION_TITLES.legacy,
+      title: 'המורשת שלך',
+      text: `בעוד שנתיים, כשהעסק שלך בשיא, מה היית רוצה שלקוחות יגידו עליך ועל העבודה שלך איתם? מה יהיה ה-Legacy שלך?`,
     },
   ];
 }

@@ -5,15 +5,19 @@ import { useParams, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import PipelineStepper from "@/components/layout/PipelineStepper";
 import TopBar from "@/components/layout/TopBar";
+import AutoSaveIndicator from "@/components/AutoSaveIndicator";
 import { exportToPdf, downloadBlob } from "@/lib/pdf-export";
 import { downloadAllAsZip } from "@/lib/zip-export";
 
 /* ──────────────── types ──────────────── */
 
+export type ProjectMode = "self" | "client" | "owner";
+
 export interface ProjectRow {
   id: string;
   user_name: string;
   answers_map: Record<string, string>;
+  owner_niche?: string;
   status: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pipeline_data?: Record<string, any> | null;
@@ -28,8 +32,21 @@ export interface Niche {
   why_frequency_resonates: string;
 }
 
+export interface VersionEntry {
+  content: string;
+  timestamp: string;
+}
+
+export interface VersionHistory {
+  strategy: VersionEntry[];
+  painAnalysis: VersionEntry[];
+  scripts: VersionEntry[];
+  adCopy: VersionEntry[];
+}
+
 export interface ProjectContextValue {
   project: ProjectRow | null;
+  projectMode: ProjectMode;
   loading: boolean;
   error: string;
   // Strategy
@@ -54,6 +71,10 @@ export interface ProjectContextValue {
   // Copy
   adCopy: string;
   setAdCopy: (s: string) => void;
+  // Version history
+  versionHistory: VersionHistory;
+  pushVersion: (step: keyof VersionHistory, content: string) => void;
+  restoreVersion: (step: keyof VersionHistory, index: number) => void;
   // Downloads
   handleDownloadPdf: (title: string, content: string, filename: string) => Promise<void>;
   handleDownloadAll: () => Promise<void>;
@@ -94,18 +115,51 @@ export default function ProjectLayout({
   >([]);
   const [adCopy, setAdCopy] = useState("");
 
+  // Version history
+  const emptyHistory: VersionHistory = { strategy: [], painAnalysis: [], scripts: [], adCopy: [] };
+  const [versionHistory, setVersionHistory] = useState<VersionHistory>(emptyHistory);
+
+  const pushVersion = useCallback((step: keyof VersionHistory, content: string) => {
+    if (!content) return;
+    const entry: VersionEntry = {
+      content,
+      timestamp: new Date().toLocaleString("he-IL"),
+    };
+    setVersionHistory((prev) => ({
+      ...prev,
+      [step]: [...prev[step], entry],
+    }));
+  }, []);
+
+  const restoreVersion = useCallback((step: keyof VersionHistory, index: number) => {
+    setVersionHistory((prev) => {
+      const entry = prev[step][index];
+      if (!entry) return prev;
+      const setters: Record<keyof VersionHistory, (s: string) => void> = {
+        strategy: setStrategy,
+        painAnalysis: setPainAnalysis,
+        scripts: setScripts,
+        adCopy: setAdCopy,
+      };
+      setters[step](entry.content);
+      return prev;
+    });
+  }, []);
+
   // Downloads
   const [downloading, setDownloading] = useState<string | null>(null);
 
   // Persistence
   const [hydrated, setHydrated] = useState(false);
+  const [saveTrigger, setSaveTrigger] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     async function load() {
       const { data, error: dbErr } = await supabase
         .from("projects")
-        .select("id, user_name, answers_map, status, pipeline_data")
+        .select("id, user_name, answers_map, owner_niche, status, pipeline_data")
         .eq("id", projectId)
         .single();
 
@@ -136,6 +190,7 @@ export default function ProjectLayout({
       if (data.scripts) setScripts(data.scripts as string);
       if ((data.generatedImages as unknown[])?.length) setGeneratedImages(data.generatedImages as { url: string; base64?: string; scriptIdx: number }[]);
       if (data.adCopy) setAdCopy(data.adCopy as string);
+      if (data.versionHistory) setVersionHistory(data.versionHistory as VersionHistory);
     };
 
     let loaded = false;
@@ -174,6 +229,7 @@ export default function ProjectLayout({
   useEffect(() => {
     if (!hydrated) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    setIsSaving(true);
     saveTimeoutRef.current = setTimeout(() => {
       const data = {
         strategy,
@@ -189,6 +245,7 @@ export default function ProjectLayout({
           ...((!url && base64) ? { base64 } : {}),
         })),
         adCopy,
+        versionHistory,
       };
       // Save to localStorage (primary)
       try {
@@ -202,9 +259,11 @@ export default function ProjectLayout({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, pipelineData: data }),
       }).catch(() => { /* ignore — localStorage is the primary store */ });
+      setIsSaving(false);
+      setSaveTrigger((prev) => prev + 1);
     }, 500);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [hydrated, projectId, strategy, strategyApproved, niches, selectedNiche, painAnalysis, scripts, generatedImages, adCopy]);
+  }, [hydrated, projectId, strategy, strategyApproved, niches, selectedNiche, painAnalysis, scripts, generatedImages, adCopy, versionHistory]);
 
   const handleDownloadPdf = useCallback(async (title: string, content: string, filename: string) => {
     setDownloading(filename);
@@ -304,6 +363,7 @@ export default function ProjectLayout({
     <ProjectContext.Provider
       value={{
         project,
+        projectMode: (project?.answers_map?._project_mode as ProjectMode) || "client",
         loading,
         error,
         strategy,
@@ -322,6 +382,9 @@ export default function ProjectLayout({
         setGeneratedImages,
         adCopy,
         setAdCopy,
+        versionHistory,
+        pushVersion,
+        restoreVersion,
         handleDownloadPdf,
         handleDownloadAll,
         downloading,
@@ -334,7 +397,8 @@ export default function ProjectLayout({
             { label: pageLabels[currentStepKey] ?? "" },
           ]}
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <AutoSaveIndicator trigger={saveTrigger} saving={isSaving} />
               <FbmExpertButton />
             </div>
           }

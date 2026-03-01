@@ -14,6 +14,7 @@ export interface TextStyleProps {
   fontWeight?: string;
   fontStyle?: string; // "normal" | "italic"
   textDecoration?: string; // "none" | "underline"
+  color?: string; // text color override
 }
 
 interface TemplatePreviewProps {
@@ -54,7 +55,7 @@ export default function TemplatePreview({
   const [headlinePos, setHeadlinePos] = useState({ x: template.headline.x, y: template.headline.y });
   const [subtitlePos, setSubtitlePos] = useState({ x: template.subtitle.x, y: template.subtitle.y });
   const [ctaPos, setCtaPos] = useState({ x: template.cta.x, y: template.cta.y });
-  const [profilePos, setProfilePos] = useState({ x: 60, y: 82 });
+  const [profilePos, setProfilePos] = useState({ x: 28, y: 88 });
 
   const handleExportPng = useCallback(async () => {
     if (!canvasRef.current) return;
@@ -166,9 +167,9 @@ export default function TemplatePreview({
         className="relative overflow-hidden rounded-2xl border-2 border-[var(--card-border)] mx-auto"
         style={{
           aspectRatio: format === "story" ? "9 / 16" : "1 / 1",
-          width: "100%",
-          maxWidth: format === "story" ? "450px" : "500px",
-          maxHeight: "70vh",
+          ...(format === "story"
+            ? { height: "70vh", maxHeight: "700px", width: "auto", maxWidth: "100%" }
+            : { width: "100%", maxWidth: "500px", maxHeight: "70vh" }),
         }}
       >
         {/* Layer 1: Background — custom image or template gradient */}
@@ -201,7 +202,7 @@ export default function TemplatePreview({
           x={headlinePos.x}
           y={headlinePos.y}
           fontSize={headlineStyle?.fontSize ?? template.headline.fontSize}
-          color={template.headline.color}
+          color={headlineStyle?.color ?? template.headline.color}
           fontWeight={headlineStyle?.fontWeight ?? template.headline.fontWeight}
           fontFamily={headlineStyle?.fontFamily}
           fontStyle={headlineStyle?.fontStyle}
@@ -220,7 +221,7 @@ export default function TemplatePreview({
           x={subtitlePos.x}
           y={subtitlePos.y}
           fontSize={subtitleStyle?.fontSize ?? template.subtitle.fontSize}
-          color={template.subtitle.color}
+          color={subtitleStyle?.color ?? template.subtitle.color}
           fontWeight={subtitleStyle?.fontWeight ?? (template.subtitle.fontWeight || "normal")}
           fontFamily={subtitleStyle?.fontFamily}
           fontStyle={subtitleStyle?.fontStyle}

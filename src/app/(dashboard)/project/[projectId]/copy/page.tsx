@@ -3,33 +3,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
-
-/* ── Countdown Timer ── */
-function CountdownTimer({ seconds }: { seconds: number }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const startRef = useRef(Date.now());
-
-  useEffect(() => {
-    startRef.current = Date.now();
-    setRemaining(seconds);
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
-      setRemaining(Math.max(0, seconds - elapsed));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [seconds]);
-
-  return (
-    <div className="inline-flex flex-col items-center">
-      <div className="text-4xl font-bold text-[var(--gold)] tabular-nums">
-        {remaining > 0 ? remaining : "..."}
-      </div>
-      <span className="text-sm text-[var(--text-muted)] mt-1">
-        {remaining > 0 ? "שניות לסיום המשוער" : "עוד רגע..."}
-      </span>
-    </div>
-  );
-}
+import FeedbackPanel from "@/components/FeedbackPanel";
+import { useToast } from "@/components/Toast";
+import StepCelebration from "@/components/StepCelebration";
+import StepProgress from "@/components/ui/StepProgress";
+import Button from "@/components/ui/Button";
 
 /* ── Chatbot result type ── */
 interface ChatbotResult {
@@ -44,13 +22,19 @@ type AudienceGender = "male" | "female" | "all";
 export default function CopyPage() {
   const router = useRouter();
   const { projectId } = useParams<{ projectId: string }>();
-  const { scripts, selectedNiche, setAdCopy } = useProject();
+  const { project, scripts, selectedNiche, setAdCopy } = useProject();
 
   const [copies, setCopies] = useState<Record<number, string>>({});
   const [generating, setGenerating] = useState<Record<number, boolean>>({});
   const [editing, setEditing] = useState<Record<number, boolean>>({});
   const [editText, setEditText] = useState<Record<number, string>>({});
   const [copied, setCopied] = useState<Record<number, boolean>>({});
+  const [refiningIdx, setRefiningIdx] = useState<number | null>(null);
+  const [feedbackIdx, setFeedbackIdx] = useState<number | null>(null);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [copyApproved, setCopyApproved] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const toast = useToast();
 
   // Chatbot state
   const [ownerGender, setOwnerGender] = useState<OwnerGender>("male");
@@ -127,6 +111,46 @@ export default function CopyPage() {
     }
   }, [selectedNiche, ownerGender, audienceGender]);
 
+  const handleRefineCopy = useCallback(
+    async (idx: number, feedback: string) => {
+      setRefiningIdx(idx);
+      try {
+        const res = await fetch("/api/refine-copy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentCopy: copies[idx],
+            feedback,
+            niche: selectedNiche?.name || "",
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error);
+        setCopies((prev) => ({ ...prev, [idx]: json.copy }));
+        setAdCopy(json.copy);
+        setFeedbackIdx(null);
+        setFeedbackText("");
+        toast.success("הקופי עודכן בהצלחה");
+
+        fetch("/api/log-feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId: project?.id,
+            stepName: "copy",
+            feedbackType: "refine",
+            feedbackText: feedback,
+          }),
+        }).catch(() => {});
+      } catch (e) {
+        console.error("refine-copy error:", e);
+      } finally {
+        setRefiningIdx(null);
+      }
+    },
+    [copies, selectedNiche, setAdCopy, project],
+  );
+
   const copyText = useCallback(async (text: string, key: string) => {
     await navigator.clipboard.writeText(text);
     setChatbotCopied((prev) => ({ ...prev, [key]: true }));
@@ -193,10 +217,17 @@ export default function CopyPage() {
               {/* ── State: GENERATING ── */}
               {isGenerating && (
                 <div className="p-8 text-center">
-                  <CountdownTimer seconds={8} />
-                  <p className="text-sm text-[var(--text-muted)] mt-3">
-                    FBM Studio כותב קופי מותאם לתסריט...
-                  </p>
+                  <p className="text-sm font-semibold text-[var(--text-primary)] mb-4">כותב קופי מותאם...</p>
+                  <StepProgress
+                    steps={["מנתח תסריט", "כותב קופי", "מסיים"]}
+                    estimatedSeconds={8}
+                  />
+                  <div className="max-w-sm mx-auto mt-5 p-4 rounded-xl text-right" style={{ background: "var(--gold-soft)", border: "1px solid rgba(212, 168, 67, 0.2)" }} dir="rtl">
+                    <p className="text-[10px] font-bold text-[var(--gold)] mb-1">שיטת FBM</p>
+                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                      הקופי משלב את שפת הכאב של הנישה עם התדר הייחודי של בעל העסק. הטקסט נכתב כך שיעצור את הסקרולל של בדיוק האנשים שצריכים לראות את המסר.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -254,7 +285,41 @@ export default function CopyPage() {
                     >
                       🔄 צור מחדש
                     </button>
+                    <button
+                      onClick={() => setFeedbackIdx(feedbackIdx === idx ? null : idx)}
+                      className="flex-1 py-2.5 rounded-xl border text-sm font-bold transition-all cursor-pointer"
+                      style={{
+                        borderColor: feedbackIdx === idx ? "var(--gold)" : "var(--card-border)",
+                        color: feedbackIdx === idx ? "var(--gold)" : "var(--text-secondary)",
+                        backgroundColor: feedbackIdx === idx ? "rgba(212, 168, 67, 0.08)" : "transparent",
+                      }}
+                    >
+                      {feedbackIdx === idx ? "ביטול" : "שפר עם הערות"}
+                    </button>
                   </div>
+
+                  {/* Inline feedback for this copy */}
+                  {feedbackIdx === idx && (
+                    <div className="mt-3 p-4 bg-orange-50 border border-orange-200 rounded-xl animate-in">
+                      <p className="text-xs font-bold text-orange-700 mb-2">מה לשנות בקופי הזה?</p>
+                      <textarea
+                        value={feedbackText}
+                        onChange={(e) => setFeedbackText(e.target.value)}
+                        placeholder='לדוגמה: "תקצר את הפתיחה", "תוסיף דחיפות", "הטון רשמי מדי"...'
+                        rows={2}
+                        className="w-full px-3 py-2 rounded-lg border border-orange-200 bg-white text-sm text-right placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        dir="rtl"
+                        disabled={refiningIdx === idx}
+                      />
+                      <button
+                        onClick={() => handleRefineCopy(idx, feedbackText)}
+                        disabled={refiningIdx === idx || !feedbackText.trim()}
+                        className="mt-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        {refiningIdx === idx ? "משפר..." : "שפר קופי"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -337,10 +402,11 @@ export default function CopyPage() {
         {/* Loading state */}
         {chatbotGenerating && (
           <div className="p-8 text-center card-static rounded-2xl mb-4">
-            <CountdownTimer seconds={5} />
-            <p className="text-sm text-[var(--text-muted)] mt-3">
-              FBM Studio בונה צ&apos;אטבוט מותאם לנישה...
-            </p>
+            <p className="text-sm font-semibold text-[var(--text-primary)] mb-4">בונה צ&apos;אטבוט מותאם...</p>
+            <StepProgress
+              steps={["מנתח נישה", "בונה תסריט צ'אט", "מסיים"]}
+              estimatedSeconds={5}
+            />
           </div>
         )}
 
@@ -459,14 +525,37 @@ export default function CopyPage() {
 
       {/* Continue to album */}
       {readyCount > 0 && (
-        <div className="text-center py-6 mt-6">
-          <button
-            onClick={() => router.push(`/project/${projectId}/album`)}
-            className="btn-gold text-lg !px-8 !py-3"
-          >
-            עבור לאלבום
-          </button>
-        </div>
+        <FeedbackPanel
+          stepName="copy"
+          onApprove={() => {
+            fetch("/api/log-feedback", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                projectId: project?.id,
+                stepName: "copy",
+                feedbackType: "approve",
+              }),
+            }).catch(() => {});
+            setCopyApproved(true);
+            setShowCelebration(true);
+          }}
+          onRefine={async () => {
+            // Individual copy refinement is handled per-card above
+          }}
+          isApproved={copyApproved}
+          approveLabel="הקופי מוכן, עבור לאלבום"
+        />
+      )}
+
+      {/* Step Celebration */}
+      {showCelebration && (
+        <StepCelebration
+          stepLabel="הקופי"
+          subtitle="הקופי אושר — ממשיכים לאלבום הקריאטיבים!"
+          nextStepLabel="המשך לאלבום"
+          onContinue={() => router.push(`/project/${projectId}/album`)}
+        />
       )}
     </div>
   );

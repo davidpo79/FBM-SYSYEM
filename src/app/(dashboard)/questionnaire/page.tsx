@@ -15,7 +15,9 @@ import AnswerReview from "@/components/questionnaire/AnswerReview";
 const STORAGE_KEY = "fbm_questionnaire_progress";
 
 type Mode = "manual" | "record" | "upload";
+type ProjectMode = "self" | "client" | "owner";
 type FlowStage =
+  | "projectMode"
   | "name"
   | "niche"
   | "modeSelect"
@@ -30,6 +32,7 @@ export default function QuestionnairePage() {
   const router = useRouter();
 
   // Core state
+  const [projectMode, setProjectMode] = useState<ProjectMode>("client");
   const [ownerName, setOwnerName] = useState("");
   const [ownerNiche, setOwnerNiche] = useState("");
   const [answers, setAnswers] = useState<QuestionnaireAnswers>({});
@@ -42,7 +45,7 @@ export default function QuestionnairePage() {
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
 
   // Flow state
-  const [flowStage, setFlowStage] = useState<FlowStage>("name");
+  const [flowStage, setFlowStage] = useState<FlowStage>("projectMode");
   const [mode, setMode] = useState<Mode | null>(null);
   const [manualStep, setManualStep] = useState(0); // 0-based index into questions
 
@@ -58,7 +61,7 @@ export default function QuestionnairePage() {
     summary: string;
   } | null>(null);
 
-  const questions = getQuestions(ownerNiche);
+  const questions = getQuestions(ownerNiche, projectMode);
 
   // Listen for GHL booking confirmation from iframe
   useEffect(() => {
@@ -78,27 +81,29 @@ export default function QuestionnairePage() {
 
   // Compute step indicator progress
   const getProgress = (): { current: number; total: number; label?: string } => {
-    const total = questions.length + 3;
+    const total = questions.length + 4;
     switch (flowStage) {
+      case "projectMode":
+        return { current: 1, total, label: "סוג פרויקט" };
       case "name":
-        return { current: 1, total, label: "שלב 1 מתוך 3" };
+        return { current: 2, total, label: "שלב 1 מתוך 3" };
       case "niche":
-        return { current: 2, total, label: "שלב 2 מתוך 3" };
+        return { current: 3, total, label: "שלב 2 מתוך 3" };
       case "modeSelect":
-        return { current: 3, total, label: "שלב 3 מתוך 3 — בחירת שיטה" };
+        return { current: 4, total, label: "שלב 3 מתוך 3 — בחירת שיטה" };
       case "recording":
       case "uploading":
-        return { current: 4, total };
+        return { current: 5, total };
       case "processing":
-        return { current: 5, total, label: "מעבד..." };
+        return { current: 6, total, label: "מעבד..." };
       case "review":
-        return { current: questions.length + 2, total, label: "סקירת תשובות" };
+        return { current: questions.length + 3, total, label: "סקירת תשובות" };
       case "booking":
         return { current: total, total, label: "קביעת פגישה" };
       case "manual": {
         const q = questions[manualStep];
         return {
-          current: manualStep + 4,
+          current: manualStep + 5,
           total,
           label: `שאלה ${manualStep + 1} מתוך ${questions.length} | ${q?.sectionTitle ?? ""}`,
         };
@@ -126,6 +131,7 @@ export default function QuestionnairePage() {
     if (saved) {
       try {
         const data = JSON.parse(saved);
+        if (data.projectMode) setProjectMode(data.projectMode);
         setOwnerName(data.ownerName ?? "");
         setOwnerNiche(data.ownerNiche ?? "");
         setAnswers(data.answers ?? {});
@@ -143,6 +149,7 @@ export default function QuestionnairePage() {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
+        projectMode,
         ownerName,
         ownerNiche,
         answers,
@@ -154,7 +161,7 @@ export default function QuestionnairePage() {
         mode,
       }),
     );
-  }, [ownerName, ownerNiche, answers, flowStage, manualStep, mode]);
+  }, [projectMode, ownerName, ownerNiche, answers, flowStage, manualStep, mode]);
 
   // Handle audio processing (transcribe -> extract)
   const processAudio = useCallback(
@@ -190,6 +197,7 @@ export default function QuestionnairePage() {
             transcript: text,
             ownerName,
             ownerNiche,
+            projectMode,
           }),
         });
 
@@ -235,8 +243,10 @@ export default function QuestionnairePage() {
       const userName = ownerName.trim();
       const niche = ownerNiche.trim() || null;
 
-      // Build answers map
-      const answersMap: Record<string, string> = {};
+      // Build answers map (include project mode as metadata)
+      const answersMap: Record<string, string> = {
+        _project_mode: projectMode,
+      };
       questions.forEach((q) => {
         answersMap[q.id] = answersToUse[q.id] ?? "";
       });
@@ -338,8 +348,8 @@ export default function QuestionnairePage() {
     <div className="max-w-2xl mx-auto">
       <StepIndicator current={progress.current} total={progress.total} label={progress.label} />
 
-      {/* ─── Step: Name ─── */}
-      {flowStage === "name" && (
+      {/* ─── Step: Project Mode ─── */}
+      {flowStage === "projectMode" && (
         <div
           className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 p-6 animate-in"
           dir="rtl"
@@ -348,10 +358,110 @@ export default function QuestionnairePage() {
             לפני שמתחילים
           </span>
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2 mb-2">
-            מה השם של בעל העסק?
+            למי בונים את הפרויקט?
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+            בחר את סוג הפרויקט כדי שנתאים את כל התהליך
+          </p>
+
+          <div className="space-y-3">
+            {/* Client mode */}
+            <button
+              type="button"
+              onClick={() => {
+                setProjectMode("client");
+                setFlowStage("name");
+              }}
+              className={`w-full text-right p-5 rounded-xl border-2 transition-all cursor-pointer ${
+                projectMode === "client"
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                  : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className="text-3xl">👤</div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
+                    בניית פרויקט ללקוח
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    אני משווק FBM ובונה פרויקט עבור בעל עסק (לקוח שלי)
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            {/* Self mode */}
+            <button
+              type="button"
+              onClick={() => {
+                setProjectMode("self");
+                setFlowStage("name");
+              }}
+              className={`w-full text-right p-5 rounded-xl border-2 transition-all cursor-pointer ${
+                projectMode === "self"
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                  : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className="text-3xl">🚀</div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
+                    בניית פרויקט לעצמי
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    אני משווק FBM ובונה את העסק השיווקי שלי — מוכר שירותי שיווק
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            {/* Owner mode */}
+            <button
+              type="button"
+              onClick={() => {
+                setProjectMode("owner");
+                setFlowStage("name");
+              }}
+              className={`w-full text-right p-5 rounded-xl border-2 transition-all cursor-pointer ${
+                projectMode === "owner"
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                  : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className="text-3xl">💼</div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
+                    אני בעל עסק שירות
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    אני בעל עסק ורוצה לבנות לעצמי שיווק מבוסס תדר
+                  </p>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Step: Name ─── */}
+      {flowStage === "name" && (
+        <div
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 p-6 animate-in"
+          dir="rtl"
+        >
+          <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+            {projectMode === "client" ? "לפני שמתחילים" : "הפרטים שלך"}
+          </span>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2 mb-2">
+            {projectMode === "client" ? "מה השם של בעל העסק?" : "מה השם שלך?"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            השם ישמש לבניית מסמך האסטרטגיה האישי
+            {projectMode === "client"
+              ? "השם ישמש לבניית מסמך האסטרטגיה האישי"
+              : "השם שלך ישמש לבניית מסמך האסטרטגיה האישי"}
           </p>
           <input
             type="text"
@@ -366,7 +476,14 @@ export default function QuestionnairePage() {
           />
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
 
-          <div className="flex justify-end mt-6">
+          <div className="flex items-center justify-between mt-6">
+            <button
+              type="button"
+              onClick={() => setFlowStage("projectMode")}
+              className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+            >
+              הקודם ←
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -375,7 +492,8 @@ export default function QuestionnairePage() {
                   return;
                 }
                 setError("");
-                setFlowStage("niche");
+                // Self mode: skip niche — the system helps them find it later
+                setFlowStage(projectMode === "self" ? "modeSelect" : "niche");
               }}
               className="px-6 py-2.5 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer"
             >
@@ -395,10 +513,18 @@ export default function QuestionnairePage() {
             התאמה אישית
           </span>
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2 mb-2">
-            מה בעל העסק עושה?
+            {projectMode === "self"
+              ? "מה תחום השיווק שלך?"
+              : projectMode === "owner"
+                ? "מה אתה עושה?"
+                : "מה בעל העסק עושה?"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            הנישה תשמש להתאמת השאלות לתחום הספציפי שלך
+            {projectMode === "self"
+              ? "הנישה תשמש להתאמת האסטרטגיה לתחום שלך"
+              : projectMode === "owner"
+                ? "התחום שלך ישמש להתאמת כל התהליך עבורך"
+                : "הנישה תשמש להתאמת השאלות לתחום הספציפי שלך"}
           </p>
           <input
             type="text"
@@ -407,26 +533,39 @@ export default function QuestionnairePage() {
               setOwnerNiche(e.target.value);
               if (error) setError("");
             }}
-            placeholder="למשל: מאמן כושר, יועצת משכנתאות, קוסמטיקאית, עורך דין..."
+            placeholder={projectMode === "self"
+              ? "למשל: מאמני כושר, יועצי משכנתאות, עורכי דין..."
+              : "למשל: מאמן כושר, יועצת משכנתאות, קוסמטיקאית, עורך דין..."
+            }
             dir="rtl"
             className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-lg"
           />
 
-          {/* FBM marketer hint */}
-          <div className="mt-4 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-            <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
-              למשווקי FBM
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
-              בתוכנית ההכשרה של דוד, יש להשאיר את השדה הזה ריק והשאלון יותאם עבורך
-            </p>
-          </div>
+          {projectMode === "self" && (
+            <div className="mt-4 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+              <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
+                הזן את תחום היעד שלך — למי אתה מוכר את שירותי השיווק שלך
+              </p>
+            </div>
+          )}
+
+          {projectMode === "owner" && (
+            <div className="mt-4 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+              <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
+                הזן את התחום שלך — מה העסק שלך עושה. למשל: מאמן כושר, יועץ משכנתאות, מעצבת פנים
+              </p>
+            </div>
+          )}
 
           {ownerNiche.trim() && (
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 flex items-center gap-1">
               <span>💡</span>
               <span>
-                השאלון יותאם ל{ownerNiche.trim()} — מלא את התשובות כאילו בעל העסק מדבר
+                {projectMode === "self"
+                  ? `האסטרטגיה תותאם למכירת שירותי שיווק ל${ownerNiche.trim()}`
+                  : projectMode === "owner"
+                    ? `התהליך יותאם עבורך כ${ownerNiche.trim()}`
+                    : `השאלון יותאם ל${ownerNiche.trim()} — מלא את התשובות כאילו בעל העסק מדבר`}
               </span>
             </p>
           )}
@@ -533,7 +672,7 @@ export default function QuestionnairePage() {
           <div className="flex justify-start mt-4">
             <button
               type="button"
-              onClick={() => setFlowStage("niche")}
+              onClick={() => setFlowStage(projectMode === "self" ? "name" : "niche")}
               className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
             >
               הקודם ←
@@ -582,6 +721,7 @@ export default function QuestionnairePage() {
       {flowStage === "review" && extractedData && (
         <AnswerReview
           ownerNiche={ownerNiche}
+          projectMode={projectMode}
           extractedData={extractedData}
           onApprove={(finalAnswers) => handleSubmit(finalAnswers)}
           onRecordMore={() => {

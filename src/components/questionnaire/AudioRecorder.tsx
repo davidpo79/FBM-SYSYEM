@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { getQuestions } from "@/lib/questions";
+import { getQuestions, type ProjectMode } from "@/lib/questions";
 
 interface AudioRecorderProps {
   ownerNiche: string;
+  projectMode?: ProjectMode;
   onRecordingComplete: (blob: Blob) => void;
 }
 
 export default function AudioRecorder({
   ownerNiche,
+  projectMode,
   onRecordingComplete,
 }: AudioRecorderProps) {
   const [status, setStatus] = useState<
@@ -32,7 +34,7 @@ export default function AudioRecorder({
   const MAX_SECONDS = 30 * 60; // 30 minutes
   const WARN_SECONDS = 25 * 60; // 25 minutes
 
-  const questions = getQuestions(ownerNiche);
+  const questions = getQuestions(ownerNiche, projectMode);
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);

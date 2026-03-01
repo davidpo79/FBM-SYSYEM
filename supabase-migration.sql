@@ -138,3 +138,17 @@ CREATE TABLE IF NOT EXISTS video_projects (
 CREATE INDEX IF NOT EXISTS idx_video_projects_project ON video_projects(project_id);
 ALTER TABLE video_projects ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own video projects" ON video_projects FOR ALL USING (true);
+
+-- 9. Feedback logs (tracks user feedback on generated content)
+CREATE TABLE IF NOT EXISTS feedback_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  project_id UUID REFERENCES projects(id),
+  step_name TEXT NOT NULL,
+  feedback_type TEXT NOT NULL CHECK (feedback_type IN ('approve', 'refine')),
+  feedback_text TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_logs_step ON feedback_logs(step_name);
+CREATE INDEX IF NOT EXISTS idx_feedback_logs_created ON feedback_logs(created_at);
+ALTER TABLE feedback_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role can manage feedback_logs" ON feedback_logs FOR ALL USING (true);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getQuestions, type QuestionnaireAnswers } from "@/lib/questions";
+import { getQuestions, type QuestionnaireAnswers, type ProjectMode } from "@/lib/questions";
 
 interface ExtractedData {
   answers: Record<string, string>;
@@ -11,6 +11,7 @@ interface ExtractedData {
 
 interface AnswerReviewProps {
   ownerNiche: string;
+  projectMode?: ProjectMode;
   extractedData: ExtractedData;
   onApprove: (answers: QuestionnaireAnswers) => void;
   onRecordMore: () => void;
@@ -18,11 +19,12 @@ interface AnswerReviewProps {
 
 export default function AnswerReview({
   ownerNiche,
+  projectMode,
   extractedData,
   onApprove,
   onRecordMore,
 }: AnswerReviewProps) {
-  const questions = getQuestions(ownerNiche);
+  const questions = getQuestions(ownerNiche, projectMode);
   const [editedAnswers, setEditedAnswers] = useState<QuestionnaireAnswers>(
     () => {
       const initial: QuestionnaireAnswers = {};

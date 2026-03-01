@@ -5,32 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import { useProject, Niche } from "../layout";
 import ChatMessage from "@/components/chat/ChatMessage";
 import TypingIndicator from "@/components/chat/TypingIndicator";
-
-function CountdownTimer({ seconds }: { seconds: number }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const startRef = useRef(Date.now());
-
-  useEffect(() => {
-    startRef.current = Date.now();
-    setRemaining(seconds);
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
-      setRemaining(Math.max(0, seconds - elapsed));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [seconds]);
-
-  return (
-    <div className="inline-flex flex-col items-center">
-      <div className="text-4xl font-bold text-[var(--gold)] tabular-nums">
-        {remaining > 0 ? remaining : "..."}
-      </div>
-      <span className="text-sm text-[var(--text-muted)] mt-1">
-        {remaining > 0 ? "שניות לסיום המשוער" : "עוד רגע..."}
-      </span>
-    </div>
-  );
-}
+import StepProgress from "@/components/ui/StepProgress";
+import Button from "@/components/ui/Button";
 
 /* ─── Brainstorm message type ─── */
 interface BrainstormMessage {
@@ -424,7 +400,7 @@ export default function NichesPage() {
     }
   }, [strategyApproved, strategy, router, projectId]);
 
-  // Generate niches
+  // Generate niches (callAI handles retries automatically)
   useEffect(() => {
     if (!strategy || !strategyApproved || niches.length > 0 || generationAttempted.current) return;
     generationAttempted.current = true;
@@ -471,9 +447,38 @@ export default function NichesPage() {
     })();
   };
 
-  const handleSelectNiche = (niche: typeof niches[0]) => {
+  const [pickedNiches, setPickedNiches] = useState<Niche[]>(() => {
+    return selectedNiche ? [selectedNiche] : [];
+  });
+
+  const handleToggleNiche = (niche: Niche) => {
+    setPickedNiches((prev) => {
+      const exists = prev.some((n) => n.name === niche.name);
+      if (exists) return prev.filter((n) => n.name !== niche.name);
+      if (prev.length >= 2) return [prev[1], niche]; // Replace oldest
+      return [...prev, niche];
+    });
+  };
+
+  const handleContinue = () => {
+    if (pickedNiches.length === 0) return;
     clearDownstream();
-    setSelectedNiche(niche);
+
+    if (pickedNiches.length === 1) {
+      setSelectedNiche(pickedNiches[0]);
+    } else {
+      // Merge 2 niches into one combined niche
+      const [a, b] = pickedNiches;
+      const merged: Niche = {
+        name: `${a.name} + ${b.name}`,
+        fit_score: Math.round(((a.fit_score + b.fit_score) / 2) * 10) / 10,
+        why_perfect_match: `${a.why_perfect_match}\n\n${b.why_perfect_match}`,
+        examples: [a.examples, b.examples].filter(Boolean).join(", "),
+        core_pain: [a.core_pain, b.core_pain].filter(Boolean).join(" | "),
+        why_frequency_resonates: `${a.why_frequency_resonates}\n\n${b.why_frequency_resonates}`,
+      };
+      setSelectedNiche(merged);
+    }
     router.push(`/project/${projectId}/pains`);
   };
 
@@ -491,12 +496,9 @@ export default function NichesPage() {
       <div className="text-center py-20">
         <h2 className="text-xl font-bold text-red-600 mb-2">שגיאה</h2>
         <p className="text-[var(--text-secondary)] mb-4">{error}</p>
-        <button
-          onClick={handleRetry}
-          className="px-5 py-2.5 bg-[var(--gold)] hover:opacity-90 text-white font-semibold rounded-[10px] transition-opacity cursor-pointer"
-        >
+        <Button variant="primary" onClick={handleRetry}>
           נסה שוב
-        </button>
+        </Button>
       </div>
     );
   }
@@ -504,8 +506,19 @@ export default function NichesPage() {
   if (niches.length === 0) {
     return (
       <div className="text-center py-20">
-        <CountdownTimer seconds={15} />
-        <p className="mt-4 text-[var(--text-muted)]">מזהה נישות מתאימות עבור התדר שלך...</p>
+        <h2 className="text-xl font-bold mb-6 text-[var(--text-primary)]">
+          מזהה נישות...
+        </h2>
+        <StepProgress
+          steps={["מנתח את האסטרטגיה", "מזהה קהלי יעד", "בוחר נישות מדויקות"]}
+          estimatedSeconds={15}
+        />
+        <div className="max-w-md mx-auto mt-8 p-5 rounded-2xl text-right" style={{ background: "var(--gold-soft)", border: "1px solid rgba(212, 168, 67, 0.2)" }} dir="rtl">
+          <p className="text-xs font-bold text-[var(--gold)] mb-1.5">שיטת FBM</p>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            בשיווק מבוסס תדר, הנישה היא לא רק קהל יעד — היא קבוצת אנשים שהתדר שלהם מהדהד עם התדר של בעל העסק. ככל שהמיקוד מדויק יותר, ההתאמה חזקה יותר.
+          </p>
+        </div>
       </div>
     );
   }
@@ -515,25 +528,26 @@ export default function NichesPage() {
       <div className="mb-6">
         <h2 className="text-xl font-bold text-[var(--text-primary)]">בחר נישה</h2>
         <p className="text-[var(--text-secondary)] mt-1">
-          FBM Studio זיהה 3 נישות שמתאימות לתדר שלך. בחר את הנישה שהכי מדברת אליך:
+          FBM Studio זיהה 3 נישות שמתאימות לתדר שלך. בחר עד 2 נישות:
         </p>
       </div>
 
       <div className="grid gap-4">
         {niches.map((niche, i) => {
-          const isSelected = selectedNiche?.name === niche.name;
+          const isPicked = pickedNiches.some((n) => n.name === niche.name);
           return (
             <button
               key={i}
-              onClick={() => handleSelectNiche(niche)}
+              onClick={() => handleToggleNiche(niche)}
               className={`text-right p-6 card-elevated cursor-pointer animate-in delay-${Math.min(i + 1, 8)} ${
-                isSelected
+                isPicked
                   ? "!border-[var(--gold)] !bg-[var(--gold-soft)]"
                   : ""
               }`}
             >
               <div className="flex items-start justify-between mb-3">
                 <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                  {isPicked && <span className="text-[var(--gold)] ml-2">&#10003;</span>}
                   {niche.name}
                 </h3>
                 <span className="bg-[var(--gold-soft)] text-[var(--gold)] text-sm font-bold px-3 py-1 rounded-[10px]">
@@ -551,6 +565,29 @@ export default function NichesPage() {
           );
         })}
       </div>
+
+      {/* Continue button */}
+      {pickedNiches.length > 0 && (
+        <div className="mt-4 animate-in">
+          <button
+            onClick={handleContinue}
+            className="w-full py-3.5 rounded-xl text-white font-bold text-[15px] transition-all cursor-pointer"
+            style={{
+              background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
+              boxShadow: "0 4px 16px rgba(212, 168, 67, 0.3)",
+            }}
+          >
+            {pickedNiches.length === 1
+              ? `המשך עם "${pickedNiches[0].name}"`
+              : `המשך עם ${pickedNiches.length} נישות`}
+          </button>
+          {pickedNiches.length === 2 && (
+            <p className="text-xs text-center text-[var(--text-muted)] mt-1.5">
+              שתי הנישות ימוזגו לקהל יעד משולב
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Action buttons */}
       <div className="mt-6 flex flex-wrap gap-3">

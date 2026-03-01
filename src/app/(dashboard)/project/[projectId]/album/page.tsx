@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useProject } from "../layout";
+import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import JSZip from "jszip";
 import { exportToPdf } from "@/lib/pdf-export";
@@ -48,6 +49,9 @@ export default function AlbumPage() {
     return () => window.removeEventListener("focus", handleFocus);
   }, [projectId]);
 
+  const toast = useToast();
+  const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
+
   // Track completed status locally so UI reacts immediately
   const [isCompleted, setIsCompleted] = useState(project?.status === "completed");
 
@@ -79,10 +83,12 @@ export default function AlbumPage() {
       const body = await res.json().catch(() => ({}));
       console.error("complete-project API error:", res.status, body);
       setMarkError(body.error || "שגיאה בשמירה");
+      toast.error("שגיאה בסיום הפרויקט");
       return;
     }
 
     setIsCompleted(true);
+    setShowCompletionCelebration(true);
   };
 
   const toggleSelect = (idx: number) => {
@@ -173,8 +179,10 @@ export default function AlbumPage() {
 
       const blob = await zip.generateAsync({ type: "blob" });
       downloadBlob(blob, `${project?.user_name ?? "export"} פרויקט FBM.zip`);
+      toast.success("ההורדה מוכנה!");
     } catch (e) {
       console.error("ZIP error:", e);
+      toast.error("שגיאה ביצירת קובץ ZIP");
     } finally {
       setDownloading(false);
     }
@@ -248,6 +256,86 @@ export default function AlbumPage() {
 
   return (
     <div dir="rtl">
+      {/* Post-completion celebration */}
+      {showCompletionCelebration && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}>
+          <div
+            className="celebrate-in relative bg-white rounded-3xl p-10 text-center max-w-lg mx-4 overflow-hidden"
+            style={{ boxShadow: "0 20px 60px rgba(0, 0, 0, 0.2)" }}
+          >
+            {/* Confetti */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              {Array.from({ length: 24 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-2 h-2 rounded-full"
+                  style={{
+                    backgroundColor: ["#D4A843", "#22C55E", "#3B82F6", "#F59E0B", "#EC4899", "#8B5CF6"][i % 6],
+                    left: `${Math.random() * 100}%`,
+                    top: "-10px",
+                    animation: `confettiDrop 1.2s ${Math.random() * 0.5}s ease-out forwards`,
+                    opacity: 0,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Trophy icon */}
+            <div
+              className="w-24 h-24 rounded-full mx-auto mb-6 flex items-center justify-center text-4xl"
+              style={{
+                background: "linear-gradient(135deg, #D4A843, #C49A38)",
+                boxShadow: "0 8px 24px rgba(212, 168, 67, 0.4)",
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                <path d="M4 22h16" />
+                <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+              </svg>
+            </div>
+
+            <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
+              הפרויקט הושלם!
+            </h2>
+            <p className="text-lg text-[var(--text-secondary)] mb-2">
+              כל הכבוד! סיימת לבנות את כל חומרי השיווק שלך
+            </p>
+            <p className="text-sm text-[var(--text-muted)] mb-8">
+              הורד את כל החומרים ותתחיל להפיץ
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCompletionCelebration(false);
+                  handleDownloadZip();
+                }}
+                className="flex-1 btn-gold text-base !py-3.5"
+              >
+                הורד הכל (ZIP)
+              </button>
+              <button
+                onClick={() => setShowCompletionCelebration(false)}
+                className="flex-1 btn-outline text-base !py-3.5"
+              >
+                חזור לאלבום
+              </button>
+            </div>
+
+            <button
+              onClick={() => router.push("/questionnaire?new=true")}
+              className="mt-4 text-sm text-[var(--gold)] hover:underline cursor-pointer"
+            >
+              או התחל פרויקט חדש
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header — Rule 8: celebration background */}
       <div className="flex items-center justify-between mb-6 relative card-static p-6 animate-in overflow-hidden">
         {/* Celebration glow */}

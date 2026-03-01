@@ -4,32 +4,11 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useProject } from "../layout";
 import MarkdownContent from "@/components/MarkdownContent";
-
-function CountdownTimer({ seconds }: { seconds: number }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const startRef = useRef(Date.now());
-
-  useEffect(() => {
-    startRef.current = Date.now();
-    setRemaining(seconds);
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
-      setRemaining(Math.max(0, seconds - elapsed));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [seconds]);
-
-  return (
-    <div className="inline-flex flex-col items-center">
-      <div className="text-4xl font-bold text-[var(--gold)] tabular-nums">
-        {remaining > 0 ? remaining : "..."}
-      </div>
-      <span className="text-sm text-[var(--text-muted)] mt-1">
-        {remaining > 0 ? "שניות לסיום המשוער" : "עוד רגע..."}
-      </span>
-    </div>
-  );
-}
+import FeedbackPanel from "@/components/FeedbackPanel";
+import { useToast } from "@/components/Toast";
+import StepCelebration from "@/components/StepCelebration";
+import StepProgress from "@/components/ui/StepProgress";
+import Button from "@/components/ui/Button";
 
 export default function ScriptsPage() {
   const router = useRouter();
@@ -42,13 +21,20 @@ export default function ScriptsPage() {
     setScripts,
     handleDownloadPdf,
     downloading,
+    versionHistory,
+    pushVersion,
+    restoreVersion,
   } = useProject();
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
+  const [scriptsApproved, setScriptsApproved] = useState(false);
   const [error, setError] = useState("");
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editedScripts, setEditedScripts] = useState<Record<number, string>>({});
+  const [showCelebration, setShowCelebration] = useState(false);
   const generationAttempted = useRef(false);
+  const toast = useToast();
 
   // Redirect if no pain analysis
   useEffect(() => {
@@ -89,17 +75,77 @@ export default function ScriptsPage() {
     return parts.filter((p) => p.trim().length > 0);
   };
 
+  const handleRefine = async (feedback: string) => {
+    setIsRefining(true);
+    try {
+      pushVersion("scripts", scripts);
+
+      // Apply any manual edits before refining
+      const scriptParts = splitScripts(scripts);
+      const currentScripts = scriptParts.map((s, i) => editedScripts[i] ?? s).join("\n\n");
+
+      const res = await fetch("/api/refine-scripts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentScripts,
+          feedback,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setScripts(json.scripts);
+      setEditedScripts({});
+      setEditingIdx(null);
+      toast.success("התסריטים עודכנו בהצלחה");
+
+      fetch("/api/log-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project?.id,
+          stepName: "scripts",
+          feedbackType: "refine",
+          feedbackText: feedback,
+        }),
+      }).catch(() => {});
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "שגיאה בעדכון התסריטים");
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
+  const handleApprove = () => {
+    // Save any manual edits
+    if (Object.keys(editedScripts).length > 0) {
+      const scriptParts = splitScripts(scripts);
+      const finalScripts = scriptParts.map((s, i) => editedScripts[i] ?? s).join("\n\n");
+      setScripts(finalScripts);
+    }
+
+    fetch("/api/log-feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId: project?.id,
+        stepName: "scripts",
+        feedbackType: "approve",
+      }),
+    }).catch(() => {});
+
+    setScriptsApproved(true);
+    setShowCelebration(true);
+  };
+
   if (error) {
     return (
       <div className="text-center py-20">
         <h2 className="text-xl font-bold text-red-600 mb-2">שגיאה</h2>
         <p className="text-[var(--text-secondary)] mb-4">{error}</p>
-        <button
-          onClick={() => { generationAttempted.current = false; generateScripts(); }}
-          className="px-5 py-2.5 bg-[var(--gold)] hover:opacity-90 text-white font-semibold rounded-[10px] transition-opacity cursor-pointer"
-        >
+        <Button variant="primary" onClick={() => { generationAttempted.current = false; generateScripts(); }}>
           נסה שוב
-        </button>
+        </Button>
       </div>
     );
   }
@@ -107,9 +153,17 @@ export default function ScriptsPage() {
   if (!scripts) {
     return (
       <div className="text-center py-20">
-        <CountdownTimer seconds={25} />
-        <h2 className="text-xl font-bold mt-4 text-[var(--text-primary)]">כותב תסריטים...</h2>
-        <p className="text-[var(--text-muted)] mt-2">3 תסריטי וידאו מותאמים אישית</p>
+        <h2 className="text-xl font-bold mb-6 text-[var(--text-primary)]">כותב תסריטים...</h2>
+        <StepProgress
+          steps={["מנתח את הכאבים", "כותב 3 תסריטים", "מסיים עריכה"]}
+          estimatedSeconds={25}
+        />
+        <div className="max-w-md mx-auto mt-8 p-5 rounded-2xl text-right" style={{ background: "var(--gold-soft)", border: "1px solid rgba(212, 168, 67, 0.2)" }} dir="rtl">
+          <p className="text-xs font-bold text-[var(--gold)] mb-1.5">שיטת FBM</p>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            בשיווק מבוסס תדר אנחנו מאמינים שהעסק הוא רק השתקפות של בעל העסק. לכן את סרטוני הוידאו מומלץ שבעל העסק יצלם את עצמו, כדי שהתדר והאנרגיה שלו יגיעו ישירות לקהל היעד המדויק.
+          </p>
+        </div>
       </div>
     );
   }
@@ -119,17 +173,21 @@ export default function ScriptsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-[var(--text-primary)]">תסריטים</h2>
-        <button
+        <h2 className="text-xl font-bold text-[var(--text-primary)]">
+          תסריטים
+          {scriptsApproved && <span className="text-[var(--success)] text-base font-medium mr-2">(אושר)</span>}
+        </h2>
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => {
             const finalScripts = scriptParts.map((s, i) => editedScripts[i] ?? s).join("\n\n");
             handleDownloadPdf("תסריטי וידאו FBM", finalScripts, `${project?.user_name ?? "export"} תסריטים.pdf`);
           }}
           disabled={downloading?.includes("תסריטים")}
-          className="px-4 py-2 text-sm font-medium bg-white border border-[var(--card-border)] text-[var(--text-secondary)] rounded-[10px] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
         >
           {downloading?.includes("תסריטים") ? "מייצא..." : "הורד תסריטים כ-PDF"}
-        </button>
+        </Button>
       </div>
 
       <div className="space-y-4">
@@ -186,20 +244,36 @@ export default function ScriptsPage() {
         })}
       </div>
 
+      {/* Back button */}
       <div className="flex gap-3 mt-6">
-        <button
-          onClick={() => router.push(`/project/${projectId}/pains`)}
-          className="px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-        >
+        <Button variant="ghost" size="sm" onClick={() => router.push(`/project/${projectId}/pains`)}>
           &larr; חזרה לניתוח כאבים
-        </button>
-        <button
-          onClick={() => router.push(`/project/${projectId}/creative`)}
-          className="px-5 py-2.5 bg-[var(--gold)] text-white font-semibold rounded-[10px] hover:opacity-90 transition-opacity cursor-pointer"
-        >
-          המשך לקריאייטיב
-        </button>
+        </Button>
       </div>
+
+      {/* Feedback Panel */}
+      <FeedbackPanel
+        stepName="scripts"
+        onApprove={handleApprove}
+        onRefine={handleRefine}
+        isRefining={isRefining}
+        isApproved={scriptsApproved}
+        approveLabel="התסריטים מדויקים, המשך לקריאייטיב"
+        versionCount={versionHistory.scripts.length}
+        onRestoreVersion={(idx) => restoreVersion("scripts", idx)}
+        versionTimestamps={versionHistory.scripts.map((v) => v.timestamp)}
+      />
+
+      {/* Step Celebration */}
+      {showCelebration && (
+        <StepCelebration
+          stepLabel="התסריטים"
+          subtitle="התסריטים אושרו — ממשיכים ליצירת קריאייטיב!"
+          nextStepLabel="המשך לקריאייטיב"
+          onContinue={() => router.push(`/project/${projectId}/creative`)}
+          summary={scripts ? `${splitScripts(scripts).length} תסריטי וידאו מותאמים` : undefined}
+        />
+      )}
     </div>
   );
 }
