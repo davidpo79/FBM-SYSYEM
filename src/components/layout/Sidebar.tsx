@@ -27,6 +27,7 @@ import {
   MessageCircle,
   Wrench,
   LogOut,
+  BookOpen,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -90,6 +91,7 @@ export default function Sidebar({
   const toolsNav: NavItem[] = [
     { href: "#expert", label: "מומחה FBM", icon: BotMessageSquare, badge: "●", isExpert: true },
     { href: "#suggest", label: "הצעה לייעול", icon: Lightbulb, isSuggest: true },
+    { href: "/guides/facebook-campaign", label: "מדריך קמפיין", icon: BookOpen },
     { href: "/settings", label: "הגדרות", icon: Settings },
   ];
 
