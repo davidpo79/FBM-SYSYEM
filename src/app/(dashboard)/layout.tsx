@@ -29,6 +29,7 @@ import {
   ClipboardList,
   Camera,
   LogOut,
+  BookOpen,
 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -431,6 +432,7 @@ function MobileSidebarContent({
 
   const toolsNav = [
     { href: "#expert", label: "מומחה FBM", icon: BotMessageSquare, badge: "●", isExpert: true },
+    { href: "/guides/facebook-campaign", label: "מדריך קמפיין", icon: BookOpen },
     { href: "/settings", label: "הגדרות", icon: Settings },
   ];
 
