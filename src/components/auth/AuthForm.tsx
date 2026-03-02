@@ -112,12 +112,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
     }
     setForgotLoading(true);
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        forgotEmail,
-        { redirectTo: `${window.location.origin}/auth/reset-password` }
-      );
-      if (resetError) {
-        setForgotError(resetError.message);
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setForgotError(data.error || "אירעה שגיאה. נסה שוב.");
         return;
       }
       setForgotSent(true);

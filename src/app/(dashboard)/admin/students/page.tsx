@@ -75,7 +75,9 @@ export default function StudentsPage() {
     userId: string;
     link: string;
     email: string;
+    emailSent: boolean;
   } | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -127,11 +129,33 @@ export default function StudentsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "שגיאה");
-      setResetResult({ userId, link: data.resetLink || "", email: data.email });
+      setResetResult({ userId, link: data.resetLink || "", email: data.email, emailSent: false });
     } catch (err) {
       alert(err instanceof Error ? err.message : "שגיאה בשליחת איפוס סיסמה");
     } finally {
       setResetLoading(null);
+    }
+  }
+
+  async function handleSendResetEmail(userId: string) {
+    setSendingEmail(true);
+    try {
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, sendEmail: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "שגיאה");
+      if (data.emailSent) {
+        setResetResult((prev) => prev ? { ...prev, emailSent: true } : prev);
+      } else {
+        alert("לא הצלחנו לשלוח את המייל. ודא ש-RESEND_API_KEY מוגדר.");
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "שגיאה בשליחת מייל");
+    } finally {
+      setSendingEmail(false);
     }
   }
 
@@ -417,6 +441,21 @@ export default function StudentsPage() {
                     שלח בוואטסאפ
                   </button>
                 </div>
+                <button
+                  onClick={() => handleSendResetEmail(resetResult.userId)}
+                  disabled={sendingEmail || resetResult.emailSent}
+                  className="w-full mt-2 py-2 px-3 text-sm font-medium rounded-lg cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: resetResult.emailSent ? "#10B981" : "#2563EB",
+                    color: "#fff",
+                  }}
+                >
+                  {sendingEmail
+                    ? "שולח..."
+                    : resetResult.emailSent
+                      ? "נשלח בהצלחה!"
+                      : "שלח מייל ממותג למשתמש"}
+                </button>
               </div>
             ) : (
               <p className="text-sm text-[var(--text-secondary)] mb-4">
