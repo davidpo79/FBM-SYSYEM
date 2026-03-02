@@ -19,6 +19,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState("");
 
   const isLogin = activeTab === "login";
 
@@ -97,9 +103,37 @@ export default function AuthForm({ mode }: AuthFormProps) {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+    if (!forgotEmail.trim()) {
+      setForgotError("נא להזין כתובת אימייל");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        forgotEmail,
+        { redirectTo: `${window.location.origin}/auth/reset-password` }
+      );
+      if (resetError) {
+        setForgotError(resetError.message);
+        return;
+      }
+      setForgotSent(true);
+    } catch {
+      setForgotError("אירעה שגיאה. נסה שוב.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
   const switchTab = (tab: "login" | "signup") => {
     setActiveTab(tab);
     setError("");
+    setForgotMode(false);
+    setForgotSent(false);
+    setForgotError("");
   };
 
   if (confirmEmail) {
@@ -121,6 +155,96 @@ export default function AuthForm({ mode }: AuthFormProps) {
           >
             חזור לדף ההתחברות
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (forgotMode) {
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-800">
+          {/* Logo */}
+          <div className="text-center mb-6">
+            <div className="flex justify-center mb-3">
+              <Image src="/logo-fbm.png" alt="FBM Studio" width={100} height={100} className="rounded" />
+            </div>
+            <h1 className="text-3xl font-bold mb-1">FBM Studio</h1>
+          </div>
+
+          {forgotSent ? (
+            <div className="text-center">
+              <div className="text-5xl mb-4">📧</div>
+              <h2 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">
+                בדוק את האימייל שלך
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-6">
+                שלחנו קישור לאיפוס סיסמה ל-<strong dir="ltr">{forgotEmail}</strong>.
+                <br />
+                לחץ על הקישור כדי לבחור סיסמה חדשה.
+              </p>
+              <button
+                onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail(""); }}
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium cursor-pointer"
+              >
+                חזור לדף ההתחברות
+              </button>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-xl font-bold text-center mb-2 text-gray-900 dark:text-gray-100">
+                שכחת סיסמה?
+              </h2>
+              <p className="text-center text-gray-500 dark:text-gray-400 text-sm mb-5">
+                הזן את כתובת האימייל שלך ונשלח לך קישור לאיפוס הסיסמה
+              </p>
+
+              <form onSubmit={handleForgotPassword} className="space-y-5">
+                <div>
+                  <label
+                    htmlFor="forgotEmail"
+                    className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300"
+                  >
+                    אימייל
+                  </label>
+                  <input
+                    id="forgotEmail"
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                    dir="ltr"
+                    placeholder="you@example.com"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
+                  />
+                </div>
+
+                {forgotError && (
+                  <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm p-3 rounded-lg border border-red-200 dark:border-red-800">
+                    {forgotError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed"
+                >
+                  {forgotLoading ? "..." : "שלח קישור איפוס"}
+                </button>
+              </form>
+
+              <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
+                <button
+                  type="button"
+                  onClick={() => { setForgotMode(false); setForgotError(""); }}
+                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium cursor-pointer"
+                >
+                  חזור לדף ההתחברות
+                </button>
+              </p>
+            </>
+          )}
         </div>
       </div>
     );
@@ -223,16 +347,37 @@ export default function AuthForm({ mode }: AuthFormProps) {
             >
               סיסמה
             </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              dir="ltr"
-              placeholder="••••••••"
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                dir="ltr"
+                placeholder="••••••••"
+                className="w-full px-4 py-2.5 pl-11 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Error message */}
@@ -254,6 +399,19 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 ? "התחבר"
                 : "הירשם חינם"}
           </button>
+
+          {/* Forgot Password Link */}
+          {isLogin && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => { setForgotMode(true); setForgotEmail(email); }}
+                className="text-sm text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors cursor-pointer"
+              >
+                שכחת סיסמה?
+              </button>
+            </div>
+          )}
         </form>
 
         {/* Divider */}
