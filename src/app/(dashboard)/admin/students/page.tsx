@@ -70,6 +70,12 @@ export default function StudentsPage() {
     studentName: string;
     userId: string;
   }>({ open: false, studentName: "", userId: "" });
+  const [resetLoading, setResetLoading] = useState<string | null>(null);
+  const [resetResult, setResetResult] = useState<{
+    userId: string;
+    link: string;
+    email: string;
+  } | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -109,6 +115,25 @@ export default function StudentsPage() {
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, statusFilter, nicheFilter]);
+
+  async function handleResetPassword(userId: string, studentName: string) {
+    if (!confirm(`לשלוח איפוס סיסמה ל-${studentName}?`)) return;
+    setResetLoading(userId);
+    try {
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "שגיאה");
+      setResetResult({ userId, link: data.resetLink || "", email: data.email });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "שגיאה בשליחת איפוס סיסמה");
+    } finally {
+      setResetLoading(null);
+    }
+  }
 
   const uniqueNiches = Array.from(
     new Set(students.map((s) => s.niche).filter(Boolean))
@@ -308,6 +333,22 @@ export default function StudentsPage() {
                               {"\u2709"}
                             </span>
                           </button>
+                          <button
+                            onClick={() =>
+                              handleResetPassword(student.id, student.fullName)
+                            }
+                            disabled={resetLoading === student.id}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-[var(--gold-soft)] disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="איפוס סיסמה"
+                          >
+                            {resetLoading === student.id ? (
+                              <span className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin inline-block" />
+                            ) : (
+                              <span role="img" aria-label="reset password">
+                                {"\uD83D\uDD11"}
+                              </span>
+                            )}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -318,6 +359,85 @@ export default function StudentsPage() {
           </div>
         )}
       </div>
+
+      {/* Reset Password Result Modal */}
+      {resetResult && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div
+            className="w-full max-w-md rounded-2xl p-6 shadow-xl"
+            style={{
+              backgroundColor: "var(--card-bg)",
+              border: "1px solid var(--card-border)",
+            }}
+          >
+            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-3">
+              {"\uD83D\uDD11"} קישור איפוס סיסמה
+            </h3>
+            <p className="text-sm text-[var(--text-secondary)] mb-4">
+              קישור איפוס נוצר עבור <strong>{resetResult.email}</strong>
+            </p>
+
+            {resetResult.link ? (
+              <div className="mb-4">
+                <div
+                  className="p-3 rounded-lg text-xs break-all"
+                  dir="ltr"
+                  style={{
+                    backgroundColor: "var(--gold-soft)",
+                    border: "1px solid var(--gold)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {resetResult.link}
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(resetResult.link);
+                      alert("הקישור הועתק!");
+                    }}
+                    className="flex-1 py-2 px-3 text-sm font-medium rounded-lg cursor-pointer transition-colors"
+                    style={{
+                      backgroundColor: "var(--gold)",
+                      color: "#000",
+                    }}
+                  >
+                    העתק קישור
+                  </button>
+                  <button
+                    onClick={() => {
+                      const text = `היי, הנה קישור לאיפוס הסיסמה שלך ב-FBM Studio:\n${resetResult.link}`;
+                      window.open(
+                        `https://wa.me/?text=${encodeURIComponent(text)}`,
+                        "_blank"
+                      );
+                    }}
+                    className="flex-1 py-2 px-3 text-sm font-medium rounded-lg cursor-pointer transition-colors bg-green-500 hover:bg-green-600 text-white"
+                  >
+                    שלח בוואטסאפ
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-[var(--text-secondary)] mb-4">
+                אימייל איפוס סיסמה נשלח ל-{resetResult.email}
+              </p>
+            )}
+
+            <p className="text-xs text-[var(--text-muted)] mb-4">
+              * הסיסמאות מוצפנות במערכת ולא ניתן לצפות בהן. המשתמש יבחר סיסמה חדשה דרך הקישור.
+            </p>
+
+            <button
+              onClick={() => setResetResult(null)}
+              className="w-full py-2 text-sm font-medium rounded-lg cursor-pointer transition-colors text-[var(--text-secondary)] hover:bg-[var(--gold-soft)]"
+              style={{ border: "1px solid var(--card-border)" }}
+            >
+              סגור
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       <InviteStudentModal
