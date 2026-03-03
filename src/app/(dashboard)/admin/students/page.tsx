@@ -17,6 +17,30 @@ interface Student {
   stepNumber: number;
   lastLogin: string;
   status: "active" | "at_risk" | "inactive";
+  plan: string;
+  trialDays: number;
+  trialDaysLeft: number | null;
+}
+
+function getPlanBadge(plan: string, daysLeft: number | null): {
+  label: string;
+  color: string;
+  bgColor: string;
+} {
+  switch (plan) {
+    case "premium":
+      return { label: "פרימיום", color: "#9333EA", bgColor: "rgba(147, 51, 234, 0.1)" };
+    case "standard":
+      return { label: "סטנדרט", color: "#2563EB", bgColor: "rgba(37, 99, 235, 0.1)" };
+    case "expired":
+      return { label: "פג תוקף", color: "#EF4444", bgColor: "rgba(239, 68, 68, 0.1)" };
+    case "trial":
+    default:
+      if (daysLeft !== null && daysLeft <= 3) {
+        return { label: `ניסיון (${daysLeft} ימים)`, color: "#F59E0B", bgColor: "rgba(245, 158, 11, 0.1)" };
+      }
+      return { label: daysLeft !== null ? `ניסיון (${daysLeft} ימים)` : "ניסיון", color: "#10B981", bgColor: "rgba(16, 185, 129, 0.1)" };
+  }
 }
 
 function getStatusInfo(lastLogin: string): {
@@ -75,7 +99,11 @@ export default function StudentsPage() {
     userId: string;
     link: string;
     email: string;
+    emailSent: boolean;
   } | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [extendOpen, setExtendOpen] = useState<string | null>(null);
+  const [extendLoading, setExtendLoading] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -127,11 +155,65 @@ export default function StudentsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "שגיאה");
-      setResetResult({ userId, link: data.resetLink || "", email: data.email });
+      setResetResult({ userId, link: data.resetLink || "", email: data.email, emailSent: false });
     } catch (err) {
       alert(err instanceof Error ? err.message : "שגיאה בשליחת איפוס סיסמה");
     } finally {
       setResetLoading(null);
+    }
+  }
+
+  async function handleSendResetEmail(userId: string) {
+    setSendingEmail(true);
+    try {
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, sendEmail: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "שגיאה");
+      if (data.emailSent) {
+        setResetResult((prev) => prev ? { ...prev, emailSent: true } : prev);
+      } else {
+        alert("לא הצלחנו לשלוח את המייל. ודא ש-RESEND_API_KEY מוגדר.");
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "שגיאה בשליחת מייל");
+    } finally {
+      setSendingEmail(false);
+    }
+  }
+
+  async function handleExtendTrial(userId: string, extraDays: number) {
+    setExtendLoading(userId);
+    try {
+      const res = await fetch("/api/admin/subscriptions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, action: "extend-trial", extraDays }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "שגיאה");
+      // Update locally
+      setStudents((prev) =>
+        prev.map((s) => {
+          if (s.id !== userId) return s;
+          const newTrialDays = s.trialDays + extraDays;
+          const newDaysLeft = (s.trialDaysLeft ?? 0) + extraDays;
+          return {
+            ...s,
+            plan: s.plan === "expired" ? "trial" : s.plan,
+            trialDays: newTrialDays,
+            trialDaysLeft: newDaysLeft,
+          };
+        })
+      );
+      setExtendOpen(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "שגיאה בהארכת ניסיון");
+    } finally {
+      setExtendLoading(null);
     }
   }
 
@@ -260,6 +342,9 @@ export default function StudentsPage() {
                     סטטוס
                   </th>
                   <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
+                    תוכנית
+                  </th>
+                  <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
                     התחברות אחרונה
                   </th>
                   <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
@@ -301,6 +386,60 @@ export default function StudentsPage() {
                         >
                           {statusInfo.icon} {statusInfo.label}
                         </span>
+                      </td>
+                      <td className="py-3 pr-2">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="inline-flex items-center text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap"
+                            style={{
+                              backgroundColor: getPlanBadge(student.plan, student.trialDaysLeft).bgColor,
+                              color: getPlanBadge(student.plan, student.trialDaysLeft).color,
+                            }}
+                          >
+                            {getPlanBadge(student.plan, student.trialDaysLeft).label}
+                          </span>
+                          {(student.plan === "trial" || student.plan === "expired") && (
+                            <div className="relative">
+                              <button
+                                onClick={() =>
+                                  setExtendOpen(extendOpen === student.id ? null : student.id)
+                                }
+                                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors text-xs font-bold"
+                                style={{
+                                  backgroundColor: "var(--gold-soft)",
+                                  color: "var(--gold)",
+                                  border: "1px solid var(--gold)",
+                                }}
+                                title="הארך ניסיון"
+                              >
+                                +
+                              </button>
+                              {extendOpen === student.id && (
+                                <div
+                                  className="absolute top-full mt-1 right-0 z-50 rounded-xl shadow-lg p-2 min-w-[140px]"
+                                  style={{
+                                    backgroundColor: "var(--card-bg)",
+                                    border: "1px solid var(--card-border)",
+                                  }}
+                                >
+                                  <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 px-1">
+                                    הארך ניסיון ב:
+                                  </p>
+                                  {[7, 14, 30].map((days) => (
+                                    <button
+                                      key={days}
+                                      onClick={() => handleExtendTrial(student.id, days)}
+                                      disabled={extendLoading === student.id}
+                                      className="w-full text-right px-3 py-1.5 text-sm rounded-lg cursor-pointer transition-colors hover:bg-[var(--gold-soft)] text-[var(--text-primary)] disabled:opacity-50"
+                                    >
+                                      {extendLoading === student.id ? "..." : `+${days} ימים`}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 pr-2 text-[var(--text-muted)] text-xs">
                         {new Date(student.lastLogin).toLocaleDateString(
@@ -417,6 +556,21 @@ export default function StudentsPage() {
                     שלח בוואטסאפ
                   </button>
                 </div>
+                <button
+                  onClick={() => handleSendResetEmail(resetResult.userId)}
+                  disabled={sendingEmail || resetResult.emailSent}
+                  className="w-full mt-2 py-2 px-3 text-sm font-medium rounded-lg cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: resetResult.emailSent ? "#10B981" : "#2563EB",
+                    color: "#fff",
+                  }}
+                >
+                  {sendingEmail
+                    ? "שולח..."
+                    : resetResult.emailSent
+                      ? "נשלח בהצלחה!"
+                      : "שלח מייל ממותג למשתמש"}
+                </button>
               </div>
             ) : (
               <p className="text-sm text-[var(--text-secondary)] mb-4">
