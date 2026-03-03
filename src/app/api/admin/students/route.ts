@@ -26,14 +26,19 @@ export async function GET(req: NextRequest) {
 
     const users = usersData?.users ?? [];
 
-    // Fetch user profiles for full names
+    // Fetch user profiles for full names and trial info
     const { data: profiles } = await supabaseAdmin
       .from("user_profiles")
-      .select("user_id, full_name");
-    const profileMap: Record<string, string> = {};
+      .select("user_id, full_name, plan, trial_start, trial_days");
+    const profileMap: Record<string, { fullName: string; plan: string; trialStart: string | null; trialDays: number }> = {};
     if (profiles) {
       for (const p of profiles) {
-        profileMap[p.user_id] = p.full_name;
+        profileMap[p.user_id] = {
+          fullName: p.full_name,
+          plan: p.plan || "trial",
+          trialStart: p.trial_start || null,
+          trialDays: p.trial_days ?? 30,
+        };
       }
     }
 
@@ -104,11 +109,23 @@ export async function GET(req: NextRequest) {
         null;
       const nicheDisplay = typeof userNiche === "string" ? userNiche : "";
 
+      const profile = profileMap[user.id];
+
+      // Calculate trial days left
+      let trialDaysLeft: number | null = null;
+      const userPlan = profile?.plan || "trial";
+      if (userPlan === "trial" && profile?.trialStart) {
+        const diff = Math.floor(
+          (now.getTime() - new Date(profile.trialStart).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        trialDaysLeft = Math.max(0, (profile.trialDays ?? 30) - diff);
+      }
+
       return {
         id: user.id,
         email: user.email || "",
         fullName:
-          profileMap[user.id] ||
+          profile?.fullName ||
           user.user_metadata?.full_name ||
           user.user_metadata?.name ||
           user.email ||
@@ -119,6 +136,9 @@ export async function GET(req: NextRequest) {
         stepNumber,
         totalSteps: PIPELINE_STEPS.length,
         status: userStatus,
+        plan: userPlan,
+        trialDays: profile?.trialDays ?? 30,
+        trialDaysLeft,
       };
     });
 
