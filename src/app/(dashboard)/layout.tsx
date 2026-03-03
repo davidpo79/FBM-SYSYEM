@@ -304,8 +304,8 @@ export default function DashboardLayout({
             />
           )}
 
-          {/* Show Paywall if plan expired, otherwise show content */}
-          {!billingLoading && billingPlan === "expired" ? (
+          {/* Show Paywall if plan expired (admins bypass paywall) */}
+          {!billingLoading && billingPlan === "expired" && !isAdmin ? (
             <Paywall daysLeft={billingDaysLeft} currentPlan={billingPlan} projectCount={projectCount} />
           ) : (
             children
