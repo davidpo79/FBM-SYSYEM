@@ -21,6 +21,8 @@ export interface ProjectRow {
   status: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pipeline_data?: Record<string, any> | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  gtm_onboarding_data?: Record<string, any> | null;
 }
 
 export interface Niche {
@@ -159,7 +161,7 @@ export default function ProjectLayout({
     async function load() {
       const { data, error: dbErr } = await supabase
         .from("projects")
-        .select("id, user_name, answers_map, owner_niche, status, pipeline_data")
+        .select("id, user_name, answers_map, owner_niche, status, pipeline_data, gtm_onboarding_data")
         .eq("id", projectId)
         .single();
 

@@ -6,7 +6,7 @@ import { logApiCall } from "@/lib/api-log";
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   try {
-    const { userName, answers } = await req.json();
+    const { userName, answers, gtmOnboardingData } = await req.json();
 
     if (!answers || typeof answers !== "object") {
       return NextResponse.json(
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const prompt = buildGTMStrategyPrompt({ userName, answers });
+    const prompt = buildGTMStrategyPrompt({ userName, answers, gtmOnboardingData });
     const raw = await callAI("", prompt, 8000, { jsonMode: true });
 
     // Parse the JSON response

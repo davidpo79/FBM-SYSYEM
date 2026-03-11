@@ -132,6 +132,7 @@ export default function GTMStrategyPage() {
         body: JSON.stringify({
           userName: project.user_name,
           answers: project.answers_map,
+          gtmOnboardingData: project.gtm_onboarding_data || null,
         }),
       });
       const json = await res.json();

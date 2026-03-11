@@ -1,6 +1,8 @@
 export interface PromptAnswers {
   userName: string;
   answers: Record<string, string>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  gtmOnboardingData?: Record<string, any> | null;
 }
 
 export function buildStrategyPrompt(input: PromptAnswers): string {
@@ -466,12 +468,24 @@ ${strategyDocument}
 // ========================================
 
 export function buildGTMStrategyPrompt(input: PromptAnswers): string {
+  // Build structured onboarding section if available
+  const onboarding = input.gtmOnboardingData;
+  const onboardingSection = onboarding ? `
+=== נתוני ליבה (עדיפות גבוהה — השתמש בנתונים אלו כמקור אמת ראשי) ===
+שם המיזם: ${onboarding.idea_name || "לא צוין"}
+הבעיה הבוערת: ${onboarding.pain_point || "לא צוין"}
+הערך הייחודי (UVP): ${onboarding.uvp || "לא צוין"}
+קהל יעד ספציפי (ICP): ${onboarding.icp || "לא צוין"}
+מודל הכנסות: ${onboarding.revenue_model || "לא צוין"}
+===
+
+` : "";
+
   return `אתה אסטרטג Go-To-Market ברמה עולמית לסטארטאפים טכנולוגיים ומוצרי Micro-SaaS.
 אתה מתמחה בעזרה לפאונדרים יחידים וצוותים קטנים להשיק מוצרים בהצלחה.
 
 נתח את תשובות השאלון של ${input.userName} וצור מסמך אסטרטגיית GTM מקיף.
-
-תשובות השאלון:
+${onboardingSection}תשובות השאלון:
 
 1. הבעיה:
 ${input.answers["1"]}
@@ -625,7 +639,8 @@ ${input.answers["10"]}
 - כלול מספרים קונקרטיים, מדדים ולוחות זמנים כמה שאפשר
 - העדף המלצות פרקטיות על פני תיאוריה
 - התחשב בסטטוס הולידציה והתאם את ההמלצות בהתאם
-- אם חסר מידע, בצע הנחות סבירות על בסיס ההקשר
+- אם חסר מידע, בצע הנחות סבירות על בסיס ההקשר${onboarding ? `
+- חשוב מאוד: השתמש בנתוני הליבה (שם המיזם, הבעיה, UVP, ICP, מודל הכנסות) כמקור אמת מרכזי. אל תמציא נתונים כלליים — בסס את כל הניתוח על המידע הספציפי שסופק` : ""}
 - כל הטקסט חייב להיות בעברית!`;
 }
 

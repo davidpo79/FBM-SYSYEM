@@ -365,6 +365,23 @@ export default function QuestionnairePage() {
         track,
       };
 
+      // For GTM track: extract structured onboarding data for the AI strategy generator
+      if (isGtm) {
+        insertData.gtm_onboarding_data = {
+          idea_name: ideaName || answersToUse["2"]?.slice(0, 120) || "",
+          pain_point: answersToUse["1"] || "",
+          uvp: answersToUse["2"] || "",
+          origin_story: answersToUse["3"] || "",
+          icp: answersToUse["4"] || "",
+          market_size: answersToUse["5"] || "",
+          competitive_landscape: answersToUse["6"] || "",
+          revenue_model: answersToUse["7"] || "",
+          distribution_channels: answersToUse["8"] || "",
+          validation_status: answersToUse["9"] || "",
+          launch_goals: answersToUse["10"] || "",
+        };
+      }
+
       // Save transcript if available
       if (transcript) {
         insertData.transcript = transcript;
