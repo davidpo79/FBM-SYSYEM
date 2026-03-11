@@ -108,6 +108,20 @@ interface GTMStrategy {
   summary: string;
 }
 
+interface GanttTimeline {
+  phases: {
+    name: string;
+    weeks: string;
+    tasks: {
+      week: string;
+      task: string;
+      owner: string;
+      deliverable: string;
+    }[];
+    milestone: string;
+  }[];
+}
+
 type StrategyStage = "core" | "validation" | "marketing";
 
 export default function GTMStrategyPage() {
@@ -125,14 +139,46 @@ export default function GTMStrategyPage() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [selectedTier, setSelectedTier] = useState<"diy" | "pro" | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [purchasedTier, setPurchasedTier] = useState<"diy" | "pro" | null>(null);
+
+  // Post-payment state
+  const [showPostPayment, setShowPostPayment] = useState(false);
+  const [refineMode, setRefineMode] = useState(false);
+  const [refinementProgress, setRefinementProgress] = useState(0);
+
+  // 90-Day Gantt state
+  const [ganttTimeline, setGanttTimeline] = useState<GanttTimeline | null>(null);
+  const [ganttGenerating, setGanttGenerating] = useState(false);
+  const [ganttConfirmed, setGanttConfirmed] = useState(false);
 
   // Check if already purchased
   useEffect(() => {
     try {
       const unlocked = localStorage.getItem("gtm-marketing-unlocked");
-      if (unlocked === "true") setIsUnlocked(true);
+      if (unlocked === "true") {
+        setIsUnlocked(true);
+        const tier = localStorage.getItem("gtm-purchased-tier") as "diy" | "pro" | null;
+        if (tier) setPurchasedTier(tier);
+      }
+      const confirmed = localStorage.getItem("gtm-gantt-confirmed");
+      if (confirmed === "true") setGanttConfirmed(true);
+      const savedGantt = localStorage.getItem(`gtm-gantt-${project?.id}`);
+      if (savedGantt) setGanttTimeline(JSON.parse(savedGantt));
     } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Calculate refinement progress based on answer completeness
+  useEffect(() => {
+    if (!project?.answers_map) return;
+    const answers = project.answers_map;
+    const totalQuestions = 10;
+    let filled = 0;
+    for (let i = 1; i <= totalQuestions; i++) {
+      if (answers[String(i)] && answers[String(i)].trim().length > 20) filled++;
+    }
+    setRefinementProgress(Math.round((filled / totalQuestions) * 100));
+  }, [project?.answers_map]);
 
   const handleTierSelect = (tier: "diy" | "pro") => {
     setSelectedTier(tier);
@@ -175,8 +221,12 @@ export default function GTMStrategyPage() {
     setShowPayment(false);
     setPaymentUrl(null);
     setIsUnlocked(true);
+    const tier = selectedTier || "diy";
+    setPurchasedTier(tier);
+    setShowPostPayment(true);
     try {
       localStorage.setItem("gtm-marketing-unlocked", "true");
+      localStorage.setItem("gtm-purchased-tier", tier);
     } catch { /* ignore */ }
     // Track purchase
     const price = selectedTier === "diy" ? 290 : 99;
@@ -189,6 +239,102 @@ export default function GTMStrategyPage() {
     setSelectedTier(null);
     setPaymentLoading(false);
   }, []);
+
+  const handleStartRefine = () => {
+    setShowPostPayment(false);
+    setRefineMode(true);
+    // Navigate to questionnaire for editing
+    window.location.href = `/questionnaire?track=gtm&refine=true&projectId=${project?.id}`;
+  };
+
+  const handleConfirmAnswers = async () => {
+    setGanttConfirmed(true);
+    try {
+      localStorage.setItem("gtm-gantt-confirmed", "true");
+    } catch { /* ignore */ }
+    // Generate the 90-day Gantt
+    await generateGantt();
+  };
+
+  const generateGantt = async () => {
+    if (!project || !strategy) return;
+    setGanttGenerating(true);
+    try {
+      const res = await fetch("/api/generate-gtm-strategy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userName: project.user_name,
+          answers: project.answers_map,
+          gtmOnboardingData: project.gtm_onboarding_data || null,
+          ganttMode: true,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      const timeline = json.strategy?.gantt || json.gantt || json.strategy;
+      setGanttTimeline(timeline);
+      try {
+        localStorage.setItem(`gtm-gantt-${project.id}`, JSON.stringify(timeline));
+      } catch { /* ignore */ }
+    } catch {
+      // Fallback: create a structured timeline from the existing weekly_routine
+      if (strategy.weekly_routine?.weeks) {
+        const weeks = strategy.weekly_routine.weeks;
+        const phases: GanttTimeline["phases"] = [];
+        const phase1Weeks = weeks.slice(0, 4);
+        const phase2Weeks = weeks.slice(4, 8);
+        const phase3Weeks = weeks.slice(8);
+
+        if (phase1Weeks.length) {
+          phases.push({
+            name: "Phase 1: Validation",
+            weeks: "שבועות 1-4",
+            tasks: phase1Weeks.map(w => ({
+              week: w.week,
+              task: w.tasks.join(", "),
+              owner: "Founder",
+              deliverable: w.milestone,
+            })),
+            milestone: phase1Weeks[phase1Weeks.length - 1]?.milestone || "",
+          });
+        }
+        if (phase2Weeks.length) {
+          phases.push({
+            name: "Phase 2: Launch",
+            weeks: "שבועות 5-8",
+            tasks: phase2Weeks.map(w => ({
+              week: w.week,
+              task: w.tasks.join(", "),
+              owner: "Founder",
+              deliverable: w.milestone,
+            })),
+            milestone: phase2Weeks[phase2Weeks.length - 1]?.milestone || "",
+          });
+        }
+        if (phase3Weeks.length) {
+          phases.push({
+            name: "Phase 3: Scale",
+            weeks: "שבועות 9-12",
+            tasks: phase3Weeks.map(w => ({
+              week: w.week,
+              task: w.tasks.join(", "),
+              owner: "Founder",
+              deliverable: w.milestone,
+            })),
+            milestone: phase3Weeks[phase3Weeks.length - 1]?.milestone || "",
+          });
+        }
+        const fallbackGantt: GanttTimeline = { phases };
+        setGanttTimeline(fallbackGantt);
+        try {
+          localStorage.setItem(`gtm-gantt-${project.id}`, JSON.stringify(fallbackGantt));
+        } catch { /* ignore */ }
+      }
+    } finally {
+      setGanttGenerating(false);
+    }
+  };
 
   const generateStrategy = async () => {
     if (!project) return;
@@ -231,28 +377,48 @@ export default function GTMStrategyPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project]);
 
+  /* ──── Skeleton Shimmer Loading UI ──── */
   if (isGenerating) {
     return (
-      <div style={{ padding: "80px 0", textAlign: "center" }}>
-        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 32 }}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 6,
-                background: "linear-gradient(135deg, #00FF88, #00CC6A)",
-                animation: `fadeInUp 0.5s ${i * 0.15}s both`,
-                opacity: 0.3 + i * 0.15,
-              }}
-            />
+      <div style={{ padding: "40px 0", direction: "rtl" }}>
+        {/* Skeleton Header */}
+        <div style={{
+          background: "#161D2B",
+          border: "1px solid #1E2D45",
+          borderRadius: 24,
+          padding: 24,
+          marginBottom: 24,
+          overflow: "hidden",
+        }}>
+          <div className="gtm-skeleton" style={{ height: 12, width: 120, borderRadius: 6, marginBottom: 12 }} />
+          <div className="gtm-skeleton" style={{ height: 20, width: "90%", borderRadius: 8, marginBottom: 8 }} />
+          <div className="gtm-skeleton" style={{ height: 20, width: "70%", borderRadius: 8 }} />
+        </div>
+        {/* Skeleton Tabs */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="gtm-skeleton" style={{ flex: 1, height: 44, borderRadius: 12 }} />
           ))}
         </div>
-        <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 16, fontWeight: 600 }}>
+        {/* Skeleton Cards */}
+        {[1, 2].map(i => (
+          <div key={i} style={{
+            background: "#161D2B",
+            border: "1px solid #1E2D45",
+            borderRadius: 24,
+            padding: 24,
+            marginBottom: 16,
+          }}>
+            <div className="gtm-skeleton" style={{ height: 12, width: 100, borderRadius: 6, marginBottom: 16 }} />
+            <div className="gtm-skeleton" style={{ height: 18, width: "80%", borderRadius: 8, marginBottom: 10 }} />
+            <div className="gtm-skeleton" style={{ height: 14, width: "60%", borderRadius: 6, marginBottom: 8 }} />
+            <div className="gtm-skeleton" style={{ height: 14, width: "75%", borderRadius: 6 }} />
+          </div>
+        ))}
+        <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 14, fontWeight: 600, textAlign: "center", marginTop: 24 }}>
           ...GTM מייצר אסטרטגיית
         </p>
-        <p style={{ color: "#6B7FA3", fontSize: 13, marginTop: 8 }}>
+        <p style={{ color: "#6B7FA3", fontSize: 13, textAlign: "center", marginTop: 8 }}>
           מנתח את המוצר, השוק והיעדים שלך
         </p>
       </div>
@@ -265,15 +431,7 @@ export default function GTMStrategyPage() {
         <p style={{ color: "#EF4444", marginBottom: 16 }}>{error}</p>
         <button
           onClick={generateStrategy}
-          style={{
-            padding: "10px 24px",
-            borderRadius: 8,
-            background: "linear-gradient(135deg, #00FF88, #00CC6A)",
-            color: "#080A0F",
-            fontWeight: 700,
-            border: "none",
-            cursor: "pointer",
-          }}
+          className="gtm-btn-primary"
         >
           נסה שוב
         </button>
@@ -286,63 +444,106 @@ export default function GTMStrategyPage() {
   const isLocked = currentStage === "marketing" && !isUnlocked;
 
   return (
-    <div style={{ marginTop: 24, direction: "rtl" }}>
+    <div className="gtm-page-container" style={{ marginTop: 24, direction: "rtl", paddingBottom: (isUnlocked && purchasedTier) ? 80 : 0 }}>
+      {/* ── Post-Payment Success Modal ── */}
+      {showPostPayment && (
+        <div
+          className="gtm-modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowPostPayment(false); }}
+        >
+          <div className="gtm-modal-card" style={{ maxWidth: 480, textAlign: "center" }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>&#10003;</div>
+            <h2 style={{ color: "#00FF88", fontSize: 28, fontWeight: 800, marginBottom: 8 }}>
+              !התשלום בוצע בהצלחה
+            </h2>
+            <p style={{ color: "#F0F6FF", fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+              האסטרטגיה המלאה שלך פתוחה
+            </p>
+            <p style={{ color: "#6B7FA3", fontSize: 14, lineHeight: 1.7, marginBottom: 24, maxWidth: 380, margin: "0 auto 24px" }}>
+              עכשיו הזמן לדייק את התשובות שלך. נתונים אמיתיים יוצרים תוכנית פעולה אמיתית עם גאנט ל-90 יום.
+            </p>
+
+            {/* Refinement Progress Bar */}
+            <div style={{ marginBottom: 24, padding: "0 20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11 }}>דיוק האסטרטגיה</span>
+                <span style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11 }}>{refinementProgress}%</span>
+              </div>
+              <div style={{ height: 6, background: "#1E2D45", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{
+                  height: "100%",
+                  width: `${refinementProgress}%`,
+                  background: "linear-gradient(90deg, #00FF88, #00CC6A)",
+                  borderRadius: 3,
+                  transition: "width 0.5s ease",
+                }} />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+              <button onClick={handleStartRefine} className="gtm-btn-primary">
+                דייק את התשובות שלך
+              </button>
+              <button
+                onClick={() => setShowPostPayment(false)}
+                className="gtm-btn-outline"
+              >
+                המשך לאסטרטגיה
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary Banner */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, rgba(0,255,136,0.08), rgba(255,107,53,0.05))",
-          border: "1px solid #1E2D45",
-          borderRadius: 16,
-          padding: 24,
-          marginBottom: 24,
-        }}
-      >
+      <div className="gtm-card-rounded" style={{
+        background: "linear-gradient(135deg, rgba(0,255,136,0.08), rgba(255,107,53,0.05))",
+        padding: 24,
+        marginBottom: 24,
+      }}>
         <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11, marginBottom: 8, textTransform: "uppercase" }}>
           תקציר מנהלים
         </p>
         <p style={{ color: "#F0F6FF", fontSize: 17, lineHeight: 1.7, fontWeight: 500 }}>{strategy.summary}</p>
       </div>
 
+      {/* Refinement Progress Bar (shown after payment, outside modal) */}
+      {isUnlocked && refineMode && (
+        <div className="gtm-card-rounded" style={{ padding: "16px 24px", marginBottom: 24, background: "rgba(0,255,136,0.05)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ color: "#F0F6FF", fontSize: 14, fontWeight: 600 }}>מצב דיוק</span>
+            <span style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 13 }}>{refinementProgress}%</span>
+          </div>
+          <div style={{ height: 6, background: "#1E2D45", borderRadius: 3, overflow: "hidden" }}>
+            <div style={{
+              height: "100%",
+              width: `${refinementProgress}%`,
+              background: "linear-gradient(90deg, #00FF88, #00CC6A)",
+              borderRadius: 3,
+              transition: "width 0.5s ease",
+            }} />
+          </div>
+          <p style={{ color: "#6B7FA3", fontSize: 12, marginTop: 6 }}>
+            נתונים אמיתיים יוצרים תוכנית פעולה אמיתית
+          </p>
+        </div>
+      )}
+
       {/* Interactive Stage Navigation */}
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          marginBottom: 24,
-          padding: 4,
-          background: "#0D1117",
-          borderRadius: 12,
-          border: "1px solid #1E2D45",
-        }}
-      >
+      <div className="gtm-stage-nav">
         {[
-          { key: "core" as const, label: "קהל יעד ומיצוב", icon: "🎯" },
-          { key: "validation" as const, label: "ולידציה ומשפך", icon: "🧪" },
-          { key: "marketing" as const, label: "שיווק ומכירות", icon: "📈", locked: true },
+          { key: "core" as const, label: "קהל יעד ומיצוב", icon: "\uD83C\uDFAF" },
+          { key: "validation" as const, label: "ולידציה ומשפך", icon: "\uD83E\uDDEA" },
+          { key: "marketing" as const, label: "שיווק ומכירות", icon: "\uD83D\uDCC8", locked: !isUnlocked },
         ].map((tab) => (
           <button
             key={tab.key}
             onClick={() => setCurrentStage(tab.key)}
-            style={{
-              flex: 1,
-              padding: "12px 16px",
-              borderRadius: 8,
-              border: "none",
-              background: currentStage === tab.key ? "#161D2B" : "transparent",
-              color: currentStage === tab.key ? "#00FF88" : "#6B7FA3",
-              fontSize: 14,
-              fontWeight: currentStage === tab.key ? 700 : 400,
-              cursor: "pointer",
-              transition: "all 0.2s",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-            }}
+            className={`gtm-stage-tab ${currentStage === tab.key ? "active" : ""}`}
           >
             <span style={{ fontSize: 16 }}>{tab.icon}</span>
             <span>{tab.label}</span>
-            {tab.locked && <span style={{ fontSize: 12, opacity: 0.6 }}>🔒</span>}
+            {tab.locked && <span style={{ fontSize: 12, opacity: 0.6 }}>&#x1F512;</span>}
           </button>
         ))}
       </div>
@@ -351,187 +552,89 @@ export default function GTMStrategyPage() {
       <div style={{ position: "relative" }}>
         {/* Paywall overlay for locked stage */}
         {isLocked && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              zIndex: 10,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(8,10,15,0.92)",
-              backdropFilter: "blur(10px)",
-              borderRadius: 16,
-              padding: 32,
-              minHeight: 400,
-            }}
-          >
-            <span style={{ fontSize: 48, marginBottom: 16 }}>🔒</span>
-            <h3 style={{ color: "#F0F6FF", fontSize: 26, fontWeight: 800, marginBottom: 8 }}>
-              פתח את האסטרטגיה המלאה
-            </h3>
-            <p style={{ color: "#6B7FA3", fontSize: 15, marginBottom: 32, textAlign: "center", maxWidth: 520, lineHeight: 1.7 }}>
-              קהל יעד וולידציה זמינים בחינם. שדרג כדי לגשת לערוצי צמיחה, פרסום ממומן, אסטרטגיית תוכן ותוכנית השקה ל-90 יום.
-            </p>
-
-            {/* 2-Tier Pricing: DIY + PRO */}
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", maxWidth: 560, direction: "ltr" }}>
-              {/* DIY Tier */}
-              <div style={{
-                flex: "1 1 230px",
-                maxWidth: 260,
-                background: "#161D2B",
-                border: "1px solid #1E2D45",
-                borderRadius: 14,
-                padding: 24,
-                textAlign: "center",
-              }}>
-                <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>DIY</p>
-                <p style={{ color: "#F0F6FF", fontSize: 32, fontWeight: 800, marginBottom: 4 }}>
-                  290<span style={{ fontSize: 14, color: "#6B7FA3" }}>&#8362;</span>
-                </p>
-                <p style={{ color: "#6B7FA3", fontSize: 12, marginBottom: 20 }}>תשלום חד פעמי</p>
-                <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 13, lineHeight: 2.2, listStyle: "none", padding: 0, direction: "rtl" }}>
-                  <li>&#10003; מסמך אסטרטגיה מלא</li>
-                  <li>&#10003; כל 7 הסעיפים פתוחים</li>
-                  <li>&#10003; תוכנית השקה ל-90 יום</li>
-                  <li style={{ color: "#3D4F6F" }}>&#10007; ללא שיחות ליווי</li>
-                </ul>
-                <button
-                  onClick={() => handleTierSelect("diy")}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    marginTop: 20,
-                    padding: "12px 0",
-                    borderRadius: 10,
-                    border: "1px solid #1E2D45",
-                    background: "transparent",
-                    color: "#F0F6FF",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  קבל גישת DIY
-                </button>
-              </div>
-
-              {/* Pro Tier */}
-              <div style={{
-                flex: "1 1 230px",
-                maxWidth: 260,
-                background: "linear-gradient(180deg, rgba(0,255,136,0.08) 0%, #161D2B 100%)",
-                border: "1.5px solid #00FF88",
-                borderRadius: 14,
-                padding: 24,
-                textAlign: "center",
-                position: "relative",
-                boxShadow: "0 0 24px rgba(0,255,136,0.12)",
-              }}>
-                <span style={{
-                  position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
-                  background: "linear-gradient(135deg, #00FF88, #00CC6A)",
-                  color: "#080A0F", fontSize: 10, fontWeight: 800,
-                  padding: "3px 14px", borderRadius: 20, fontFamily: "monospace", textTransform: "uppercase",
-                }}>
-                  הכי פופולרי
-                </span>
-                <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Pro</p>
-                <p style={{ color: "#F0F6FF", fontSize: 32, fontWeight: 800, marginBottom: 4 }}>
-                  99<span style={{ fontSize: 14, color: "#6B7FA3" }}>&#8362;/חודש</span>
-                </p>
-                <p style={{ color: "#6B7FA3", fontSize: 12, marginBottom: 20 }}>ביטול בכל עת</p>
-                <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 13, lineHeight: 2.2, listStyle: "none", padding: 0, direction: "rtl" }}>
-                  <li style={{ color: "#00FF88" }}>&#10003; הכל ב-DIY</li>
-                  <li style={{ color: "#00FF88" }}>&#10003; יצירות ללא הגבלה</li>
-                  <li style={{ color: "#00FF88" }}>&#10003; עוזר אסטרטגי AI</li>
-                  <li style={{ color: "#00FF88" }}>&#10003; שיחת ליווי חודשית</li>
-                </ul>
-                <button
-                  onClick={() => handleTierSelect("pro")}
-                  style={{
-                    display: "block", width: "100%", marginTop: 20, padding: "12px 0", borderRadius: 10,
-                    background: "linear-gradient(135deg, #00FF88, #00CC6A)",
-                    color: "#080A0F", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer",
-                    boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
-                  }}
-                >
-                  התחל Pro
-                </button>
-              </div>
-            </div>
-
-            {/* ── Bootcamp Hero Section (Burn Orange) ── */}
-            <div style={{
-              width: "100%",
-              maxWidth: 560,
-              marginTop: 32,
-              background: "linear-gradient(135deg, rgba(255,107,53,0.1) 0%, rgba(255,107,53,0.03) 100%)",
-              border: "1.5px solid rgba(255,107,53,0.35)",
-              borderRadius: 16,
-              padding: "32px 28px",
-              textAlign: "center",
-              position: "relative",
-              overflow: "hidden",
-            }}>
-              {/* Burn Orange accent line */}
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "linear-gradient(90deg, #FF6B35, #E55A2B)" }} />
-
-              <p style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 11, textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.1em" }}>
-                GTM BOOTCAMP
-              </p>
-              <h3 style={{ color: "#F0F6FF", fontSize: 22, fontWeight: 800, lineHeight: 1.4, marginBottom: 12 }}>
-                מהרעיון ללקוח המשלם הראשון ב-90 יום
+          <div className="gtm-modal-overlay" style={{ position: "absolute", borderRadius: 24 }}>
+            <div style={{ textAlign: "center", padding: 32 }}>
+              <span style={{ fontSize: 48, marginBottom: 16, display: "block" }}>&#x1F512;</span>
+              <h3 style={{ color: "#F0F6FF", fontSize: 26, fontWeight: 800, marginBottom: 8 }}>
+                פתח את האסטרטגיה המלאה
               </h3>
-              <p style={{ color: "#9DA3B4", fontSize: 14, lineHeight: 1.7, marginBottom: 20, maxWidth: 460, margin: "0 auto 20px" }}>
-                הליווי האישי של דוד פופוביץ למפתחים ויזמים שלא מוכנים להשאיר את ההצלחה שלהם ליד המקרה.
+              <p style={{ color: "#6B7FA3", fontSize: 15, marginBottom: 32, textAlign: "center", maxWidth: 520, lineHeight: 1.7 }}>
+                קהל יעד וולידציה זמינים בחינם. שדרג כדי לגשת לערוצי צמיחה, פרסום ממומן, אסטרטגיית תוכן ותוכנית השקה ל-90 יום.
               </p>
-              <button
-                onClick={() => setShowBootcampModal(true)}
-                style={{
-                  padding: "14px 28px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: "linear-gradient(135deg, #FF6B35, #E55A2B)",
-                  color: "#fff",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  boxShadow: "0 4px 20px rgba(255,107,53,0.35)",
-                  transition: "all 0.2s",
-                }}
-              >
-                תיאום שיחת אבחון אסטרטגית של 15 דקות עם דוד פופוביץ (ללא עלות)
-              </button>
+
+              {/* 2-Tier Pricing: DIY + PRO */}
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", maxWidth: 560, direction: "ltr", margin: "0 auto" }}>
+                {/* DIY Tier */}
+                <div className="gtm-pricing-card">
+                  <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>DIY</p>
+                  <p style={{ color: "#F0F6FF", fontSize: 32, fontWeight: 800, marginBottom: 4 }}>
+                    290<span style={{ fontSize: 14, color: "#6B7FA3" }}>&#8362;</span>
+                  </p>
+                  <p style={{ color: "#6B7FA3", fontSize: 12, marginBottom: 20 }}>תשלום חד פעמי</p>
+                  <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 13, lineHeight: 2.2, listStyle: "none", padding: 0, direction: "rtl" }}>
+                    <li>&#10003; מסמך אסטרטגיה מלא</li>
+                    <li>&#10003; כל 7 הסעיפים פתוחים</li>
+                    <li>&#10003; תוכנית השקה ל-90 יום</li>
+                    <li style={{ color: "#3D4F6F" }}>&#10007; ללא שיחות ליווי</li>
+                  </ul>
+                  <button onClick={() => handleTierSelect("diy")} className="gtm-btn-outline" style={{ width: "100%", marginTop: 20 }}>
+                    קבל גישת DIY
+                  </button>
+                </div>
+
+                {/* Pro Tier */}
+                <div className="gtm-pricing-card gtm-pricing-pro">
+                  <span className="gtm-popular-badge">הכי פופולרי</span>
+                  <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Pro</p>
+                  <p style={{ color: "#F0F6FF", fontSize: 32, fontWeight: 800, marginBottom: 4 }}>
+                    99<span style={{ fontSize: 14, color: "#6B7FA3" }}>&#8362;/חודש</span>
+                  </p>
+                  <p style={{ color: "#6B7FA3", fontSize: 12, marginBottom: 20 }}>ביטול בכל עת</p>
+                  <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 13, lineHeight: 2.2, listStyle: "none", padding: 0, direction: "rtl" }}>
+                    <li style={{ color: "#00FF88" }}>&#10003; הכל ב-DIY</li>
+                    <li style={{ color: "#00FF88" }}>&#10003; יצירות ללא הגבלה</li>
+                    <li style={{ color: "#00FF88" }}>&#10003; עוזר אסטרטגי AI</li>
+                    <li style={{ color: "#00FF88" }}>&#10003; שיחת ליווי חודשית</li>
+                  </ul>
+                  <button onClick={() => handleTierSelect("pro")} className="gtm-btn-primary" style={{ width: "100%", marginTop: 20 }}>
+                    התחל Pro
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Bootcamp Hero Section (Burn Orange) ── */}
+              <div className="gtm-bootcamp-hero" style={{ marginTop: 32, maxWidth: 560, margin: "32px auto 0" }}>
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "linear-gradient(90deg, #FF6B35, #E55A2B)" }} />
+                <p style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 11, textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.1em" }}>
+                  GTM BOOTCAMP
+                </p>
+                <h3 style={{ color: "#F0F6FF", fontSize: 22, fontWeight: 800, lineHeight: 1.4, marginBottom: 12 }}>
+                  מהרעיון ללקוח המשלם הראשון ב-90 יום
+                </h3>
+                <p style={{ color: "#9DA3B4", fontSize: 14, lineHeight: 1.7, marginBottom: 20, maxWidth: 460, margin: "0 auto 20px" }}>
+                  הליווי האישי של דוד פופוביץ למפתחים ויזמים שלא מוכנים להשאיר את ההצלחה שלהם ליד המקרה.
+                </p>
+                <button onClick={() => setShowBootcampModal(true)} className="gtm-btn-orange">
+                  תיאום שיחת אבחון אסטרטגית של 15 דקות עם דוד פופוביץ (ללא עלות)
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        <div style={{ filter: isLocked ? "blur(6px)" : "none", pointerEvents: isLocked ? "none" : "auto" }}>
+        <div
+          className="gtm-stage-content"
+          style={{
+            filter: isLocked ? "blur(6px)" : "none",
+            pointerEvents: isLocked ? "none" : "auto",
+          }}
+        >
           {/* Stage 1: Core Strategy (ICP + Positioning) */}
           {currentStage === "core" && (
             <div>
               <ICPTab strategy={strategy} />
-              {/* Navigation to next stage */}
               <div style={{ textAlign: "center", marginTop: 32 }}>
-                <button
-                  onClick={() => setCurrentStage("validation")}
-                  style={{
-                    padding: "14px 32px",
-                    borderRadius: 12,
-                    border: "none",
-                    background: "linear-gradient(135deg, #00FF88, #00CC6A)",
-                    color: "#080A0F",
-                    fontSize: 16,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
-                    transition: "all 0.2s",
-                  }}
-                >
+                <button onClick={() => setCurrentStage("validation")} className="gtm-btn-primary gtm-btn-scale">
                   הבא: תוכנית ולידציה (אימות הרעיון) &#10132;
                 </button>
               </div>
@@ -543,23 +646,8 @@ export default function GTMStrategyPage() {
             <div>
               <ValidationTab strategy={strategy} />
               <FunnelTab strategy={strategy} />
-              {/* Navigation to next stage */}
               <div style={{ textAlign: "center", marginTop: 32 }}>
-                <button
-                  onClick={() => setCurrentStage("marketing")}
-                  style={{
-                    padding: "14px 32px",
-                    borderRadius: 12,
-                    border: "none",
-                    background: "linear-gradient(135deg, #00FF88, #00CC6A)",
-                    color: "#080A0F",
-                    fontSize: 16,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
-                    transition: "all 0.2s",
-                  }}
-                >
+                <button onClick={() => setCurrentStage("marketing")} className="gtm-btn-primary gtm-btn-scale">
                   הבא: אסטרטגיית שיווק ומכירות &#10132;
                 </button>
               </div>
@@ -578,6 +666,77 @@ export default function GTMStrategyPage() {
         </div>
       </div>
 
+      {/* ══════ 90-Day Gantt Chart Section ══════ */}
+      {isUnlocked && (
+        <div style={{ marginTop: 48 }}>
+          <div className="gtm-card-rounded" style={{
+            background: "linear-gradient(135deg, rgba(0,255,136,0.06), rgba(255,107,53,0.04))",
+            padding: "32px 24px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <span style={{ fontSize: 28 }}>&#x1F4CA;</span>
+              <div>
+                <h3 style={{ color: "#F0F6FF", fontSize: 22, fontWeight: 800 }}>
+                  תוכנית פעולה ל-90 יום
+                </h3>
+                <p style={{ color: "#6B7FA3", fontSize: 13 }}>
+                  גאנט מותאם אישית מבוסס על האסטרטגיה שלך
+                </p>
+              </div>
+            </div>
+
+            {!ganttConfirmed ? (
+              /* Locked until answers confirmed */
+              <div style={{ textAlign: "center", padding: "32px 0" }}>
+                <div style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 20px",
+                  background: "rgba(255,107,53,0.1)",
+                  borderRadius: 12,
+                  marginBottom: 20,
+                }}>
+                  <span style={{ fontSize: 16 }}>&#x1F512;</span>
+                  <span style={{ color: "#FF6B35", fontSize: 13, fontWeight: 600 }}>
+                    נעול עד לאישור התשובות המדויקות שלך
+                  </span>
+                </div>
+                <p style={{ color: "#6B7FA3", fontSize: 14, lineHeight: 1.7, maxWidth: 440, margin: "0 auto 24px" }}>
+                  דייק את התשובות בשאלון ולחץ &#34;אישור&#34; כדי ליצור תוכנית גאנט מותאמת אישית עם שלבים, משימות ואבני דרך.
+                </p>
+                <button onClick={handleConfirmAnswers} className="gtm-btn-primary gtm-btn-scale">
+                  אשר תשובות ויצר גאנט
+                </button>
+              </div>
+            ) : ganttGenerating ? (
+              /* Gantt loading state */
+              <div style={{ textAlign: "center", padding: "40px 0" }}>
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="gtm-skeleton" style={{
+                    height: 60,
+                    borderRadius: 12,
+                    marginBottom: 12,
+                  }} />
+                ))}
+                <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 13, marginTop: 16 }}>
+                  ...מייצר תוכנית פעולה מותאמת
+                </p>
+              </div>
+            ) : ganttTimeline ? (
+              /* Gantt Chart Display */
+              <GanttChart timeline={ganttTimeline} />
+            ) : (
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
+                <button onClick={generateGantt} className="gtm-btn-primary">
+                  צור תוכנית גאנט
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Regenerate button */}
       <div style={{ textAlign: "center", marginTop: 32 }}>
         <button
@@ -585,20 +744,29 @@ export default function GTMStrategyPage() {
             generationAttempted.current = false;
             generateStrategy();
           }}
-          style={{
-            padding: "10px 24px",
-            borderRadius: 8,
-            border: "1px solid #1E2D45",
-            background: "transparent",
-            color: "#6B7FA3",
-            fontSize: 13,
-            cursor: "pointer",
-            fontFamily: "monospace",
-          }}
+          className="gtm-btn-ghost"
         >
           צור אסטרטגיה מחדש
         </button>
       </div>
+
+      {/* ══════ Expert Guidance Sticky Banner ══════ */}
+      {isUnlocked && purchasedTier && (
+        <div className="gtm-sticky-banner">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+            <p style={{ color: "#F0F6FF", fontSize: 14, fontWeight: 500, textAlign: "center" }}>
+              מרגיש שהאסטרטגיה צריכה דיוק של מומחה? בוא נעבור על הגאנט שלך יחד.
+            </p>
+            <button
+              onClick={() => setShowBootcampModal(true)}
+              className="gtm-btn-orange"
+              style={{ padding: "8px 20px", fontSize: 13, whiteSpace: "nowrap" }}
+            >
+              תיאום שיחת אבחון ללא עלות &#10132;
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Payment Modal (modern checkout) */}
       {showPayment && (
@@ -615,6 +783,7 @@ export default function GTMStrategyPage() {
       {showBootcampModal && (
         <BootcampModal
           userName={project?.user_name || ""}
+          paymentLevel={purchasedTier}
           onClose={() => setShowBootcampModal(false)}
         />
       )}
@@ -622,9 +791,98 @@ export default function GTMStrategyPage() {
   );
 }
 
+/* ──── 90-Day Gantt Chart Component ──── */
+
+function GanttChart({ timeline }: { timeline: GanttTimeline }) {
+  const phaseColors = ["#00FF88", "#3B82F6", "#FF6B35"];
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      {timeline.phases?.map((phase, pi) => (
+        <div key={pi} style={{ marginBottom: 24 }}>
+          {/* Phase Header */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 12,
+            padding: "10px 16px",
+            background: `${phaseColors[pi]}10`,
+            borderRadius: 12,
+            borderRight: `4px solid ${phaseColors[pi]}`,
+          }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: `${phaseColors[pi]}20`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: phaseColors[pi],
+              fontWeight: 800,
+              fontFamily: "monospace",
+              fontSize: 16,
+            }}>
+              {pi + 1}
+            </div>
+            <div>
+              <h4 style={{ color: phaseColors[pi], fontSize: 16, fontWeight: 700, fontFamily: "monospace" }}>
+                {phase.name}
+              </h4>
+              <span style={{ color: "#6B7FA3", fontSize: 12 }}>{phase.weeks}</span>
+            </div>
+          </div>
+
+          {/* Phase Tasks */}
+          {phase.tasks?.map((task, ti) => (
+            <div key={ti} style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "flex-start",
+              padding: "10px 16px",
+              marginBottom: 4,
+              borderRadius: 8,
+              background: ti % 2 === 0 ? "rgba(22,29,43,0.5)" : "transparent",
+            }}>
+              <span style={{ color: phaseColors[pi], fontFamily: "monospace", fontSize: 12, minWidth: 60, flexShrink: 0 }}>
+                {task.week}
+              </span>
+              <span style={{ color: "#F0F6FF", fontSize: 14, flex: 1, lineHeight: 1.6 }}>
+                {task.task}
+              </span>
+              <span style={{ color: "#6B7FA3", fontSize: 11, fontFamily: "monospace", flexShrink: 0 }}>
+                {task.deliverable}
+              </span>
+            </div>
+          ))}
+
+          {/* Phase Milestone */}
+          {phase.milestone && (
+            <div style={{
+              marginTop: 8,
+              padding: "8px 16px",
+              borderRadius: 8,
+              background: `${phaseColors[pi]}08`,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+            }}>
+              <span style={{ color: phaseColors[pi], fontSize: 14 }}>&#x1F3AF;</span>
+              <span style={{ color: phaseColors[pi], fontFamily: "monospace", fontSize: 12, fontWeight: 600 }}>
+                אבן דרך: {phase.milestone}
+              </span>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ──── Bootcamp Application Modal ──── */
 
-function BootcampModal({ userName, onClose }: { userName: string; onClose: () => void }) {
+function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; paymentLevel?: "diy" | "pro" | null; onClose: () => void }) {
   const [name, setName] = useState(userName);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -657,6 +915,7 @@ function BootcampModal({ userName, onClose }: { userName: string; onClose: () =>
           email: email.trim(),
           phone: phone.trim(),
           source: "gtm-strategy-page",
+          payment_level: paymentLevel || "free",
           ...getUTMForPayload(),
         }),
       });
@@ -671,32 +930,10 @@ function BootcampModal({ userName, onClose }: { userName: string; onClose: () =>
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 10000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0,0,0,0.7)",
-        backdropFilter: "blur(8px)",
-      }}
+      className="gtm-modal-overlay"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        dir="rtl"
-        style={{
-          width: "100%",
-          maxWidth: 440,
-          margin: "0 16px",
-          borderRadius: 20,
-          overflow: "hidden",
-          background: "#0D1117",
-          border: "1px solid rgba(255,107,53,0.3)",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-          animation: "modalIn 0.3s ease-out",
-        }}
-      >
+      <div dir="rtl" className="gtm-modal-card" style={{ maxWidth: 440 }}>
         {/* Header */}
         <div style={{
           padding: "24px 24px 16px",
@@ -712,98 +949,50 @@ function BootcampModal({ userName, onClose }: { userName: string; onClose: () =>
                 הגש מועמדות
               </h3>
             </div>
-            <button
-              onClick={onClose}
-              style={{
-                width: 32, height: 32, borderRadius: "50%",
-                background: "rgba(255,255,255,0.05)", border: "none",
-                color: "#6B7FA3", fontSize: 18, cursor: "pointer",
-              }}
-            >
-              &times;
-            </button>
+            <button onClick={onClose} className="gtm-close-btn">&times;</button>
           </div>
         </div>
 
         <div style={{ padding: 24 }}>
           {submitted ? (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>&#x1F389;</div>
               <h4 style={{ color: "#F0F6FF", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
                 המועמדות נשלחה!
               </h4>
               <p style={{ color: "#6B7FA3", fontSize: 14, marginBottom: 20 }}>
                 ניצור איתך קשר בקרוב מאוד
               </p>
-              <button
-                onClick={onClose}
-                style={{
-                  padding: "12px 32px", borderRadius: 10,
-                  background: "linear-gradient(135deg, #FF6B35, #E55A2B)",
-                  color: "#fff", fontWeight: 700, border: "none", cursor: "pointer",
-                }}
-              >
-                סגור
-              </button>
+              <button onClick={onClose} className="gtm-btn-orange">סגור</button>
             </div>
           ) : (
             <>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ color: "#6B7FA3", fontSize: 12, fontFamily: "monospace", display: "block", marginBottom: 6 }}>שם מלא</label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  style={{
-                    width: "100%", padding: "12px 14px", borderRadius: 10,
-                    background: "#161D2B", border: "1px solid #1E2D45",
-                    color: "#F0F6FF", fontSize: 15, outline: "none",
-                  }}
-                />
+                <label className="gtm-label">שם מלא</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} className="gtm-input" />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ color: "#6B7FA3", fontSize: 12, fontFamily: "monospace", display: "block", marginBottom: 6 }}>אימייל</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  dir="ltr"
-                  style={{
-                    width: "100%", padding: "12px 14px", borderRadius: 10,
-                    background: "#161D2B", border: "1px solid #1E2D45",
-                    color: "#F0F6FF", fontSize: 15, outline: "none",
-                  }}
-                />
+                <label className="gtm-label">אימייל</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" className="gtm-input" />
               </div>
               <div style={{ marginBottom: 20 }}>
-                <label style={{ color: "#FF6B35", fontSize: 12, fontFamily: "monospace", display: "block", marginBottom: 6 }}>
-                  מספר טלפון *
-                </label>
+                <label className="gtm-label" style={{ color: "#FF6B35" }}>מספר טלפון *</label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => { setPhone(e.target.value); if (error) setError(""); }}
                   placeholder="050-1234567"
                   dir="ltr"
-                  style={{
-                    width: "100%", padding: "12px 14px", borderRadius: 10,
-                    background: "#161D2B", border: `1px solid ${error ? "#EF4444" : "#1E2D45"}`,
-                    color: "#F0F6FF", fontSize: 15, outline: "none",
-                  }}
+                  className="gtm-input"
+                  style={error ? { borderColor: "#EF4444" } : {}}
                 />
                 {error && <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>{error}</p>}
               </div>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                style={{
-                  width: "100%", padding: "14px 0", borderRadius: 10,
-                  background: submitting ? "#1E2D45" : "linear-gradient(135deg, #FF6B35, #E55A2B)",
-                  color: submitting ? "#6B7FA3" : "#fff",
-                  fontSize: 16, fontWeight: 700, border: "none",
-                  cursor: submitting ? "not-allowed" : "pointer",
-                  boxShadow: submitting ? "none" : "0 4px 16px rgba(255,107,53,0.3)",
-                  transition: "all 0.2s",
-                }}
+                className="gtm-btn-orange gtm-btn-scale"
+                style={{ width: "100%", opacity: submitting ? 0.5 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
               >
                 {submitting ? "שולח..." : "שלח מועמדות"}
               </button>
@@ -811,13 +1000,6 @@ function BootcampModal({ userName, onClose }: { userName: string; onClose: () =>
           )}
         </div>
       </div>
-
-      <style>{`
-        @keyframes modalIn {
-          from { transform: scale(0.9) translateY(20px); opacity: 0; }
-          to { transform: scale(1) translateY(0); opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }
@@ -826,7 +1008,7 @@ function BootcampModal({ userName, onClose }: { userName: string; onClose: () =>
 
 function Card({ children, title }: { children: React.ReactNode; title?: string }) {
   return (
-    <div style={{ background: "#161D2B", border: "1px solid #1E2D45", borderRadius: 14, padding: 24, marginBottom: 16 }}>
+    <div className="gtm-card-rounded" style={{ padding: 24, marginBottom: 16 }}>
       {title && (
         <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11, marginBottom: 12 }}>
           {title}

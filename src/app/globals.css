@@ -557,3 +557,282 @@ input[type="range"]::-moz-range-thumb {
 .gtm-neon-glow {
   animation: neonPulse 2s ease-in-out infinite;
 }
+
+/* ══════════════════════════════════════════════════════
+   GTM PREMIUM MOBILE EXPERIENCE — iOS Native Feel
+   ══════════════════════════════════════════════════════ */
+
+/* Hide bottom navigation bar in GTM flow */
+.theme-gtm .mobile-bottom-nav {
+  display: none !important;
+}
+.theme-gtm nav.fixed.bottom-0 {
+  display: none !important;
+}
+
+/* ── Skeleton shimmer for GTM ── */
+@keyframes gtmShimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+.gtm-skeleton {
+  background: linear-gradient(90deg, #161D2B 0%, #1E2D45 40%, #2A3A55 50%, #1E2D45 60%, #161D2B 100%);
+  background-size: 400px 100%;
+  animation: gtmShimmer 1.8s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ── GTM Page Container — smooth transitions ── */
+.gtm-page-container {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ── GTM Cards — rounded iOS style ── */
+.gtm-card-rounded {
+  background: #161D2B;
+  border: 1px solid #1E2D45;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+/* ── Stage navigation ── */
+.gtm-stage-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 4px;
+  background: #0D1117;
+  border-radius: 16px;
+  border: 1px solid #1E2D45;
+}
+.gtm-stage-tab {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: #6B7FA3;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.gtm-stage-tab.active {
+  background: #161D2B;
+  color: #00FF88;
+  font-weight: 700;
+}
+
+/* ── Stage content transitions ── */
+.gtm-stage-content {
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+.gtm-stage-content > div {
+  animation: gtmSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes gtmSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── GTM Buttons — iOS rounded with scale effect ── */
+.gtm-btn-primary {
+  padding: 14px 32px;
+  border-radius: 16px;
+  border: none;
+  background: linear-gradient(135deg, #00FF88, #00CC6A);
+  color: #080A0F;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.3);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.gtm-btn-primary:active {
+  transform: scale(0.96);
+}
+.gtm-btn-outline {
+  padding: 12px 24px;
+  border-radius: 16px;
+  border: 1px solid #1E2D45;
+  background: transparent;
+  color: #F0F6FF;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.gtm-btn-outline:active {
+  transform: scale(0.96);
+}
+.gtm-btn-orange {
+  padding: 14px 28px;
+  border-radius: 16px;
+  border: none;
+  background: linear-gradient(135deg, #FF6B35, #E55A2B);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.35);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.gtm-btn-orange:active {
+  transform: scale(0.96);
+}
+.gtm-btn-ghost {
+  padding: 10px 24px;
+  border-radius: 12px;
+  border: 1px solid #1E2D45;
+  background: transparent;
+  color: #6B7FA3;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: monospace;
+  transition: all 0.2s ease;
+}
+.gtm-btn-ghost:active {
+  transform: scale(0.96);
+}
+.gtm-btn-scale:active {
+  transform: scale(0.96);
+}
+
+/* ── GTM Modal overlay — iOS backdrop blur ── */
+.gtm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.gtm-modal-card {
+  width: 100%;
+  margin: 0 16px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #0D1117;
+  border: 1px solid #1E2D45;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: gtmModalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes gtmModalIn {
+  from { transform: scale(0.9) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* ── GTM Close button ── */
+.gtm-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: #6B7FA3;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+.gtm-close-btn:active {
+  transform: scale(0.9);
+}
+
+/* ── GTM Input fields ── */
+.gtm-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #161D2B;
+  border: 1px solid #1E2D45;
+  color: #F0F6FF;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.gtm-input:focus {
+  border-color: #00FF88;
+}
+
+/* ── GTM Label ── */
+.gtm-label {
+  color: #6B7FA3;
+  font-size: 12px;
+  font-family: monospace;
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* ── GTM Pricing cards ── */
+.gtm-pricing-card {
+  flex: 1 1 230px;
+  max-width: 260px;
+  background: #161D2B;
+  border: 1px solid #1E2D45;
+  border-radius: 20px;
+  padding: 24px;
+  text-align: center;
+}
+.gtm-pricing-pro {
+  background: linear-gradient(180deg, rgba(0, 255, 136, 0.08) 0%, #161D2B 100%);
+  border: 1.5px solid #00FF88;
+  box-shadow: 0 0 24px rgba(0, 255, 136, 0.12);
+  position: relative;
+}
+.gtm-popular-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #00FF88, #00CC6A);
+  color: #080A0F;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 14px;
+  border-radius: 20px;
+  font-family: monospace;
+  text-transform: uppercase;
+}
+
+/* ── GTM Bootcamp hero section ── */
+.gtm-bootcamp-hero {
+  width: 100%;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 107, 53, 0.03) 100%);
+  border: 1.5px solid rgba(255, 107, 53, 0.35);
+  border-radius: 20px;
+  padding: 32px 28px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Expert Guidance Sticky Banner ── */
+.gtm-sticky-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: rgba(13, 17, 23, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 107, 53, 0.25);
+  padding: 12px 20px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  animation: slideUp 0.3s ease forwards;
+}
+
+/* ── Safe Area padding for CTA buttons ── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .gtm-page-container {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}

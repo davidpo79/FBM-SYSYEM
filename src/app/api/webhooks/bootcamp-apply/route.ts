@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
     const {
       name, email, phone, source,
       idea_context, mrr_potential, tech_stack,
+      payment_level,
       utm_source, utm_medium, utm_campaign, utm_content, utm_term,
     } = body;
 
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
       idea_context: idea_context || "",
       mrr_potential: mrr_potential || "",
       tech_stack: tech_stack || "",
+      payment_level: payment_level || "free",
       timestamp: new Date().toISOString(),
     };
 

@@ -6,7 +6,7 @@ import { logApiCall } from "@/lib/api-log";
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   try {
-    const { userName, answers, gtmOnboardingData } = await req.json();
+    const { userName, answers, gtmOnboardingData, ganttMode } = await req.json();
 
     if (!answers || typeof answers !== "object") {
       return NextResponse.json(
@@ -22,8 +22,58 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const prompt = buildGTMStrategyPrompt({ userName, answers, gtmOnboardingData });
-    const raw = await callAI("", prompt, 8000, { jsonMode: true });
+    let prompt: string;
+    let maxTokens = 8000;
+
+    if (ganttMode) {
+      // Generate a focused 90-day Gantt execution timeline
+      prompt = `אתה אסטרטג Go-To-Market ברמה עולמית. בהתבסס על תשובות השאלון של ${userName}, צור תוכנית פעולה מובנית ל-90 יום.
+
+תשובות השאלון:
+${Object.entries(answers).map(([k, v]) => `${k}: ${v}`).join("\n")}
+
+${gtmOnboardingData ? `נתוני ליבה:
+שם המיזם: ${gtmOnboardingData.idea_name || ""}
+הבעיה: ${gtmOnboardingData.pain_point || ""}
+UVP: ${gtmOnboardingData.uvp || ""}
+ICP: ${gtmOnboardingData.icp || ""}
+מודל הכנסות: ${gtmOnboardingData.revenue_model || ""}` : ""}
+
+החזר JSON בפורמט הבא בלבד:
+{
+  "gantt": {
+    "phases": [
+      {
+        "name": "Phase 1: Validation",
+        "weeks": "שבועות 1-4",
+        "tasks": [
+          { "week": "שבוע 1", "task": "תיאור המשימה", "owner": "Founder", "deliverable": "התוצר" }
+        ],
+        "milestone": "אבן דרך של השלב"
+      },
+      {
+        "name": "Phase 2: Launch",
+        "weeks": "שבועות 5-8",
+        "tasks": [...],
+        "milestone": "..."
+      },
+      {
+        "name": "Phase 3: Scale",
+        "weeks": "שבועות 9-12",
+        "tasks": [...],
+        "milestone": "..."
+      }
+    ]
+  }
+}
+
+כל שלב צריך 3-4 משימות שבועיות ספציפיות ומדידות. הכל בעברית.`;
+      maxTokens = 4000;
+    } else {
+      prompt = buildGTMStrategyPrompt({ userName, answers, gtmOnboardingData });
+    }
+
+    const raw = await callAI("", prompt, maxTokens, { jsonMode: true });
 
     // Parse the JSON response
     const strategy = JSON.parse(raw);

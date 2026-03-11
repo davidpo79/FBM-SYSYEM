@@ -334,8 +334,8 @@ export default function DashboardLayout({
         </main>
       </div>
 
-      {/* Mobile bottom navigation bar — hidden for GTM questionnaire */}
-      {!isGtmQuestionnaire && (
+      {/* Mobile bottom navigation bar — hidden for GTM questionnaire and GTM projects */}
+      {!isGtmQuestionnaire && projectTrack !== "gtm" && (
         <nav
           className="fixed bottom-0 left-0 right-0 lg:hidden z-30 mobile-bottom-nav"
           style={{
