@@ -1,6 +1,8 @@
 export interface PromptAnswers {
   userName: string;
   answers: Record<string, string>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  gtmOnboardingData?: Record<string, any> | null;
 }
 
 export function buildStrategyPrompt(input: PromptAnswers): string {
@@ -459,6 +461,197 @@ ${strategyDocument}
 החזר Markdown מובנה, התחל ישירות עם הכותרת, ללא הקדמות.
 </output_format>
 `;
+}
+
+// ========================================
+// GTM BootCamp Strategy Prompt
+// ========================================
+
+export function buildGTMStrategyPrompt(input: PromptAnswers): string {
+  // Build structured onboarding section if available
+  const onboarding = input.gtmOnboardingData;
+  const onboardingSection = onboarding ? `
+=== נתוני ליבה (עדיפות גבוהה — השתמש בנתונים אלו כמקור אמת ראשי) ===
+שם המיזם: ${onboarding.idea_name || "לא צוין"}
+הבעיה הבוערת: ${onboarding.pain_point || "לא צוין"}
+הערך הייחודי (UVP): ${onboarding.uvp || "לא צוין"}
+קהל יעד ספציפי (ICP): ${onboarding.icp || "לא צוין"}
+מודל הכנסות: ${onboarding.revenue_model || "לא צוין"}
+===
+
+` : "";
+
+  return `אתה אסטרטג Go-To-Market ברמה עולמית לסטארטאפים טכנולוגיים ומוצרי Micro-SaaS.
+אתה מתמחה בעזרה לפאונדרים יחידים וצוותים קטנים להשיק מוצרים בהצלחה.
+
+נתח את תשובות השאלון של ${input.userName} וצור מסמך אסטרטגיית GTM מקיף.
+${onboardingSection}תשובות השאלון:
+
+1. הבעיה:
+${input.answers["1"]}
+
+2. הפתרון:
+${input.answers["2"]}
+
+3. סיפור המקור:
+${input.answers["3"]}
+
+4. פרופיל לקוח אידיאלי:
+${input.answers["4"]}
+
+5. גודל שוק והזדמנות:
+${input.answers["5"]}
+
+6. נוף תחרותי:
+${input.answers["6"]}
+
+7. תמחור ומודל הכנסות:
+${input.answers["7"]}
+
+8. ערוצי הפצה:
+${input.answers["8"]}
+
+9. סטטוס ולידציה:
+${input.answers["9"]}
+
+10. יעדי השקה:
+${input.answers["10"]}
+
+החזר אובייקט JSON במבנה הבא (ללא backticks של markdown, JSON טהור).
+חשוב: כל הערכים (values) חייבים להיות בעברית!
+
+{
+  "icp": {
+    "title": "פרופיל לקוח אידיאלי",
+    "persona_name": "שם תיאורי לפרסונה",
+    "demographics": "גודל חברה, תעשייה, גיאוגרפיה, תפקיד",
+    "psychographics": "מטרות, תסכולים, מוטיבציות, קריטריונים להחלטה",
+    "jobs_to_be_done": ["משימה 1", "משימה 2", "משימה 3"],
+    "watering_holes": ["איפה הם מבלים אונליין - קהילות ספציפיות, פלטפורמות, אירועים"],
+    "budget_authority": "טווח תקציב אופייני ומי מקבל החלטות רכש"
+  },
+  "positioning": {
+    "title": "מיצוב ומסרים",
+    "oneliner": "משפט אחד שמתאר מה המוצר עושה ולמי",
+    "value_proposition": "הצעת ערך ב-3 משפטים",
+    "category": "קטגוריית השוק שאתה יוצר או נכנס אליה",
+    "differentiators": ["מבדל 1", "מבדל 2", "מבדל 3"],
+    "alternatives": "מה לקוחות עושים היום בלי המוצר שלך",
+    "positioning_statement": "עבור [קהל יעד], שזקוק ל[צורך], [מוצר] הוא [קטגוריה] ש[תועלת]. בשונה מ[חלופות], אנחנו [מבדל]."
+  },
+  "validation": {
+    "title": "מסגרת ולידציה",
+    "current_stage": "לפני הכנסות | הכנסות ראשוניות | בצמיחה",
+    "validation_score": 1-10,
+    "evidence": ["אילו ולידציות כבר קיימות"],
+    "gaps": ["מה עדיין צריך ולידציה"],
+    "experiments": [
+      {
+        "name": "שם הניסוי",
+        "hypothesis": "אם נעשה X, אז Y יקרה",
+        "method": "איך להריץ אותו",
+        "success_metric": "איך נראית הצלחה",
+        "timeline": "כמה זמן לוקח"
+      }
+    ],
+    "risk_assessment": "סיכונים מרכזיים ואסטרטגיות מיטיגציה"
+  },
+  "funnel": {
+    "title": "משפך ואסטרטגיית מכירות",
+    "model": "שירות עצמי | מכירות מסייעות | אנטרפרייז",
+    "stages": [
+      {
+        "stage": "מודעות | עניין | החלטה | פעולה",
+        "goal": "מה קורה בשלב הזה",
+        "tactics": ["טקטיקה 1", "טקטיקה 2"],
+        "metrics": "מדד מפתח לשלב הזה"
+      }
+    ],
+    "pricing_recommendation": {
+      "model": "מודל תמחור מומלץ",
+      "tiers": "שכבות תמחור מוצעות",
+      "rationale": "למה התמחור הזה עובד"
+    },
+    "sales_motion": "איך תהליך המכירות עובד מקצה לקצה"
+  },
+  "channels": {
+    "title": "ערוצי צמיחה",
+    "primary": [
+      {
+        "channel": "שם הערוץ",
+        "why": "למה הערוץ הזה מתאים",
+        "tactics": ["טקטיקה ספציפית 1", "טקטיקה ספציפית 2"],
+        "expected_cac": "עלות גיוס לקוח צפויה",
+        "timeline_to_results": "מתי לצפות לתוצאות"
+      }
+    ],
+    "secondary": [
+      {
+        "channel": "שם הערוץ",
+        "why": "למה לשקול את זה בהמשך",
+        "when_to_start": "מתי להפעיל את הערוץ"
+      }
+    ]
+  },
+  "paid": {
+    "title": "אסטרטגיית פרסום ממומן",
+    "recommended_budget": "המלצת תקציב חודשי",
+    "platforms": [
+      {
+        "platform": "שם הפלטפורמה",
+        "budget_split": "% מהתקציב",
+        "targeting": "איך למקד",
+        "creative_angles": ["זווית 1", "זווית 2"],
+        "expected_metrics": "CPC, CPL, CPA צפויים"
+      }
+    ],
+    "scaling_plan": "מתי ואיך לסקייל את הממומן"
+  },
+  "creatives": {
+    "title": "אסטרטגיית תוכן וקריאייטיב",
+    "content_pillars": ["עמוד תוכן 1", "עמוד תוכן 2", "עמוד תוכן 3"],
+    "content_calendar": [
+      {
+        "type": "סוג תוכן (בלוג, וידאו, סושיאל וכו')",
+        "frequency": "תדירות",
+        "topics": ["נושא 1", "נושא 2"],
+        "distribution": "היכן לפרסם"
+      }
+    ],
+    "launch_assets": ["נכס 1 נדרש להשקה", "נכס 2", "נכס 3"]
+  },
+  "weekly_routine": {
+    "title": "תוכנית השקה ל-90 יום",
+    "weeks": [
+      {
+        "week": "שבוע 1-2",
+        "theme": "נושא התקופה",
+        "tasks": ["משימה 1", "משימה 2", "משימה 3"],
+        "milestone": "מה צריך להיות מושג"
+      }
+    ]
+  },
+  "summary": "תקציר מנהלים של 2-3 משפטים על אסטרטגיית ה-GTM"
+}
+
+חשוב:
+- היה ספציפי למוצר ולשוק של ${input.userName} — ללא עצות גנריות
+- כלול מספרים קונקרטיים, מדדים ולוחות זמנים כמה שאפשר
+- העדף המלצות פרקטיות על פני תיאוריה
+- התחשב בסטטוס הולידציה והתאם את ההמלצות בהתאם
+- אם חסר מידע, בצע הנחות סבירות על בסיס ההקשר${onboarding ? `
+- חשוב מאוד: השתמש בנתוני הליבה (שם המיזם, הבעיה, UVP, ICP, מודל הכנסות) כמקור אמת מרכזי. אל תמציא נתונים כלליים — בסס את כל הניתוח על המידע הספציפי שסופק` : ""}
+- כל הטקסט חייב להיות בעברית!
+
+דרישות עומק נוספות (חובה):
+- בכל ערוץ צמיחה (channels): כלול לפחות 3 טקטיקות ספציפיות עם שלבים מעשיים (step-by-step), לא רק שמות כלליים
+- באסטרטגיית פרסום (paid): כתוב לפחות 2 דוגמאות קונקרטיות של ad-copy (כותרת + טקסט + CTA) לכל פלטפורמה מומלצת
+- KPIs: לכל שלב במשפך (funnel stages) ולכל ערוץ — הגדר KPI מספרי ברור (לדוגמה: "CTR מעל 2%", "CAC מתחת ל-$50", "100 signups בשבועיים הראשונים")
+- בתוכנית 90 יום (weekly_routine): כלול tasks מפורטים עם כלים ספציפיים לשימוש (שמות כלים אמיתיים כמו Mixpanel, Hotjar, Lemlist, Apollo, וכו')
+- בולידציה (validation): פרט ניסויים עם תקציב מוערך, משך מדויק, ומטריקות הצלחה מספריות
+- באסטרטגיית תוכן (creatives): כלול 3-5 כותרות ספציפיות לפוסטים/בלוגים, לא רק "נושא כללי"
+- positioning_statement: חייב להיות ספציפי ומלא — לא template עם סוגריים מרובעות`;
+
 }
 
 export function buildScriptsPrompt(

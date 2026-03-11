@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { PLAN_LABELS, PLAN_PRICES, CONSULTING_PRODUCT } from "@/lib/plan-limits";
+import { fbInitiateCheckout, fbPurchase } from "@/lib/fbpixel";
 import PaymentModal from "@/components/PaymentModal";
 import type { CustomerDetails } from "@/components/PaymentModal";
 
@@ -246,6 +247,7 @@ export default function SettingsPage() {
     setPaymentUrl(null);
     setShowPayment(true);
     setError("");
+    fbInitiateCheckout(`FBM ${planKey}`);
   };
 
   const handleConsulting = () => {
@@ -352,6 +354,9 @@ export default function SettingsPage() {
   const handlePaymentComplete = useCallback(() => {
     setShowPayment(false);
     setPaymentUrl(null);
+
+    // Track purchase event
+    fbPurchase(PLAN_PRICES[selectedPlan as keyof typeof PLAN_PRICES] || 0, "ILS");
 
     // Show success popup with confetti
     setShowSuccess(true);

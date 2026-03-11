@@ -30,6 +30,12 @@ export async function GET(request: Request) {
         );
       }
 
+      const track = searchParams.get("track");
+      if (track === "gtm") {
+        const idea = searchParams.get("idea");
+        const ideaParam = idea ? "&idea=" + encodeURIComponent(idea) : "";
+        return NextResponse.redirect(`${origin}/questionnaire?track=gtm${ideaParam}`);
+      }
       return NextResponse.redirect(`${origin}/dashboard`);
     }
   }

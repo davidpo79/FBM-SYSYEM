@@ -3,7 +3,11 @@ export type QuestionSection =
   | 'empathy'     // גשר האמפתיה
   | 'proof'       // ההוכחה והשיטה
   | 'polarize'    // הקיטוב
-  | 'legacy';     // חזון ומורשת
+  | 'legacy'      // חזון ומורשת
+  // GTM sections
+  | 'product'     // Product & Problem
+  | 'market'      // Market & ICP
+  | 'gtm';        // Go-To-Market
 
 export interface Question {
   id: string;
@@ -23,6 +27,9 @@ const SECTION_TITLES: Record<QuestionSection, string> = {
   proof: 'ההוכחה והשיטה',
   polarize: 'הקיטוב',
   legacy: 'חזון ומורשת',
+  product: 'Product & Problem',
+  market: 'Market & ICP',
+  gtm: 'Go-To-Market Strategy',
 };
 
 export type ProjectMode = 'self' | 'client' | 'owner';
@@ -306,6 +313,96 @@ function getOwnerSelfQuestions(niche: string): Question[] {
       sectionTitle: SECTION_TITLES.legacy,
       title: 'המורשת שלך',
       text: `בעוד שנתיים, כשהעסק שלך בשיא, מה היית רוצה שלקוחות יגידו עליך ועל העבודה שלך איתם? מה יהיה ה-Legacy שלך?`,
+    },
+  ];
+}
+
+// ========================================
+// GTM BootCamp Questions (Tech Entrepreneurs)
+// ========================================
+
+const GTM_SECTION_TITLES: Record<string, string> = {
+  product: 'המוצר והבעיה',
+  market: 'שוק וקהל יעד',
+  gtm: 'אסטרטגיית Go-To-Market',
+};
+
+export function getGTMQuestions(): Question[] {
+  return [
+    // ── המוצר והבעיה ──
+    {
+      id: '1',
+      section: 'product',
+      sectionTitle: GTM_SECTION_TITLES.product,
+      title: 'הבעיה',
+      text: 'איזו בעיה ספציפית המוצר שלך פותר? תאר את נקודת הכאב בפירוט — מי מרגיש אותה, כמה פעמים, ומה קורה אם היא לא נפתרת?',
+    },
+    {
+      id: '2',
+      section: 'product',
+      sectionTitle: GTM_SECTION_TITLES.product,
+      title: 'הפתרון שלך',
+      text: 'תאר את המוצר/פתרון שלך ב-2-3 משפטים. מה מבדיל אותו מחלופות קיימות? מה הגישה או הטכנולוגיה הייחודית שלך?',
+    },
+    {
+      id: '3',
+      section: 'product',
+      sectionTitle: GTM_SECTION_TITLES.product,
+      title: 'סיפור המקור',
+      text: 'איך גילית את הבעיה הזו? איזו חוויה אישית או תובנה הובילה אותך לבנות את הפתרון הזה? למה דווקא אתה האדם הנכון לפתור את זה?',
+    },
+
+    // ── שוק וקהל יעד ──
+    {
+      id: '4',
+      section: 'market',
+      sectionTitle: GTM_SECTION_TITLES.market,
+      title: 'פרופיל לקוח אידיאלי',
+      text: 'תאר את 100 הלקוחות הראשונים האידיאליים שלך בפירוט. מה התפקיד/תואר שלהם? גודל חברה? תעשייה? אילו כלים הם משתמשים כיום?',
+    },
+    {
+      id: '5',
+      section: 'market',
+      sectionTitle: GTM_SECTION_TITLES.market,
+      title: 'גודל שוק והזדמנות',
+      text: 'כמה גדול השוק לפתרון שלך? כמה לקוחות פוטנציאליים קיימים לדעתך? יש טרנדים או שינויים בשוק שמשחקים לטובתך?',
+    },
+    {
+      id: '6',
+      section: 'market',
+      sectionTitle: GTM_SECTION_TITLES.market,
+      title: 'נוף תחרותי',
+      text: 'מי המתחרים העיקריים שלך (ישירים ועקיפים)? מה הם עושים טוב? מה הם מפספסים? איך אתה ממוקם מולם?',
+    },
+
+    // ── אסטרטגיית Go-To-Market ──
+    {
+      id: '7',
+      section: 'gtm',
+      sectionTitle: GTM_SECTION_TITLES.gtm,
+      title: 'תמחור ומודל הכנסות',
+      text: 'מה מודל התמחור שלך? (מנוי SaaS, מבוסס שימוש, פרימיום, חד פעמי?) איזה מחיר אתה שוקל ולמה?',
+    },
+    {
+      id: '8',
+      section: 'gtm',
+      sectionTitle: GTM_SECTION_TITLES.gtm,
+      title: 'ערוצי הפצה',
+      text: 'איפה לקוחות היעד שלך מבלים אונליין? אילו ערוצים תשתמש כדי להגיע אליהם? (Product Hunt, LinkedIn, קהילות, SEO, פרסום ממומן, שותפויות?)',
+    },
+    {
+      id: '9',
+      section: 'gtm',
+      sectionTitle: GTM_SECTION_TITLES.gtm,
+      title: 'סטטוס ולידציה',
+      text: 'איזו ולידציה עשית עד כה? יש לך משתמשים מוקדמים, רשימת המתנה, LOI, או הכנסות? איזה פידבק קיבלת?',
+    },
+    {
+      id: '10',
+      section: 'gtm',
+      sectionTitle: GTM_SECTION_TITLES.gtm,
+      title: 'יעדי השקה',
+      text: 'איך נראית הצלחה ב-90 הימים הקרובים? מה המדדים המרכזיים שלך (משתמשים, הכנסות, שימור)? מה לוח הזמנים ל-MVP שלך?',
     },
   ];
 }

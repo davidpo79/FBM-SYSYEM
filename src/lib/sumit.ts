@@ -111,6 +111,7 @@ export async function createPaymentLink(params: {
       RedirectURL: params.redirectUrl,
       ...(params.webhookUrl ? { WebhookURL: params.webhookUrl } : {}),
       MaximumPayments: 1,
+      VATIncluded: true,
       DocumentDescription: `ייעוץ עסקי - ${params.description}`,
       SendDocumentByEmail: true,
       ...(params.creditCardOnly ? { AllowOnlycreditCardPayment: true } : {}),
@@ -191,6 +192,7 @@ export async function chargePayment(params: {
       ],
       ...(params.token ? { CreditCardToken: params.token } : {}),
       MaximumPayments: 1,
+      VATIncluded: true,
       SendDocumentByEmail: true,
     });
 
@@ -246,7 +248,7 @@ export async function setupRecurringCharge(params: {
       ],
       UpdateCustomerByEmail: true,
       SendDocumentByEmail: true,
-      VATIncluded: false,
+      VATIncluded: true,
       DocumentDescription: `ייעוץ עסקי - ${params.description}`,
     });
 

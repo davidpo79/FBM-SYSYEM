@@ -1,17 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { captureUTM, getUTMForPayload } from "@/lib/utm";
+import { fbCompleteRegistration } from "@/lib/fbpixel";
 import Image from "next/image";
 
 interface AuthFormProps {
   mode: "login" | "signup";
 }
 
+function translateAuthError(msg: string): string {
+  if (msg.includes("Invalid login credentials")) return "אימייל או סיסמה שגויים";
+  if (msg.includes("Email not confirmed")) return "האימייל לא אומת. בדוק את תיבת הדואר";
+  if (msg.includes("User already registered")) return "משתמש כבר רשום עם אימייל זה";
+  if (msg.includes("Password should be")) return "הסיסמה חייבת להכיל לפחות 6 תווים";
+  if (msg.includes("rate limit")) return "נסיונות התחברות רבים מדי. נסה שוב בעוד דקה";
+  if (msg.includes("Email rate limit")) return "נשלחו יותר מדי מיילים. נסה שוב בעוד דקה";
+  return msg;
+}
+
 export default function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"login" | "signup">(mode);
+  const [isGtmTrack, setIsGtmTrack] = useState(false);
+  const [gtmIdeaName, setGtmIdeaName] = useState("");
+
+  useEffect(() => {
+    captureUTM(); // Persist UTM params from URL
+    const params = new URLSearchParams(window.location.search);
+    const isGtm = params.get("track") === "gtm";
+    if (isGtm) {
+      setIsGtmTrack(true);
+    }
+    const prefillEmail = params.get("email");
+    if (prefillEmail) {
+      setEmail(prefillEmail);
+    }
+    const ideaParam = params.get("idea");
+    if (ideaParam) {
+      setGtmIdeaName(decodeURIComponent(ideaParam));
+    }
+
+    // Zero friction: if user already has a session on GTM track, skip auth
+    if (isGtm) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          const ideaQ = ideaParam ? "&idea=" + encodeURIComponent(decodeURIComponent(ideaParam)) : "";
+          router.push("/questionnaire?track=gtm" + ideaQ);
+        }
+      });
+    }
+  }, [router]);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,19 +87,27 @@ export default function AuthForm({ mode }: AuthFormProps) {
           password,
         });
         if (authError) {
-          setError(authError.message);
+          setError(translateAuthError(authError.message));
           return;
         }
-        router.push("/dashboard");
+        if (isGtmTrack) {
+          const ideaParam = gtmIdeaName ? "&idea=" + encodeURIComponent(gtmIdeaName) : "";
+          router.push("/questionnaire?track=gtm" + ideaParam);
+        } else {
+          router.push("/dashboard");
+        }
       } else {
         const { data, error: authError } = await supabase.auth.signUp({
           email,
           password,
         });
         if (authError) {
-          setError(authError.message);
+          setError(translateAuthError(authError.message));
           return;
         }
+
+        // Track registration
+        fbCompleteRegistration();
 
         // Save full name to user_profiles
         if (data.user) {
@@ -68,9 +117,32 @@ export default function AuthForm({ mode }: AuthFormProps) {
           });
         }
 
+        // Fire EVENT_USER_REGISTERED webhook for GTM signups (with UTM)
+        if (isGtmTrack && data.user) {
+          const utmData = getUTMForPayload();
+          fetch("/api/webhooks/gtm-user-registered", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              name: fullName.trim(),
+              user_id: data.user.id,
+              registration_date: new Date().toISOString(),
+              track: "gtm",
+              ideaName: gtmIdeaName || "",
+              ...utmData,
+            }),
+          }).catch(() => { /* fire and forget */ });
+        }
+
         // If session exists, user is immediately logged in (no email confirmation needed)
         if (data.session) {
-          router.push("/dashboard");
+          if (isGtmTrack) {
+            const ideaParam = gtmIdeaName ? "&idea=" + encodeURIComponent(gtmIdeaName) : "";
+            router.push("/questionnaire?track=gtm" + ideaParam);
+          } else {
+            router.push("/dashboard");
+          }
         } else {
           // Email confirmation required
           setConfirmEmail(true);
@@ -90,11 +162,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback${isGtmTrack ? "?track=gtm" + (gtmIdeaName ? "&idea=" + encodeURIComponent(gtmIdeaName) : "") : ""}`,
         },
       });
       if (authError) {
-        setError(authError.message);
+        setError(translateAuthError(authError.message));
         setGoogleLoading(false);
       }
     } catch {
@@ -254,29 +326,65 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-800">
-        {/* Logo */}
-        <div className="text-center mb-6">
-          <div className="flex justify-center mb-3">
-            <Image src="/logo-fbm.png" alt="FBM Studio" width={100} height={100} className="rounded" />
+      <div className={`rounded-2xl shadow-xl p-8 border ${isGtmTrack ? "bg-[#0D1117] border-[#1E2D45]" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"}`}>
+        {/* Logo & Branding */}
+        {isGtmTrack ? (
+          <div className="text-center mb-6">
+            {/* Progress Steps */}
+            <div className="flex items-center justify-center gap-1 mb-4" dir="rtl" style={{ fontFamily: "monospace", fontSize: 11 }}>
+              <span className="px-2 py-1 rounded" style={{ background: "rgba(0,255,136,0.15)", color: "#00FF88" }}>[1] רעיון ✓</span>
+              <span style={{ color: "#3D4F6F" }}>←</span>
+              <span className="px-2 py-1 rounded" style={{ background: "rgba(0,255,136,0.15)", color: "#00FF88", border: "1px solid rgba(0,255,136,0.3)" }}>[2] משתמש (אתה כאן)</span>
+              <span style={{ color: "#3D4F6F" }}>←</span>
+              <span className="px-2 py-1 rounded" style={{ background: "rgba(255,255,255,0.03)", color: "#6B7FA3" }}>[3] תוכנית</span>
+            </div>
+            <div className="flex justify-center mb-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/gtm-logo.svg" alt="GTM BootCamp" style={{ height: 36, width: "auto" }} />
+            </div>
+            <h1 className="text-xl font-bold mb-1 text-[#F0F6FF]" style={{ fontFamily: "monospace" }}>
+              כמעט סיימנו! מתכוננים לייצור האסטרטגיה...
+            </h1>
+            <div className="mt-3 mx-auto max-w-sm rounded-xl p-4" style={{ background: "rgba(0,255,136,0.06)", border: "1px solid rgba(0,255,136,0.15)" }}>
+              <p className="text-sm text-[#B0BEC5] leading-relaxed">
+                בוא ניצור משתמש (חינם) כדי שה-AI יוכל להתחיל לרנדר את{" "}
+                <span className="text-[#00FF88] font-semibold">תוכנית ה-GTM</span>
+                {gtmIdeaName ? (
+                  <> עבור <span className="text-[#00D4FF] font-semibold" dir="ltr">{gtmIdeaName}</span></>
+                ) : null}.
+              </p>
+              <p className="text-xs text-[#6B7FA3] mt-2">
+                אחרי ההרשמה תעבור לשאלון קצר שיעזור ל-AI לייצר לך תוכנית GTM מותאמת אישית — כולל קהל יעד, ולידציה, תסריטי מכירה, וקמפיינים.
+              </p>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold mb-1">FBM Studio</h1>
-          <p className="text-xs tracking-wide text-gray-400">
-            <span className="font-bold text-yellow-600 dark:text-yellow-500">F</span>requency{" "}
-            <span className="font-bold text-yellow-600 dark:text-yellow-500">B</span>ased{" "}
-            <span className="font-bold text-yellow-600 dark:text-yellow-500">M</span>arketing
-          </p>
-        </div>
+        ) : (
+          <div className="text-center mb-6">
+            <div className="flex justify-center mb-3">
+              <Image src="/logo-fbm.png" alt="FBM Studio" width={100} height={100} className="rounded" />
+            </div>
+            <h1 className="text-3xl font-bold mb-1">FBM Studio</h1>
+            <p className="text-xs tracking-wide text-gray-400">
+              <span className="font-bold text-yellow-600 dark:text-yellow-500">F</span>requency{" "}
+              <span className="font-bold text-yellow-600 dark:text-yellow-500">B</span>ased{" "}
+              <span className="font-bold text-yellow-600 dark:text-yellow-500">M</span>arketing
+            </p>
+          </div>
+        )}
 
         {/* Tabs */}
-        <div className="flex rounded-xl bg-gray-100 dark:bg-gray-800 p-1 mb-6">
+        <div className={`flex rounded-xl p-1 mb-6 ${isGtmTrack ? "bg-[#161D2B]" : "bg-gray-100 dark:bg-gray-800"}`}>
           <button
             type="button"
             onClick={() => switchTab("signup")}
             className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all cursor-pointer ${
               !isLogin
-                ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                ? isGtmTrack
+                  ? "bg-[#0D1117] text-[#00FF88] shadow-sm"
+                  : "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                : isGtmTrack
+                  ? "text-[#6B7FA3] hover:text-[#B0BEC5]"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
           >
             הרשמה חינם
@@ -286,8 +394,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
             onClick={() => switchTab("login")}
             className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all cursor-pointer ${
               isLogin
-                ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                ? isGtmTrack
+                  ? "bg-[#0D1117] text-[#00FF88] shadow-sm"
+                  : "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                : isGtmTrack
+                  ? "text-[#6B7FA3] hover:text-[#B0BEC5]"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
           >
             התחברות
@@ -295,10 +407,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
         </div>
 
         {/* Subtitle */}
-        <p className="text-center text-gray-500 dark:text-gray-400 text-sm mb-5">
+        <p className={`text-center text-sm mb-5 ${isGtmTrack ? "text-[#6B7FA3]" : "text-gray-500 dark:text-gray-400"}`}>
           {isLogin
             ? "התחבר לחשבון הקיים שלך"
-            : "צור חשבון חדש ב-FBM Studio — בחינם!"}
+            : isGtmTrack
+              ? "צור חשבון חינם כדי שנוכל לשמור את תוכנית ה-GTM שלך"
+              : "צור חשבון חדש ב-FBM Studio — בחינם!"}
         </p>
 
         {/* Form */}
@@ -307,7 +421,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             <div>
               <label
                 htmlFor="fullName"
-                className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300"
+                className={`block text-sm font-medium mb-1.5 ${isGtmTrack ? "text-[#B0BEC5]" : "text-gray-700 dark:text-gray-300"}`}
               >
                 שם מלא
               </label>
@@ -318,7 +432,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 onChange={(e) => setFullName(e.target.value)}
                 required
                 placeholder="ישראל ישראלי"
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
+                className={`w-full px-4 py-2.5 rounded-lg border outline-none transition-all placeholder:text-gray-400 ${
+                  isGtmTrack
+                    ? "border-[#1E2D45] bg-[#161D2B] text-[#F0F6FF] focus:border-[#00FF88]"
+                    : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                }`}
               />
             </div>
           )}
@@ -326,7 +444,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300"
+              className={`block text-sm font-medium mb-1.5 ${isGtmTrack ? "text-[#B0BEC5]" : "text-gray-700 dark:text-gray-300"}`}
             >
               אימייל
             </label>
@@ -338,14 +456,18 @@ export default function AuthForm({ mode }: AuthFormProps) {
               required
               dir="ltr"
               placeholder="you@example.com"
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
+              className={`w-full px-4 py-2.5 rounded-lg border outline-none transition-all placeholder:text-gray-400 ${
+                isGtmTrack
+                  ? "border-[#1E2D45] bg-[#161D2B] text-[#F0F6FF] focus:border-[#00FF88]"
+                  : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              }`}
             />
           </div>
 
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300"
+              className={`block text-sm font-medium mb-1.5 ${isGtmTrack ? "text-[#B0BEC5]" : "text-gray-700 dark:text-gray-300"}`}
             >
               סיסמה
             </label>
@@ -358,7 +480,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 required
                 dir="ltr"
                 placeholder="••••••••"
-                className="w-full px-4 py-2.5 pl-11 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
+                className={`w-full px-4 py-2.5 pl-11 rounded-lg border outline-none transition-all placeholder:text-gray-400 ${
+                  isGtmTrack
+                    ? "border-[#1E2D45] bg-[#161D2B] text-[#F0F6FF] focus:border-[#00FF88]"
+                    : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                }`}
               />
               <button
                 type="button"
@@ -393,13 +519,23 @@ export default function AuthForm({ mode }: AuthFormProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed"
+            className={`w-full py-2.5 px-4 font-medium rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed ${
+              isGtmTrack
+                ? "text-[#080A0F] font-bold disabled:opacity-60"
+                : "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white"
+            }`}
+            style={isGtmTrack ? {
+              background: loading ? "#1E2D45" : "linear-gradient(135deg, #00FF88, #00CC6A)",
+              boxShadow: loading ? "none" : "0 2px 12px rgba(0,255,136,0.3)",
+            } : undefined}
           >
             {loading
               ? "..."
               : isLogin
                 ? "התחבר"
-                : "הירשם חינם"}
+                : isGtmTrack
+                  ? "הירשם והתחל את מסע ה-GTM"
+                  : "הירשם חינם"}
           </button>
 
           {/* Forgot Password Link */}
@@ -418,9 +554,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
         {/* Divider */}
         <div className="flex items-center gap-3 my-5">
-          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-          <span className="text-xs text-gray-400 dark:text-gray-500">או</span>
-          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+          <div className={`flex-1 h-px ${isGtmTrack ? "bg-[#1E2D45]" : "bg-gray-200 dark:bg-gray-700"}`} />
+          <span className={`text-xs ${isGtmTrack ? "text-[#3D4F6F]" : "text-gray-400 dark:text-gray-500"}`}>או</span>
+          <div className={`flex-1 h-px ${isGtmTrack ? "bg-[#1E2D45]" : "bg-gray-200 dark:bg-gray-700"}`} />
         </div>
 
         {/* Google sign-in */}
@@ -428,7 +564,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
           type="button"
           onClick={handleGoogleLogin}
           disabled={googleLoading}
-          className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          className={`w-full flex items-center justify-center gap-3 py-2.5 px-4 font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+            isGtmTrack
+              ? "bg-[#161D2B] hover:bg-[#1E2D45] border border-[#1E2D45] text-[#B0BEC5]"
+              : "bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200"
+          }`}
         >
           {googleLoading ? (
             <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
@@ -456,12 +596,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
         </button>
 
         {/* Bottom toggle */}
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
+        <p className={`text-center text-sm mt-6 ${isGtmTrack ? "text-[#6B7FA3]" : "text-gray-500 dark:text-gray-400"}`}>
           {isLogin ? "עדיין אין לך חשבון?" : "כבר יש לך חשבון?"}{" "}
           <button
             type="button"
             onClick={() => switchTab(isLogin ? "signup" : "login")}
-            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium cursor-pointer"
+            className={`font-medium cursor-pointer ${isGtmTrack ? "text-[#00FF88] hover:text-[#00CC6A]" : "text-blue-600 hover:text-blue-700 dark:text-blue-400"}`}
           >
             {isLogin ? "הרשמה חינם" : "התחבר"}
           </button>

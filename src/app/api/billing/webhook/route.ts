@@ -123,28 +123,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const planLabel = plan === "premium" ? "פרימיום" : "סטנדרט";
+    const isGtmDiy = plan === "gtm_diy";
+    const isGtmPro = plan === "gtm_pro";
+    const planLabel = isGtmDiy ? "GTM DIY" : isGtmPro ? "GTM Pro" : plan === "premium" ? "פרימיום" : "סטנדרט";
 
-    // Set up recurring monthly charge
+    // Set up recurring monthly charge (skip for one-time GTM DIY plan)
     let recurringId = "";
-    const recurringEmail = customerEmail || await getUserEmail(userId);
-    if (recurringEmail) {
-      try {
-        const recurringResult = await setupRecurringCharge({
-          customerEmail: recurringEmail,
-          description: `ייעוץ עסקי - FBM Studio תוכנית ${planLabel} (מנוי חודשי)`,
-          price: planPrice,
-          intervalMonths: 1,
-        });
+    if (!isGtmDiy) {
+      const recurringEmail = customerEmail || await getUserEmail(userId);
+      if (recurringEmail) {
+        try {
+          const description = isGtmPro
+            ? "GTM BOOTCAMP / מנוי חודשי למערכת"
+            : `ייעוץ עסקי - FBM Studio תוכנית ${planLabel} (מנוי חודשי)`;
 
-        if (recurringResult.success) {
-          recurringId = recurringResult.recurringId || "";
-          console.log(`Sumit webhook: recurring charge set up, ID: ${recurringId}`);
-        } else {
-          console.error("Sumit webhook: recurring setup failed:", recurringResult.error);
+          const recurringResult = await setupRecurringCharge({
+            customerEmail: recurringEmail,
+            description,
+            price: planPrice,
+            intervalMonths: 1,
+          });
+
+          if (recurringResult.success) {
+            recurringId = recurringResult.recurringId || "";
+            console.log(`Sumit webhook: recurring charge set up, ID: ${recurringId}`);
+          } else {
+            console.error("Sumit webhook: recurring setup failed:", recurringResult.error);
+          }
+        } catch (recurringError) {
+          console.error("Sumit webhook: recurring exception:", recurringError);
         }
-      } catch (recurringError) {
-        console.error("Sumit webhook: recurring exception:", recurringError);
       }
     }
 

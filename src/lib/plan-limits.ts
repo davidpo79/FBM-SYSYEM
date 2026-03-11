@@ -57,6 +57,8 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
 export const PLAN_PRICES: Record<string, number> = {
   standard: 97,
   premium: 197,
+  gtm_diy: 290,
+  gtm_pro: 99,
 };
 
 export const PLAN_LABELS: Record<string, string> = {
@@ -64,6 +66,8 @@ export const PLAN_LABELS: Record<string, string> = {
   standard: "סטנדרט",
   premium: "פרימיום",
   expired: "פג תוקף",
+  gtm_diy: "GTM DIY",
+  gtm_pro: "GTM Pro",
 };
 
 // Consulting: one-time product (not a subscription plan)

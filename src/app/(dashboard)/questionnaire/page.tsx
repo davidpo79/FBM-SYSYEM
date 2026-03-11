@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { supabase } from "@/lib/supabase";
-import { getQuestions, type QuestionnaireAnswers } from "@/lib/questions";
+import { getQuestions, getGTMQuestions, type QuestionnaireAnswers } from "@/lib/questions";
+import { captureUTM, getUTMForPayload } from "@/lib/utm";
 import StepIndicator from "@/components/questionnaire/StepIndicator";
 import QuestionCard from "@/components/questionnaire/QuestionCard";
 import QuestionRecordCard from "@/components/questionnaire/QuestionRecordCard";
@@ -51,6 +52,10 @@ export default function QuestionnairePage() {
   const [mode, setMode] = useState<Mode | null>(null);
   const [manualStep, setManualStep] = useState(0); // 0-based index into questions
 
+  // Track state (fbm or gtm)
+  const [track, setTrack] = useState<"fbm" | "gtm">("fbm");
+  const [ideaName, setIdeaName] = useState("");
+
   // Document upload state
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docAnalyzing, setDocAnalyzing] = useState(false);
@@ -68,7 +73,8 @@ export default function QuestionnairePage() {
     summary: string;
   } | null>(null);
 
-  const questions = getQuestions(ownerNiche, projectMode);
+  const isGtm = track === "gtm";
+  const questions = isGtm ? getGTMQuestions() : getQuestions(ownerNiche, projectMode);
 
   // Listen for GHL booking confirmation from iframe
   useEffect(() => {
@@ -129,7 +135,66 @@ export default function QuestionnairePage() {
       setIsTokenUser(true);
     }
 
+    captureUTM(); // Persist UTM params from URL
     const params = new URLSearchParams(window.location.search);
+
+    // Detect GTM track from URL
+    if (params.get("track") === "gtm") {
+      setTrack("gtm");
+      setProjectMode("owner"); // GTM is always the entrepreneur themselves
+
+      // Read idea name and pre-fill user name from URL params
+      const ideaParam = params.get("idea");
+      const nameParam = params.get("name");
+      if (nameParam) {
+        setOwnerName(decodeURIComponent(nameParam));
+      }
+      if (ideaParam) {
+        const decoded = decodeURIComponent(ideaParam);
+        setIdeaName(decoded);
+        setAnswers((prev) => ({ ...prev, "2": prev["2"] || decoded }));
+      }
+
+      // Smart Pre-fill from Ideator session (localStorage)
+      try {
+        const ideatorData = localStorage.getItem("gtm-ideator-selected");
+        if (ideatorData) {
+          const idea = JSON.parse(ideatorData);
+          if (idea.name && !ideaParam) setIdeaName(idea.name);
+          setAnswers((prev) => ({
+            ...prev,
+            ...(idea.niche ? { "1": prev["1"] || `הבעיה שאני פותר: ${idea.pitch}\nקהל יעד: ${idea.niche}` } : {}),
+            ...(idea.name ? { "2": prev["2"] || `${idea.name}${idea.apisUsed ? ` — פתרון המבוסס על ${idea.apisUsed.join(", ")}` : ""}` } : {}),
+          }));
+          localStorage.removeItem("gtm-ideator-selected");
+        }
+      } catch { /* ignore */ }
+
+      // GTM Magic: bypass mode selection AND name step — go directly to manual Question 1
+      // Use name from URL param, auth, or fallback to "יזם"
+      if (!nameParam) {
+        // Try to get name from auth/localStorage
+        try {
+          const savedName = localStorage.getItem("fbm_user_name");
+          if (savedName) setOwnerName(savedName);
+          else setOwnerName("יזם");
+        } catch { setOwnerName("יזם"); }
+      }
+      // Restore saved answers for GTM (but NOT flowStage — always start at manual Q1)
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.answers) setAnswers((prev) => ({ ...prev, ...data.answers }));
+        } catch { /* ignore */ }
+      }
+
+      setMode("manual");
+      setManualStep(0);
+      setFlowStage("manual");
+      return; // Don't let saved progress override GTM skip
+    }
+
     if (params.get("new") === "true") {
       localStorage.removeItem(STORAGE_KEY);
       window.history.replaceState({}, "", "/questionnaire");
@@ -316,13 +381,31 @@ export default function QuestionnairePage() {
 
       const insertData: Record<string, unknown> = {
         user_id: user.id,
-        name: answersToUse["1"]?.slice(0, 60) || "פרויקט חדש",
+        name: answersToUse["1"]?.slice(0, 60) || (track === "gtm" ? "GTM Project" : "פרויקט חדש"),
         answers: answersArray,
         user_name: userName,
         answers_map: answersMap,
         owner_niche: niche,
         status: "pending",
+        track,
       };
+
+      // For GTM track: extract structured onboarding data for the AI strategy generator
+      if (isGtm) {
+        insertData.gtm_onboarding_data = {
+          idea_name: ideaName || answersToUse["2"]?.slice(0, 120) || "",
+          pain_point: answersToUse["1"] || "",
+          uvp: answersToUse["2"] || "",
+          origin_story: answersToUse["3"] || "",
+          icp: answersToUse["4"] || "",
+          market_size: answersToUse["5"] || "",
+          competitive_landscape: answersToUse["6"] || "",
+          revenue_model: answersToUse["7"] || "",
+          distribution_channels: answersToUse["8"] || "",
+          validation_status: answersToUse["9"] || "",
+          launch_goals: answersToUse["10"] || "",
+        };
+      }
 
       // Save transcript if available
       if (transcript) {
@@ -339,6 +422,22 @@ export default function QuestionnairePage() {
 
       localStorage.removeItem(STORAGE_KEY);
 
+      // EVENT_USER_REGISTERED: fire webhook on project creation (with UTM)
+      fetch("/api/webhooks/gtm-user-registered", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email || "",
+          name: userName,
+          user_id: user.id,
+          registration_date: new Date().toISOString(),
+          projectId: data.id,
+          track,
+          ideaName: isGtm ? (ideaName || answersToUse["2"]?.slice(0, 120) || "") : undefined,
+          ...getUTMForPayload(),
+        }),
+      }).catch(() => { /* fire and forget */ });
+
       // Token users see booking after questionnaire
       if (isTokenUser) {
         setSavedProjectId(data.id);
@@ -347,7 +446,7 @@ export default function QuestionnairePage() {
         return;
       }
 
-      router.push(`/project/${data.id}/strategy`);
+      router.push(track === "gtm" ? `/project/${data.id}/gtm-strategy` : `/project/${data.id}/strategy`);
     } catch (err) {
       console.error("Submit error:", err);
       setError("אירעה שגיאה בשמירה. נסה שוב.");
@@ -384,7 +483,8 @@ export default function QuestionnairePage() {
   const handleManualPrev = () => {
     setError("");
     if (manualStep === 0) {
-      setFlowStage("modeSelect");
+      // GTM: go back to name step (skip modeSelect)
+      setFlowStage(isGtm ? "name" : "modeSelect");
     } else {
       setManualStep((s) => s - 1);
     }
@@ -400,7 +500,7 @@ export default function QuestionnairePage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <StepIndicator current={progress.current} total={progress.total} label={progress.label} />
+      <StepIndicator current={progress.current} total={progress.total} label={progress.label} track={track} ideaName={ideaName} />
 
       {/* ─── Step: Project Mode ─── */}
       {flowStage === "projectMode" && (
@@ -503,19 +603,23 @@ export default function QuestionnairePage() {
       {/* ─── Step: Name ─── */}
       {flowStage === "name" && (
         <div
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 p-6 animate-in"
+          className={`rounded-2xl shadow-lg border p-6 animate-in ${
+            isGtm ? "bg-[#0D1117] border-[#1E2D45]" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
+          }`}
           dir="rtl"
         >
-          <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
-            {projectMode === "client" ? "לפני שמתחילים" : "הפרטים שלך"}
+          <span className={`text-xs font-semibold uppercase tracking-wide ${isGtm ? "text-[#00FF88]" : "text-blue-600"}`}>
+            {isGtm ? "שלב אחרון לפני האסטרטגיה" : projectMode === "client" ? "לפני שמתחילים" : "הפרטים שלך"}
           </span>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2 mb-2">
+          <h2 className={`text-xl font-bold mt-2 mb-2 ${isGtm ? "text-[#F0F6FF]" : "text-gray-900 dark:text-gray-100"}`}>
             {projectMode === "client" ? "מה השם של בעל העסק?" : "מה השם שלך?"}
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            {projectMode === "client"
-              ? "השם ישמש לבניית מסמך האסטרטגיה האישי"
-              : "השם שלך ישמש לבניית מסמך האסטרטגיה האישי"}
+          <p className={`text-sm mb-4 ${isGtm ? "text-[#B0BEC5]" : "text-gray-500 dark:text-gray-400"}`}>
+            {isGtm
+              ? "השם שלך ישמש לבניית תוכנית ה-GTM האישית"
+              : projectMode === "client"
+                ? "השם ישמש לבניית מסמך האסטרטגיה האישי"
+                : "השם שלך ישמש לבניית מסמך האסטרטגיה האישי"}
           </p>
           <input
             type="text"
@@ -526,18 +630,24 @@ export default function QuestionnairePage() {
             }}
             placeholder="לדוגמה: דודי כהן"
             dir="rtl"
-            className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-lg"
+            className={`w-full px-4 py-3 rounded-xl border outline-none transition-all text-lg ${
+              isGtm
+                ? "border-[#1E2D45] bg-[#161D2B] text-[#F0F6FF] focus:border-[#00FF88] placeholder:text-[#3D4F6F]"
+                : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            }`}
           />
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
 
           <div className="flex items-center justify-between mt-6">
-            <button
-              type="button"
-              onClick={() => setFlowStage("projectMode")}
-              className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-            >
-              הקודם ←
-            </button>
+            {!isGtm ? (
+              <button
+                type="button"
+                onClick={() => setFlowStage("projectMode")}
+                className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+              >
+                → הקודם
+              </button>
+            ) : <div />}
             <button
               type="button"
               onClick={() => {
@@ -546,12 +656,23 @@ export default function QuestionnairePage() {
                   return;
                 }
                 setError("");
-                // Self mode: skip niche — the system helps them find it later
-                setFlowStage(projectMode === "self" ? "modeSelect" : "niche");
+                if (isGtm) {
+                  // GTM: bypass mode selection, go directly to manual Q1
+                  setMode("manual");
+                  setManualStep(0);
+                  setFlowStage("manual");
+                } else {
+                  setFlowStage(projectMode === "self" ? "modeSelect" : "niche");
+                }
               }}
-              className="px-6 py-2.5 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer"
+              className={`px-6 py-2.5 rounded-xl font-semibold transition-all cursor-pointer ${
+                isGtm
+                  ? "text-[#080A0F] font-bold"
+                  : "text-white bg-blue-600 hover:bg-blue-700"
+              }`}
+              style={isGtm ? { background: "linear-gradient(135deg, #00FF88, #00CC6A)", boxShadow: "0 2px 12px rgba(0,255,136,0.3)" } : undefined}
             >
-              → הבא
+              הבא ←
             </button>
           </div>
         </div>
@@ -630,7 +751,7 @@ export default function QuestionnairePage() {
               onClick={() => setFlowStage("name")}
               className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
             >
-              הקודם ←
+              → הקודם
             </button>
             <button
               type="button"
@@ -640,7 +761,7 @@ export default function QuestionnairePage() {
               }}
               className="px-6 py-2.5 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer"
             >
-              → הבא
+              הבא ←
             </button>
           </div>
         </div>
@@ -650,9 +771,16 @@ export default function QuestionnairePage() {
       {flowStage === "modeSelect" && (
         <div dir="rtl" className="space-y-4 animate-in">
           <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-[var(--text-primary)]">
-              🎙️ איך תרצה למלא את השאלון?
+            <h2 className={`text-xl font-bold ${isGtm ? "text-[#F0F6FF]" : "text-[var(--text-primary)]"}`}>
+              {isGtm
+                ? `איך תרצה למלא את שאלון ה-GTM${ideaName ? ` עבור ${ideaName}` : ""}?`
+                : "🎙️ איך תרצה למלא את השאלון?"}
             </h2>
+            {isGtm && (
+              <p className="text-sm text-[#6B7FA3] mt-2">
+                10 שאלות קצרות שיעזרו ל-AI לייצר לך תוכנית GTM מותאמת אישית
+              </p>
+            )}
           </div>
 
           {/* Record */}
@@ -663,15 +791,21 @@ export default function QuestionnairePage() {
               setManualStep(0);
               setFlowStage("manual");
             }}
-            className="w-full text-right card-elevated p-5 cursor-pointer transition-all hover:!border-[var(--gold)] group"
+            className={`w-full text-right p-5 cursor-pointer transition-all group rounded-2xl border ${
+              isGtm
+                ? "bg-[#0D1117] border-[#1E2D45] hover:border-[#00FF88]"
+                : "card-elevated hover:!border-[var(--gold)]"
+            }`}
           >
             <div className="flex items-center gap-4">
               <div className="text-3xl">🎙️</div>
               <div>
-                <h3 className="text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--gold)] transition-colors">
+                <h3 className={`text-base font-bold transition-colors ${
+                  isGtm ? "text-[#F0F6FF] group-hover:text-[#00FF88]" : "text-[var(--text-primary)] group-hover:text-[var(--gold)]"
+                }`}>
                   הקלטה שאלה-שאלה
                 </h3>
-                <p className="text-sm text-[var(--text-muted)] mt-0.5">
+                <p className={`text-sm mt-0.5 ${isGtm ? "text-[#6B7FA3]" : "text-[var(--text-muted)]"}`}>
                   הקלט תשובה לכל שאלה בנפרד. התמלול נשמר אוטומטית
                 </p>
               </div>
@@ -685,15 +819,21 @@ export default function QuestionnairePage() {
               setMode("upload");
               setFlowStage("uploading");
             }}
-            className="w-full text-right card-elevated p-5 cursor-pointer transition-all hover:!border-[var(--gold)] group"
+            className={`w-full text-right p-5 cursor-pointer transition-all group rounded-2xl border ${
+              isGtm
+                ? "bg-[#0D1117] border-[#1E2D45] hover:border-[#00FF88]"
+                : "card-elevated hover:!border-[var(--gold)]"
+            }`}
           >
             <div className="flex items-center gap-4">
               <div className="text-3xl">📁</div>
               <div>
-                <h3 className="text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--gold)] transition-colors">
+                <h3 className={`text-base font-bold transition-colors ${
+                  isGtm ? "text-[#F0F6FF] group-hover:text-[#00FF88]" : "text-[var(--text-primary)] group-hover:text-[var(--gold)]"
+                }`}>
                   העלאת הקלטה
                 </h3>
-                <p className="text-sm text-[var(--text-muted)] mt-0.5">
+                <p className={`text-sm mt-0.5 ${isGtm ? "text-[#6B7FA3]" : "text-[var(--text-muted)]"}`}>
                   כבר הקלטת? העלה mp3/wav/m4a
                 </p>
               </div>
@@ -708,15 +848,21 @@ export default function QuestionnairePage() {
               setManualStep(0);
               setFlowStage("manual");
             }}
-            className="w-full text-right card-elevated p-5 cursor-pointer transition-all hover:!border-[var(--gold)] group"
+            className={`w-full text-right p-5 cursor-pointer transition-all group rounded-2xl border ${
+              isGtm
+                ? "bg-[#0D1117] border-[#1E2D45] hover:border-[#00FF88]"
+                : "card-elevated hover:!border-[var(--gold)]"
+            }`}
           >
             <div className="flex items-center gap-4">
               <div className="text-3xl">⌨️</div>
               <div>
-                <h3 className="text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--gold)] transition-colors">
+                <h3 className={`text-base font-bold transition-colors ${
+                  isGtm ? "text-[#F0F6FF] group-hover:text-[#00FF88]" : "text-[var(--text-primary)] group-hover:text-[var(--gold)]"
+                }`}>
                   הקלדה ידנית
                 </h3>
-                <p className="text-sm text-[var(--text-muted)] mt-0.5">
+                <p className={`text-sm mt-0.5 ${isGtm ? "text-[#6B7FA3]" : "text-[var(--text-muted)]"}`}>
                   מלא את השאלון שאלה-שאלה
                 </p>
               </div>
@@ -729,16 +875,22 @@ export default function QuestionnairePage() {
             onClick={() => {
               setFlowStage("uploadDoc");
             }}
-            className="w-full text-right card-elevated p-5 cursor-pointer transition-all hover:!border-[var(--gold)] group"
-            style={{ borderStyle: "dashed" }}
+            className={`w-full text-right p-5 cursor-pointer transition-all group rounded-2xl border ${
+              isGtm
+                ? "bg-[#0D1117] border-[#1E2D45] border-dashed hover:border-[#00FF88]"
+                : "card-elevated hover:!border-[var(--gold)]"
+            }`}
+            style={isGtm ? undefined : { borderStyle: "dashed" }}
           >
             <div className="flex items-center gap-4">
               <div className="text-3xl">📄</div>
               <div>
-                <h3 className="text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--gold)] transition-colors">
+                <h3 className={`text-base font-bold transition-colors ${
+                  isGtm ? "text-[#F0F6FF] group-hover:text-[#00FF88]" : "text-[var(--text-primary)] group-hover:text-[var(--gold)]"
+                }`}>
                   העלאת שאלון קיים
                 </h3>
-                <p className="text-sm text-[var(--text-muted)] mt-0.5">
+                <p className={`text-sm mt-0.5 ${isGtm ? "text-[#6B7FA3]" : "text-[var(--text-muted)]"}`}>
                   כבר מילאת שאלון? העלה PDF/Word/טקסט ונדלג ישר לאסטרטגיה
                 </p>
               </div>
@@ -748,10 +900,12 @@ export default function QuestionnairePage() {
           <div className="flex justify-start mt-4">
             <button
               type="button"
-              onClick={() => setFlowStage(projectMode === "self" ? "name" : "niche")}
-              className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+              onClick={() => setFlowStage(isGtm ? "name" : projectMode === "self" ? "name" : "niche")}
+              className={`flex items-center gap-1 px-5 py-2.5 rounded-xl transition-colors cursor-pointer ${
+                isGtm ? "text-[#6B7FA3] hover:bg-[#161D2B]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
             >
-              הקודם ←
+              → הקודם
             </button>
           </div>
         </div>
@@ -769,9 +923,11 @@ export default function QuestionnairePage() {
             <button
               type="button"
               onClick={() => setFlowStage("modeSelect")}
-              className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+              className={`flex items-center gap-1 px-5 py-2.5 rounded-xl transition-colors cursor-pointer ${
+                isGtm ? "text-[#6B7FA3] hover:bg-[#161D2B]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
             >
-              הקודם ←
+              → הקודם
             </button>
           </div>
         </div>
@@ -780,17 +936,19 @@ export default function QuestionnairePage() {
       {/* ─── Upload Document mode ─── */}
       {flowStage === "uploadDoc" && (
         <div className="animate-in" dir="rtl">
-          <div className="card-elevated p-6">
-            <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+          <div className={`p-6 rounded-2xl border ${isGtm ? "bg-[#0D1117] border-[#1E2D45]" : "card-elevated"}`}>
+            <h2 className={`text-xl font-bold mb-2 ${isGtm ? "text-[#F0F6FF]" : "text-[var(--text-primary)]"}`}>
               📄 העלאת שאלון קיים
             </h2>
-            <p className="text-sm text-[var(--text-muted)] mb-5">
+            <p className={`text-sm mb-5 ${isGtm ? "text-[#6B7FA3]" : "text-[var(--text-muted)]"}`}>
               העלה שאלון שמילאת בעבר — המערכת תנתח אותו אוטומטית ותעביר ישר למסמך האסטרטגיה
             </p>
 
             <div
-              className="border-2 border-dashed rounded-2xl p-8 text-center transition-colors cursor-pointer hover:border-[var(--gold)]"
-              style={{ borderColor: docFile ? "var(--gold)" : "var(--card-border)" }}
+              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors cursor-pointer ${
+                isGtm ? "hover:border-[#00FF88]" : "hover:border-[var(--gold)]"
+              }`}
+              style={{ borderColor: docFile ? (isGtm ? "#00FF88" : "var(--gold)") : (isGtm ? "#1E2D45" : "var(--card-border)") }}
               onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
               onDrop={(e) => {
                 e.preventDefault();
@@ -812,21 +970,21 @@ export default function QuestionnairePage() {
               {docFile ? (
                 <div>
                   <div className="text-4xl mb-3">📄</div>
-                  <p className="text-base font-bold text-[var(--text-primary)]">{docFile.name}</p>
-                  <p className="text-sm text-[var(--text-muted)] mt-1">
+                  <p className={`text-base font-bold ${isGtm ? "text-[#F0F6FF]" : "text-[var(--text-primary)]"}`}>{docFile.name}</p>
+                  <p className={`text-sm mt-1 ${isGtm ? "text-[#6B7FA3]" : "text-[var(--text-muted)]"}`}>
                     {(docFile.size / 1024).toFixed(0)} KB
                   </p>
-                  <p className="text-xs text-[var(--gold)] mt-2">
+                  <p className={`text-xs mt-2 ${isGtm ? "text-[#00FF88]" : "text-[var(--gold)]"}`}>
                     לחץ לבחירת קובץ אחר
                   </p>
                 </div>
               ) : (
                 <div>
                   <div className="text-4xl mb-3">📂</div>
-                  <p className="text-base font-bold text-[var(--text-primary)]">
+                  <p className={`text-base font-bold ${isGtm ? "text-[#F0F6FF]" : "text-[var(--text-primary)]"}`}>
                     גרור קובץ לכאן או לחץ לבחירה
                   </p>
-                  <p className="text-sm text-[var(--text-muted)] mt-2">
+                  <p className={`text-sm mt-2 ${isGtm ? "text-[#6B7FA3]" : "text-[var(--text-muted)]"}`}>
                     PDF, Word, טקסט — עד 10MB
                   </p>
                 </div>
@@ -843,15 +1001,20 @@ export default function QuestionnairePage() {
               <button
                 type="button"
                 onClick={() => { setFlowStage("modeSelect"); setDocFile(null); setDocError(""); }}
-                className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                className={`flex items-center gap-1 px-5 py-2.5 rounded-xl transition-colors cursor-pointer ${
+                  isGtm ? "text-[#6B7FA3] hover:bg-[#161D2B]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                }`}
               >
-                הקודם ←
+                → הקודם
               </button>
               <button
                 type="button"
                 disabled={!docFile}
                 onClick={() => { if (docFile) processDocument(docFile); }}
-                className="px-6 py-2.5 rounded-xl font-semibold text-white bg-[var(--gold)] hover:opacity-90 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`px-6 py-2.5 rounded-xl font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                  isGtm ? "text-[#080A0F] font-bold" : "text-white bg-[var(--gold)] hover:opacity-90"
+                }`}
+                style={isGtm ? { background: "linear-gradient(135deg, #00FF88, #00CC6A)", boxShadow: "0 2px 12px rgba(0,255,136,0.3)" } : undefined}
               >
                 נתח שאלון ועבור לאסטרטגיה →
               </button>
@@ -863,27 +1026,27 @@ export default function QuestionnairePage() {
       {/* ─── Analyzing Document ─── */}
       {flowStage === "analyzingDoc" && (
         <div className="animate-in" dir="rtl">
-          <div className="card-elevated p-8 text-center">
+          <div className={`p-8 text-center rounded-2xl border ${isGtm ? "bg-[#0D1117] border-[#1E2D45]" : "card-elevated"}`}>
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-              style={{ backgroundColor: "rgba(212, 168, 67, 0.1)" }}>
+              style={{ backgroundColor: isGtm ? "rgba(0,255,136,0.1)" : "rgba(212, 168, 67, 0.1)" }}>
               <div
                 className="w-8 h-8 rounded-full animate-spin"
                 style={{
-                  border: "3px solid rgba(212, 168, 67, 0.3)",
-                  borderTopColor: "#D4A843",
+                  border: isGtm ? "3px solid rgba(0,255,136,0.3)" : "3px solid rgba(212, 168, 67, 0.3)",
+                  borderTopColor: isGtm ? "#00FF88" : "#D4A843",
                 }}
               />
             </div>
-            <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+            <h2 className={`text-xl font-bold mb-2 ${isGtm ? "text-[#F0F6FF]" : "text-[var(--text-primary)]"}`}>
               מנתח את השאלון...
             </h2>
-            <p className="text-sm text-[var(--text-muted)]">
-              קורא את המסמך, מזהה תשובות ומתאים אותן למערכת FBM
+            <p className={`text-sm ${isGtm ? "text-[#6B7FA3]" : "text-[var(--text-muted)]"}`}>
+              {isGtm ? "קורא את המסמך, מזהה תשובות ומתאים אותן לתוכנית GTM" : "קורא את המסמך, מזהה תשובות ומתאים אותן למערכת FBM"}
             </p>
-            <div className="mt-4 space-y-2 text-sm text-[var(--text-secondary)]">
+            <div className={`mt-4 space-y-2 text-sm ${isGtm ? "text-[#B0BEC5]" : "text-[var(--text-secondary)]"}`}>
               <p>📖 קורא את המסמך...</p>
               <p>🧠 מנתח תשובות...</p>
-              <p>✍️ ממפה לשאלות FBM...</p>
+              <p>✍️ {isGtm ? "ממפה לשאלות GTM..." : "ממפה לשאלות FBM..."}</p>
             </div>
           </div>
         </div>
@@ -928,6 +1091,7 @@ export default function QuestionnairePage() {
               value={currentAnswer}
               onChange={handleAnswerChange}
               error={error}
+              track={track}
             />
           ) : (
             <QuestionCard
@@ -936,6 +1100,9 @@ export default function QuestionnairePage() {
               value={currentAnswer}
               onChange={handleAnswerChange}
               error={error}
+              track={track}
+              ideaName={ideaName}
+              allAnswers={answers}
             />
           )}
 
@@ -943,26 +1110,34 @@ export default function QuestionnairePage() {
             <button
               type="button"
               onClick={handleManualPrev}
-              className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+              className={`flex items-center gap-1 px-5 py-2.5 rounded-xl transition-colors cursor-pointer ${
+                isGtm ? "text-[#6B7FA3] hover:bg-[#161D2B]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
             >
-              הקודם ←
+              → הקודם
             </button>
 
             <button
               type="button"
               onClick={handleManualNext}
               disabled={submitting}
-              className={`flex items-center gap-1 px-6 py-2.5 rounded-xl font-semibold text-white transition-all cursor-pointer ${
-                isLastManualStep
-                  ? "bg-green-600 hover:bg-green-700 shadow-md hover:shadow-lg"
-                  : "bg-blue-600 hover:bg-blue-700"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`flex items-center gap-1 px-6 py-2.5 rounded-xl font-semibold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                isGtm
+                  ? "text-[#080A0F] font-bold"
+                  : isLastManualStep
+                    ? "text-white bg-green-600 hover:bg-green-700 shadow-md hover:shadow-lg"
+                    : "text-white bg-blue-600 hover:bg-blue-700"
+              }`}
+              style={isGtm ? {
+                background: submitting ? "#1E2D45" : "linear-gradient(135deg, #00FF88, #00CC6A)",
+                boxShadow: submitting ? "none" : "0 2px 12px rgba(0,255,136,0.3)",
+              } : undefined}
             >
               {submitting
                 ? "שומר..."
                 : isLastManualStep
-                  ? "סיום ושליחה ל-AI 🚀"
-                  : "→ הבא"}
+                  ? isGtm ? "סיום ויצירת תוכנית GTM 🚀" : "סיום ושליחה ל-AI 🚀"
+                  : "הבא ←"}
             </button>
           </div>
         </>
