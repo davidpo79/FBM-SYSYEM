@@ -34,7 +34,12 @@ try {
 export async function POST(req: Request) {
   const startTime = Date.now();
   try {
-    if (ratelimit) {
+    const { category, admin_key } = await req.json();
+
+    // Admin bypass: skip rate limiting if correct key is provided
+    const isAdmin = admin_key && process.env.IDEATOR_ADMIN_KEY && admin_key === process.env.IDEATOR_ADMIN_KEY;
+
+    if (ratelimit && !isAdmin) {
       const ip = req.headers.get("x-forwarded-for") ?? "127.0.0.1";
       const { success } = await ratelimit.limit(ip);
       if (!success) {
@@ -44,7 +49,6 @@ export async function POST(req: Request) {
         );
       }
     }
-    const { category } = await req.json();
 
     const catLabel = API_CATEGORIES[category] || category || "טכנולוגיה כללית";
 

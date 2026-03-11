@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Script from "next/script";
 
 /* ── Category tiles with emojis — user picks a niche ── */
@@ -38,7 +38,16 @@ type Stage = "select" | "building" | "results";
 
 export default function IdeatorPage() {
   const [category, setCategory] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
+  const [adminKey, setAdminKey] = useState("");
   const [stage, setStage] = useState<Stage>("select");
+
+  // Check for admin key in URL (e.g., /ideator?admin=YOUR_SECRET)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const key = params.get("admin");
+    if (key) setAdminKey(key);
+  }, []);
   const [ideas, setIdeas] = useState<IdeaResult[]>([]);
   const [error, setError] = useState("");
   const [buildStep, setBuildStep] = useState(0);
@@ -53,8 +62,11 @@ export default function IdeatorPage() {
     "מסיים ומלטש...",
   ];
 
+  const selectedCategory = category === "custom" ? customCategory.trim() : category;
+  const canGenerate = category && (category !== "custom" || customCategory.trim().length > 1);
+
   const handleGenerate = async () => {
-    if (!category) return;
+    if (!canGenerate) return;
     setStage("building");
     setError("");
     setBuildStep(0);
@@ -73,7 +85,7 @@ export default function IdeatorPage() {
       const res = await fetch("/api/public/ideator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category }),
+        body: JSON.stringify({ category: selectedCategory, ...(adminKey ? { admin_key: adminKey } : {}) }),
       });
       const data = await res.json();
       clearInterval(interval);
@@ -229,7 +241,53 @@ export default function IdeatorPage() {
                   {cat.label}
                 </button>
               ))}
+
+              {/* Custom category tile */}
+              <button
+                onClick={() => setCategory("custom")}
+                style={{
+                  padding: 16,
+                  borderRadius: 12,
+                  border: `1.5px solid ${category === "custom" ? "#00FF88" : "#1E2D45"}`,
+                  background: category === "custom" ? "rgba(0,255,136,0.08)" : "#161D2B",
+                  color: category === "custom" ? "#00FF88" : "#F0F6FF",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  textAlign: "right",
+                  fontSize: 14,
+                  fontWeight: 500,
+                }}
+              >
+                <span style={{ fontSize: 24, display: "block", marginBottom: 6 }}>✏️</span>
+                קטגוריה מותאמת אישית
+              </button>
             </div>
+
+            {/* Custom category input — shown when "custom" is selected */}
+            {category === "custom" && (
+              <div style={{ maxWidth: 480, margin: "0 auto 24px" }}>
+                <input
+                  type="text"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && customCategory.trim()) handleGenerate(); }}
+                  placeholder='לדוגמה: "ניהול מרפאות שיניים" או "אוטומציה למלונות בוטיק"'
+                  style={{
+                    width: "100%",
+                    padding: "14px 18px",
+                    borderRadius: 12,
+                    border: "2px solid #00FF88",
+                    background: "#0D1117",
+                    color: "#F0F6FF",
+                    fontSize: 15,
+                    outline: "none",
+                  }}
+                />
+                <p style={{ fontSize: 11, color: "#3D4F6F", fontFamily: "monospace", marginTop: 6 }}>
+                  תאר את הקטגוריה, הנישה, או התחום שמעניין אותך
+                </p>
+              </div>
+            )}
 
             {error && (
               <p style={{ color: "#EF4444", textAlign: "center", marginBottom: 16 }}>{error}</p>
@@ -238,20 +296,20 @@ export default function IdeatorPage() {
             <div style={{ textAlign: "center" }}>
               <button
                 onClick={handleGenerate}
-                disabled={!category}
+                disabled={!canGenerate}
                 style={{
                   padding: "14px 48px",
                   borderRadius: 12,
                   border: "none",
-                  background: category
+                  background: canGenerate
                     ? "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)"
                     : "#1E2D45",
-                  color: category ? "#080A0F" : "#3D4F6F",
+                  color: canGenerate ? "#080A0F" : "#3D4F6F",
                   fontSize: 16,
                   fontWeight: 700,
-                  cursor: category ? "pointer" : "not-allowed",
+                  cursor: canGenerate ? "pointer" : "not-allowed",
                   transition: "all 0.3s",
-                  boxShadow: category ? "0 4px 16px rgba(0,255,136,0.3)" : "none",
+                  boxShadow: canGenerate ? "0 4px 16px rgba(0,255,136,0.3)" : "none",
                 }}
               >
                 ייצר לי רעיונות
