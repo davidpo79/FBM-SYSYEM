@@ -23,6 +23,8 @@ type FlowStage =
   | "modeSelect"
   | "recording"
   | "uploading"
+  | "uploadDoc"
+  | "analyzingDoc"
   | "processing"
   | "review"
   | "manual"
@@ -48,6 +50,11 @@ export default function QuestionnairePage() {
   const [flowStage, setFlowStage] = useState<FlowStage>("projectMode");
   const [mode, setMode] = useState<Mode | null>(null);
   const [manualStep, setManualStep] = useState(0); // 0-based index into questions
+
+  // Document upload state
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docAnalyzing, setDocAnalyzing] = useState(false);
+  const [docError, setDocError] = useState("");
 
   // Audio/transcription state
   const [transcript, setTranscript] = useState("");
@@ -93,7 +100,9 @@ export default function QuestionnairePage() {
         return { current: 4, total, label: "שלב 3 מתוך 3 — בחירת שיטה" };
       case "recording":
       case "uploading":
+      case "uploadDoc":
         return { current: 5, total };
+      case "analyzingDoc":
       case "processing":
         return { current: 6, total, label: "מעבד..." };
       case "review":
@@ -154,7 +163,7 @@ export default function QuestionnairePage() {
         ownerNiche,
         answers,
         flowStage:
-          flowStage === "processing" || flowStage === "recording" || flowStage === "uploading"
+          flowStage === "processing" || flowStage === "recording" || flowStage === "uploading" || flowStage === "uploadDoc" || flowStage === "analyzingDoc"
             ? "modeSelect"
             : flowStage,
         manualStep,
@@ -223,6 +232,51 @@ export default function QuestionnairePage() {
       }
     },
     [ownerName, ownerNiche],
+  );
+
+  // Handle document upload and analysis
+  const processDocument = useCallback(
+    async (file: File) => {
+      setFlowStage("analyzingDoc");
+      setDocAnalyzing(true);
+      setDocError("");
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("ownerName", ownerName);
+        formData.append("ownerNiche", ownerNiche);
+        formData.append("projectMode", projectMode);
+
+        const res = await fetch("/api/analyze-questionnaire", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "שגיאה בניתוח השאלון");
+        }
+
+        const extracted = await res.json();
+        setExtractedData(extracted);
+
+        if (extracted.documentText) {
+          setTranscript(extracted.documentText);
+        }
+
+        // Go directly to review
+        setFlowStage("review");
+      } catch (err) {
+        setDocError(
+          err instanceof Error ? err.message : "שגיאה בניתוח השאלון"
+        );
+        setFlowStage("uploadDoc");
+      } finally {
+        setDocAnalyzing(false);
+      }
+    },
+    [ownerName, ownerNiche, projectMode],
   );
 
   // Submit project
@@ -669,6 +723,28 @@ export default function QuestionnairePage() {
             </div>
           </button>
 
+          {/* Upload existing questionnaire */}
+          <button
+            type="button"
+            onClick={() => {
+              setFlowStage("uploadDoc");
+            }}
+            className="w-full text-right card-elevated p-5 cursor-pointer transition-all hover:!border-[var(--gold)] group"
+            style={{ borderStyle: "dashed" }}
+          >
+            <div className="flex items-center gap-4">
+              <div className="text-3xl">📄</div>
+              <div>
+                <h3 className="text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--gold)] transition-colors">
+                  העלאת שאלון קיים
+                </h3>
+                <p className="text-sm text-[var(--text-muted)] mt-0.5">
+                  כבר מילאת שאלון? העלה PDF/Word/טקסט ונדלג ישר לאסטרטגיה
+                </p>
+              </div>
+            </div>
+          </button>
+
           <div className="flex justify-start mt-4">
             <button
               type="button"
@@ -697,6 +773,118 @@ export default function QuestionnairePage() {
             >
               הקודם ←
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Upload Document mode ─── */}
+      {flowStage === "uploadDoc" && (
+        <div className="animate-in" dir="rtl">
+          <div className="card-elevated p-6">
+            <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+              📄 העלאת שאלון קיים
+            </h2>
+            <p className="text-sm text-[var(--text-muted)] mb-5">
+              העלה שאלון שמילאת בעבר — המערכת תנתח אותו אוטומטית ותעביר ישר למסמך האסטרטגיה
+            </p>
+
+            <div
+              className="border-2 border-dashed rounded-2xl p-8 text-center transition-colors cursor-pointer hover:border-[var(--gold)]"
+              style={{ borderColor: docFile ? "var(--gold)" : "var(--card-border)" }}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const f = e.dataTransfer.files[0];
+                if (f) { setDocFile(f); setDocError(""); }
+              }}
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = ".pdf,.doc,.docx,.txt,.md";
+                input.onchange = (e) => {
+                  const f = (e.target as HTMLInputElement).files?.[0];
+                  if (f) { setDocFile(f); setDocError(""); }
+                };
+                input.click();
+              }}
+            >
+              {docFile ? (
+                <div>
+                  <div className="text-4xl mb-3">📄</div>
+                  <p className="text-base font-bold text-[var(--text-primary)]">{docFile.name}</p>
+                  <p className="text-sm text-[var(--text-muted)] mt-1">
+                    {(docFile.size / 1024).toFixed(0)} KB
+                  </p>
+                  <p className="text-xs text-[var(--gold)] mt-2">
+                    לחץ לבחירת קובץ אחר
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <div className="text-4xl mb-3">📂</div>
+                  <p className="text-base font-bold text-[var(--text-primary)]">
+                    גרור קובץ לכאן או לחץ לבחירה
+                  </p>
+                  <p className="text-sm text-[var(--text-muted)] mt-2">
+                    PDF, Word, טקסט — עד 10MB
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {docError && (
+              <div className="mt-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm border border-red-200 dark:border-red-800">
+                {docError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between mt-6">
+              <button
+                type="button"
+                onClick={() => { setFlowStage("modeSelect"); setDocFile(null); setDocError(""); }}
+                className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+              >
+                הקודם ←
+              </button>
+              <button
+                type="button"
+                disabled={!docFile}
+                onClick={() => { if (docFile) processDocument(docFile); }}
+                className="px-6 py-2.5 rounded-xl font-semibold text-white bg-[var(--gold)] hover:opacity-90 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                נתח שאלון ועבור לאסטרטגיה →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Analyzing Document ─── */}
+      {flowStage === "analyzingDoc" && (
+        <div className="animate-in" dir="rtl">
+          <div className="card-elevated p-8 text-center">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: "rgba(212, 168, 67, 0.1)" }}>
+              <div
+                className="w-8 h-8 rounded-full animate-spin"
+                style={{
+                  border: "3px solid rgba(212, 168, 67, 0.3)",
+                  borderTopColor: "#D4A843",
+                }}
+              />
+            </div>
+            <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+              מנתח את השאלון...
+            </h2>
+            <p className="text-sm text-[var(--text-muted)]">
+              קורא את המסמך, מזהה תשובות ומתאים אותן למערכת FBM
+            </p>
+            <div className="mt-4 space-y-2 text-sm text-[var(--text-secondary)]">
+              <p>📖 קורא את המסמך...</p>
+              <p>🧠 מנתח תשובות...</p>
+              <p>✍️ ממפה לשאלות FBM...</p>
+            </div>
           </div>
         </div>
       )}
