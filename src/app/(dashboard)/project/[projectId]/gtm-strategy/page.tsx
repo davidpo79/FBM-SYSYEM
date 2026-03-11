@@ -658,7 +658,7 @@ export default function GTMStrategyPage() {
       <div style={{ position: "relative" }} ref={paywallRef}>
         {/* Paywall overlay for locked stage */}
         {isLocked && (
-          <div style={{ position: "absolute", inset: 0, borderRadius: 24, zIndex: 10, display: "flex", alignItems: "flex-start", justifyContent: "center", background: "rgba(8,10,15,0.65)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", paddingTop: 40, overflowY: "auto" }}>
+          <div className="gtm-paywall-overlay" style={{ position: "absolute", inset: 0, borderRadius: 24, zIndex: 10, display: "flex", alignItems: "flex-start", justifyContent: "center", background: "rgba(8,10,15,0.45)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", paddingTop: 40, overflowY: "auto" }}>
             <div style={{ textAlign: "center", padding: 32, maxWidth: 700, width: "100%" }}>
 
               {/* FOMO Section — What you're missing */}
@@ -841,9 +841,9 @@ export default function GTMStrategyPage() {
         )}
 
         <div
-          className="gtm-stage-content"
+          className={`gtm-stage-content ${isLocked ? "gtm-stage-locked" : ""}`}
           style={{
-            filter: isLocked ? "blur(6px)" : "none",
+            filter: isLocked ? "blur(3px)" : "none",
             pointerEvents: isLocked ? "none" : "auto",
           }}
         >

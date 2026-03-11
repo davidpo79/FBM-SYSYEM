@@ -1033,6 +1033,16 @@ input[type="range"]::-moz-range-thumb {
     font-size: 13px;
   }
 
+  /* ── GTM Paywall overlay — lighter blur on mobile ── */
+  .gtm-paywall-overlay {
+    background: rgba(8,10,15,0.30) !important;
+    backdrop-filter: blur(2px) !important;
+    -webkit-backdrop-filter: blur(2px) !important;
+  }
+  .gtm-stage-locked {
+    filter: blur(2px) !important;
+  }
+
   /* ── GTM Pricing grid — side by side on mobile ── */
   .gtm-pricing-grid {
     grid-template-columns: repeat(2, 1fr) !important;
