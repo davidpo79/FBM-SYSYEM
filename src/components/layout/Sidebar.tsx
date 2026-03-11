@@ -28,6 +28,11 @@ import {
   Wrench,
   LogOut,
   BookOpen,
+  Rocket,
+  Crosshair,
+  Users,
+  TrendingUp,
+  Megaphone,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -40,6 +45,7 @@ interface SidebarProps {
   isAdmin?: boolean;
   newSuggestionsCount?: number;
   currentPlan?: string;
+  track?: "fbm" | "gtm";
   onLogout: () => void;
 }
 
@@ -64,9 +70,13 @@ export default function Sidebar({
   isAdmin = false,
   newSuggestionsCount = 0,
   currentPlan = "trial",
+  track = "fbm",
   onLogout,
 }: SidebarProps) {
   const pathname = usePathname();
+  const isGTM = track === "gtm";
+  const accent = isGTM ? "#00FF88" : "#D4A843";
+  const accentSoft = isGTM ? "rgba(0,255,136,0.12)" : "rgba(212,168,67,0.12)";
 
   const isActive = (href: string) => pathname === href;
 
@@ -75,7 +85,17 @@ export default function Sidebar({
     { href: "/projects", label: "הפרויקטים שלי", icon: FolderOpen, badge: projectCount > 0 ? projectCount : undefined },
   ];
 
-  const fbmNav: NavItem[] = projectId
+  const gtmNav: NavItem[] = projectId && isGTM
+    ? [
+        { href: `/project/${projectId}/gtm-strategy`, label: "GTM Strategy", icon: Rocket },
+        { href: `/project/${projectId}/gtm-icp`, label: "ICP & Positioning", icon: Crosshair },
+        { href: `/project/${projectId}/gtm-validation`, label: "Validation", icon: TrendingUp },
+        { href: `/project/${projectId}/gtm-funnel`, label: "Funnel & Sales", icon: Users },
+        { href: `/project/${projectId}/gtm-channels`, label: "Channels & Paid", icon: Megaphone },
+      ]
+    : [];
+
+  const fbmNav: NavItem[] = projectId && !isGTM
     ? [
         { href: `/project/${projectId}/strategy`, label: "אסטרטגיית FBM", icon: Target },
         { href: `/project/${projectId}/niches`, label: "מחקר נישות", icon: Search },
@@ -87,6 +107,8 @@ export default function Sidebar({
         { href: `/project/${projectId}/album`, label: "אלבום וסיכום", icon: Camera, badge: albumCount > 0 ? albumCount : undefined },
       ]
     : [];
+
+  const pipelineNav = isGTM ? gtmNav : fbmNav;
 
   const toolsNav: NavItem[] = [
     { href: "#expert", label: "מומחה FBM", icon: BotMessageSquare, badge: "●", isExpert: true },
@@ -160,10 +182,10 @@ export default function Sidebar({
         {active && (
           <span
             className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-l"
-            style={{ backgroundColor: "#D4A843", boxShadow: "0 0 8px rgba(212, 168, 67, 0.4)" }}
+            style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accentSoft}` }}
           />
         )}
-        <Icon size={18} strokeWidth={1.8} style={active ? { color: "#D4A843" } : undefined} />
+        <Icon size={18} strokeWidth={1.8} style={active ? { color: accent } : undefined} />
         <span className="flex-1">{item.label}</span>
         {item.badge !== undefined && typeof item.badge === "number" && (
           <span
@@ -171,8 +193,8 @@ export default function Sidebar({
             style={
               adminNav.some((a) => a.href === item.href)
                 ? { backgroundColor: "rgba(239, 68, 68, 0.2)", color: "#EF4444" }
-                : fbmNav.some((f) => f.href === item.href)
-                  ? { backgroundColor: "rgba(212, 168, 67, 0.2)", color: "#D4A843" }
+                : pipelineNav.some((f) => f.href === item.href)
+                  ? { backgroundColor: accentSoft, color: accent }
                   : { backgroundColor: "#1A1D2A", color: "#9DA3B4" }
             }
           >
@@ -191,21 +213,43 @@ export default function Sidebar({
     >
       {/* Logo header */}
       <div className="px-5 pt-5 pb-4 flex flex-col items-center gap-2 mb-1">
-        <Image src="/logo-fbm.png" alt="FBM" width={80} height={80} className="rounded" />
-        <div className="flex items-center gap-2">
-          <span className="text-white font-bold text-lg">FBM Studio</span>
-          <span
-            className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-            style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}
-          >
-            Beta
-          </span>
-        </div>
-        <p className="text-[11px] tracking-wide" style={{ color: "#9DA3B4" }}>
-          <span className="font-bold" style={{ color: "#D4A843" }}>F</span>requency{" "}
-          <span className="font-bold" style={{ color: "#D4A843" }}>B</span>ased{" "}
-          <span className="font-bold" style={{ color: "#D4A843" }}>M</span>arketing
-        </p>
+        {isGTM ? (
+          <>
+            <span style={{ fontSize: 36, fontWeight: 800, color: "#00FF88", fontFamily: "monospace" }}>GTM</span>
+            <div className="flex items-center gap-2">
+              <span className="text-white font-bold text-lg">BootCamp</span>
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                style={{ backgroundColor: "rgba(0,255,136,0.12)", color: "#00FF88", fontFamily: "monospace" }}
+              >
+                BETA
+              </span>
+            </div>
+            <p className="text-[11px] tracking-wide" style={{ color: "#6B7FA3", fontFamily: "monospace" }}>
+              <span className="font-bold" style={{ color: "#00FF88" }}>G</span>o-
+              <span className="font-bold" style={{ color: "#00FF88" }}>T</span>o-
+              <span className="font-bold" style={{ color: "#00FF88" }}>M</span>arket
+            </p>
+          </>
+        ) : (
+          <>
+            <Image src="/logo-fbm.png" alt="FBM" width={80} height={80} className="rounded" />
+            <div className="flex items-center gap-2">
+              <span className="text-white font-bold text-lg">FBM Studio</span>
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}
+              >
+                Beta
+              </span>
+            </div>
+            <p className="text-[11px] tracking-wide" style={{ color: "#9DA3B4" }}>
+              <span className="font-bold" style={{ color: "#D4A843" }}>F</span>requency{" "}
+              <span className="font-bold" style={{ color: "#D4A843" }}>B</span>ased{" "}
+              <span className="font-bold" style={{ color: "#D4A843" }}>M</span>arketing
+            </p>
+          </>
+        )}
       </div>
       <div className="mx-4 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
 
@@ -234,17 +278,20 @@ export default function Sidebar({
           <div className="space-y-1">{mainNav.map(renderNavItem)}</div>
         </div>
 
-        {fbmNav.length > 0 && (
+        {pipelineNav.length > 0 && (
           <div className="mx-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
         )}
 
-        {/* FBM Pipeline */}
-        {fbmNav.length > 0 && (
+        {/* Pipeline nav (FBM or GTM) */}
+        {pipelineNav.length > 0 && (
           <div>
-            <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>
-              תהליך FBM
+            <p
+              className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider"
+              style={{ color: isGTM ? "#6B7FA3" : "#9DA3B4", fontFamily: isGTM ? "monospace" : undefined }}
+            >
+              {isGTM ? "GTM Pipeline" : "תהליך FBM"}
             </p>
-            <div className="space-y-1">{fbmNav.map(renderNavItem)}</div>
+            <div className="space-y-1">{pipelineNav.map(renderNavItem)}</div>
           </div>
         )}
 
@@ -263,7 +310,7 @@ export default function Sidebar({
           <>
             <div className="mx-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
             <div>
-              <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#D4A843" }}>
+              <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: accent }}>
                 אדמין
               </p>
               <div className="space-y-1">{adminNav.map(renderNavItem)}</div>
@@ -278,7 +325,7 @@ export default function Sidebar({
         <div className="flex items-center gap-3 px-3 py-2">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-            style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}
+            style={{ backgroundColor: accentSoft, color: accent }}
           >
             {displayName?.[0]?.toUpperCase() || "U"}
           </div>

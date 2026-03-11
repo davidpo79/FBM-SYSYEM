@@ -1,5 +1,7 @@
 import type { PlanType } from "@/lib/plan-limits";
 
+export type TrackType = "fbm" | "gtm";
+
 export type SubscriptionStatus = "none" | "active" | "cancelling" | "cancelled";
 
 export interface TrialNotifications {

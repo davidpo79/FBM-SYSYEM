@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { supabase } from "@/lib/supabase";
-import { getQuestions, type QuestionnaireAnswers } from "@/lib/questions";
+import { getQuestions, getGTMQuestions, type QuestionnaireAnswers } from "@/lib/questions";
 import StepIndicator from "@/components/questionnaire/StepIndicator";
 import QuestionCard from "@/components/questionnaire/QuestionCard";
 import QuestionRecordCard from "@/components/questionnaire/QuestionRecordCard";
@@ -51,6 +51,9 @@ export default function QuestionnairePage() {
   const [mode, setMode] = useState<Mode | null>(null);
   const [manualStep, setManualStep] = useState(0); // 0-based index into questions
 
+  // Track state (fbm or gtm)
+  const [track, setTrack] = useState<"fbm" | "gtm">("fbm");
+
   // Document upload state
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docAnalyzing, setDocAnalyzing] = useState(false);
@@ -68,7 +71,7 @@ export default function QuestionnairePage() {
     summary: string;
   } | null>(null);
 
-  const questions = getQuestions(ownerNiche, projectMode);
+  const questions = track === "gtm" ? getGTMQuestions() : getQuestions(ownerNiche, projectMode);
 
   // Listen for GHL booking confirmation from iframe
   useEffect(() => {
@@ -130,6 +133,14 @@ export default function QuestionnairePage() {
     }
 
     const params = new URLSearchParams(window.location.search);
+
+    // Detect GTM track from URL
+    if (params.get("track") === "gtm") {
+      setTrack("gtm");
+      setProjectMode("owner"); // GTM is always the entrepreneur themselves
+      setFlowStage("name"); // Skip projectMode selection for GTM
+    }
+
     if (params.get("new") === "true") {
       localStorage.removeItem(STORAGE_KEY);
       window.history.replaceState({}, "", "/questionnaire");
@@ -316,12 +327,13 @@ export default function QuestionnairePage() {
 
       const insertData: Record<string, unknown> = {
         user_id: user.id,
-        name: answersToUse["1"]?.slice(0, 60) || "פרויקט חדש",
+        name: answersToUse["1"]?.slice(0, 60) || (track === "gtm" ? "GTM Project" : "פרויקט חדש"),
         answers: answersArray,
         user_name: userName,
         answers_map: answersMap,
         owner_niche: niche,
         status: "pending",
+        track,
       };
 
       // Save transcript if available
@@ -347,7 +359,7 @@ export default function QuestionnairePage() {
         return;
       }
 
-      router.push(`/project/${data.id}/strategy`);
+      router.push(track === "gtm" ? `/project/${data.id}/gtm-strategy` : `/project/${data.id}/strategy`);
     } catch (err) {
       console.error("Submit error:", err);
       setError("אירעה שגיאה בשמירה. נסה שוב.");

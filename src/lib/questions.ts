@@ -3,7 +3,11 @@ export type QuestionSection =
   | 'empathy'     // גשר האמפתיה
   | 'proof'       // ההוכחה והשיטה
   | 'polarize'    // הקיטוב
-  | 'legacy';     // חזון ומורשת
+  | 'legacy'      // חזון ומורשת
+  // GTM sections
+  | 'product'     // Product & Problem
+  | 'market'      // Market & ICP
+  | 'gtm';        // Go-To-Market
 
 export interface Question {
   id: string;
@@ -23,6 +27,9 @@ const SECTION_TITLES: Record<QuestionSection, string> = {
   proof: 'ההוכחה והשיטה',
   polarize: 'הקיטוב',
   legacy: 'חזון ומורשת',
+  product: 'Product & Problem',
+  market: 'Market & ICP',
+  gtm: 'Go-To-Market Strategy',
 };
 
 export type ProjectMode = 'self' | 'client' | 'owner';
@@ -306,6 +313,96 @@ function getOwnerSelfQuestions(niche: string): Question[] {
       sectionTitle: SECTION_TITLES.legacy,
       title: 'המורשת שלך',
       text: `בעוד שנתיים, כשהעסק שלך בשיא, מה היית רוצה שלקוחות יגידו עליך ועל העבודה שלך איתם? מה יהיה ה-Legacy שלך?`,
+    },
+  ];
+}
+
+// ========================================
+// GTM BootCamp Questions (Tech Entrepreneurs)
+// ========================================
+
+const GTM_SECTION_TITLES: Record<string, string> = {
+  product: 'Product & Problem',
+  market: 'Market & ICP',
+  gtm: 'Go-To-Market Strategy',
+};
+
+export function getGTMQuestions(): Question[] {
+  return [
+    // ── Product & Problem ──
+    {
+      id: '1',
+      section: 'product',
+      sectionTitle: GTM_SECTION_TITLES.product,
+      title: 'The Problem',
+      text: 'What specific problem does your product solve? Describe the pain point in detail — who feels it, how often, and what happens if it stays unsolved?',
+    },
+    {
+      id: '2',
+      section: 'product',
+      sectionTitle: GTM_SECTION_TITLES.product,
+      title: 'Your Solution',
+      text: 'Describe your product/solution in 2-3 sentences. What makes it different from existing alternatives? What is your unique approach or technology?',
+    },
+    {
+      id: '3',
+      section: 'product',
+      sectionTitle: GTM_SECTION_TITLES.product,
+      title: 'Origin Story',
+      text: 'How did you discover this problem? What personal experience or insight led you to build this solution? Why are YOU the right person to solve it?',
+    },
+
+    // ── Market & ICP ──
+    {
+      id: '4',
+      section: 'market',
+      sectionTitle: GTM_SECTION_TITLES.market,
+      title: 'Ideal Customer Profile',
+      text: 'Describe your ideal first 100 customers in detail. What is their role/title? Company size? Industry? What tools do they currently use?',
+    },
+    {
+      id: '5',
+      section: 'market',
+      sectionTitle: GTM_SECTION_TITLES.market,
+      title: 'Market Size & Opportunity',
+      text: 'How big is the market for your solution? How many potential customers exist? What is the estimated TAM/SAM/SOM? Any market trends in your favor?',
+    },
+    {
+      id: '6',
+      section: 'market',
+      sectionTitle: GTM_SECTION_TITLES.market,
+      title: 'Competitive Landscape',
+      text: 'Who are your main competitors (direct and indirect)? What do they do well? What do they miss? How do you position against them?',
+    },
+
+    // ── Go-To-Market ──
+    {
+      id: '7',
+      section: 'gtm',
+      sectionTitle: GTM_SECTION_TITLES.gtm,
+      title: 'Pricing & Monetization',
+      text: 'What is your pricing model? (SaaS subscription, usage-based, freemium, one-time?) What price point are you considering and why?',
+    },
+    {
+      id: '8',
+      section: 'gtm',
+      sectionTitle: GTM_SECTION_TITLES.gtm,
+      title: 'Distribution Channels',
+      text: 'Where do your target customers hang out online? What channels will you use to reach them? (Product Hunt, LinkedIn, communities, SEO, paid ads, partnerships?)',
+    },
+    {
+      id: '9',
+      section: 'gtm',
+      sectionTitle: GTM_SECTION_TITLES.gtm,
+      title: 'Validation Status',
+      text: 'What validation have you done so far? Do you have any early users, waitlist signups, LOIs, or revenue? What feedback have you received?',
+    },
+    {
+      id: '10',
+      section: 'gtm',
+      sectionTitle: GTM_SECTION_TITLES.gtm,
+      title: 'Launch Goals',
+      text: 'What does success look like in the next 90 days? What are your key metrics (users, revenue, retention)? What is your MVP timeline?',
     },
   ];
 }

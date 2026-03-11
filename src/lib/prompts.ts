@@ -461,6 +461,171 @@ ${strategyDocument}
 `;
 }
 
+// ========================================
+// GTM BootCamp Strategy Prompt
+// ========================================
+
+export function buildGTMStrategyPrompt(input: PromptAnswers): string {
+  return `You are a world-class Go-To-Market strategist for tech startups and micro-SaaS products.
+You specialize in helping solo founders and small teams launch products successfully.
+
+Analyze the questionnaire answers from ${input.userName} and generate a comprehensive GTM strategy document.
+
+Questionnaire Answers:
+
+1. The Problem:
+${input.answers["1"]}
+
+2. The Solution:
+${input.answers["2"]}
+
+3. Origin Story:
+${input.answers["3"]}
+
+4. Ideal Customer Profile:
+${input.answers["4"]}
+
+5. Market Size & Opportunity:
+${input.answers["5"]}
+
+6. Competitive Landscape:
+${input.answers["6"]}
+
+7. Pricing & Monetization:
+${input.answers["7"]}
+
+8. Distribution Channels:
+${input.answers["8"]}
+
+9. Validation Status:
+${input.answers["9"]}
+
+10. Launch Goals:
+${input.answers["10"]}
+
+Return a JSON object with the following structure (no markdown backticks, pure JSON):
+{
+  "icp": {
+    "title": "Ideal Customer Profile",
+    "persona_name": "A descriptive name for the persona",
+    "demographics": "Company size, industry, geography, role/title",
+    "psychographics": "Goals, frustrations, motivations, decision criteria",
+    "jobs_to_be_done": ["Job 1", "Job 2", "Job 3"],
+    "watering_holes": ["Where they hang out online - specific communities, platforms, events"],
+    "budget_authority": "Typical budget range and who makes the purchase decision"
+  },
+  "positioning": {
+    "title": "Positioning & Messaging",
+    "oneliner": "One sentence describing what the product does and for whom",
+    "value_proposition": "3-sentence value proposition",
+    "category": "The market category you're creating or entering",
+    "differentiators": ["Differentiator 1", "Differentiator 2", "Differentiator 3"],
+    "alternatives": "What customers do today without your product",
+    "positioning_statement": "For [target], who [need], [product] is a [category] that [benefit]. Unlike [alternatives], we [differentiator]."
+  },
+  "validation": {
+    "title": "Validation Framework",
+    "current_stage": "pre-revenue | early-revenue | growing",
+    "validation_score": 1-10,
+    "evidence": ["What validation exists already"],
+    "gaps": ["What still needs validation"],
+    "experiments": [
+      {
+        "name": "Experiment name",
+        "hypothesis": "If we do X, then Y will happen",
+        "method": "How to run it",
+        "success_metric": "What success looks like",
+        "timeline": "How long it takes"
+      }
+    ],
+    "risk_assessment": "Key risks and mitigation strategies"
+  },
+  "funnel": {
+    "title": "Funnel & Sales Strategy",
+    "model": "self-serve | sales-assisted | enterprise",
+    "stages": [
+      {
+        "stage": "Awareness | Interest | Decision | Action",
+        "goal": "What happens at this stage",
+        "tactics": ["Tactic 1", "Tactic 2"],
+        "metrics": "Key metric for this stage"
+      }
+    ],
+    "pricing_recommendation": {
+      "model": "Recommended pricing model",
+      "tiers": "Suggested pricing tiers",
+      "rationale": "Why this pricing works"
+    },
+    "sales_motion": "How the sales process works end-to-end"
+  },
+  "channels": {
+    "title": "Growth Channels",
+    "primary": [
+      {
+        "channel": "Channel name",
+        "why": "Why this channel fits",
+        "tactics": ["Specific tactic 1", "Specific tactic 2"],
+        "expected_cac": "Estimated customer acquisition cost",
+        "timeline_to_results": "When to expect results"
+      }
+    ],
+    "secondary": [
+      {
+        "channel": "Channel name",
+        "why": "Why to consider this later",
+        "when_to_start": "When to activate this channel"
+      }
+    ]
+  },
+  "paid": {
+    "title": "Paid Acquisition Strategy",
+    "recommended_budget": "Monthly budget recommendation",
+    "platforms": [
+      {
+        "platform": "Platform name",
+        "budget_split": "% of budget",
+        "targeting": "How to target",
+        "creative_angles": ["Angle 1", "Angle 2"],
+        "expected_metrics": "Expected CPC, CPL, CPA"
+      }
+    ],
+    "scaling_plan": "When and how to scale paid"
+  },
+  "creatives": {
+    "title": "Content & Creative Strategy",
+    "content_pillars": ["Pillar 1", "Pillar 2", "Pillar 3"],
+    "content_calendar": [
+      {
+        "type": "Content type (blog, video, social, etc.)",
+        "frequency": "How often",
+        "topics": ["Topic 1", "Topic 2"],
+        "distribution": "Where to publish"
+      }
+    ],
+    "launch_assets": ["Asset 1 needed for launch", "Asset 2", "Asset 3"]
+  },
+  "weekly_routine": {
+    "title": "90-Day Launch Playbook",
+    "weeks": [
+      {
+        "week": "Week 1-2",
+        "theme": "Theme for this period",
+        "tasks": ["Task 1", "Task 2", "Task 3"],
+        "milestone": "What should be achieved"
+      }
+    ]
+  },
+  "summary": "2-3 sentence executive summary of the GTM strategy"
+}
+
+Important:
+- Be SPECIFIC to ${input.userName}'s product and market — no generic advice
+- Include concrete numbers, metrics, and timelines where possible
+- Prioritize actionable recommendations over theory
+- Consider the validation status and adjust recommendations accordingly
+- If information is missing, make reasonable assumptions based on the context`;
+}
+
 export function buildScriptsPrompt(
   strategyDocument: string,
   painAnalysis: string,

@@ -53,6 +53,7 @@ export default function DashboardLayout({
   const [billingPlan, setBillingPlan] = useState<string>("trial");
   const [billingDaysLeft, setBillingDaysLeft] = useState<number | null>(null);
   const [billingLoading, setBillingLoading] = useState(true);
+  const [projectTrack, setProjectTrack] = useState<"fbm" | "gtm">("fbm");
 
   // Extract projectId from URL if on a project page
   const projectIdMatch = pathname.match(/\/project\/([^/]+)/);
@@ -122,20 +123,22 @@ export default function DashboardLayout({
     });
   }, [router]);
 
-  // Fetch project name when activeProjectId changes
+  // Fetch project name and track when activeProjectId changes
   useEffect(() => {
     if (!activeProjectId) {
       setProjectName("");
+      setProjectTrack("fbm");
       return;
     }
     supabase
       .from("projects")
-      .select("name, user_name")
+      .select("name, user_name, track")
       .eq("id", activeProjectId)
       .single()
       .then(({ data }) => {
         if (data) {
           setProjectName(data.user_name || data.name || "");
+          setProjectTrack((data.track as "fbm" | "gtm") || "fbm");
         }
       });
   }, [activeProjectId]);
@@ -236,7 +239,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F5F6FA" }} dir="rtl">
+    <div className={`min-h-screen ${projectTrack === "gtm" ? "theme-gtm" : ""}`} style={{ backgroundColor: projectTrack === "gtm" ? "#080A0F" : "#F5F6FA" }} dir="rtl">
       {/* Desktop sidebar */}
       <Sidebar
         userEmail={user?.email ?? ""}
@@ -248,6 +251,7 @@ export default function DashboardLayout({
         isAdmin={isAdmin}
         newSuggestionsCount={newSuggestionsCount}
         currentPlan={billingPlan}
+        track={projectTrack}
         onLogout={handleLogout}
       />
 
