@@ -758,6 +758,61 @@ export default function GTMStrategyPage() {
                   תיאום שיחת אבחון אסטרטגית של 15 דקות עם דוד פופוביץ (ללא עלות)
                 </button>
               </div>
+
+              {/* ── GTM Motivation / CTA Section ── */}
+              <div style={{ marginTop: 48, maxWidth: 560, margin: "48px auto 0", direction: "rtl", textAlign: "right" }}>
+                <h3 style={{ color: "#F0F6FF", fontSize: 18, fontWeight: 700, textAlign: "center", marginBottom: 8 }}>
+                  למה אסטרטגיית GTM חשובה עוד לפני שורת קוד אחת?
+                </h3>
+                <p style={{ color: "#9DA3B4", fontSize: 13, lineHeight: 1.7, textAlign: "center", marginBottom: 32, maxWidth: 480, margin: "0 auto 32px" }}>
+                  רוב היזמים מתחילים בבניית המוצר — ורק אחר כך שואלים &quot;למי אני מוכר?&quot;. הגישה הזו גורמת לבזבוז חודשים של פיתוח על פיצ&#39;רים שאף אחד לא צריך.
+                </p>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, padding: "16px 18px" }}>
+                    <span style={{ fontSize: 24, flexShrink: 0 }}>🎯</span>
+                    <div>
+                      <p style={{ color: "#F0F6FF", fontSize: 14, fontWeight: 700, marginBottom: 4 }}>קודם הלקוח, אחר כך המוצר</p>
+                      <p style={{ color: "#6B7FA3", fontSize: 13, lineHeight: 1.6 }}>
+                        אסטרטגיית שיווק אמיתית מתחילה בהבנה עמוקה של מי הלקוח שלך — מה הכאב שלו, איפה הוא נמצא, ומה גורם לו לשלוף כרטיס אשראי. רק אחרי שזה ברור, מתאימים את המוצר ללקוח — ולא הפוך.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, padding: "16px 18px" }}>
+                    <span style={{ fontSize: 24, flexShrink: 0 }}>🚀</span>
+                    <div>
+                      <p style={{ color: "#F0F6FF", fontSize: 14, fontWeight: 700, marginBottom: 4 }}>GTM זה לא רק באזוורד — זה ההבדל בין הצלחה לכישלון</p>
+                      <p style={{ color: "#6B7FA3", fontSize: 13, lineHeight: 1.6 }}>
+                        Go-To-Market היא התוכנית שלך להגיע ללקוח הנכון, עם המסר הנכון, בערוץ הנכון, ובתזמון הנכון. בלי GTM ברור, גם המוצר הכי טוב בעולם יישאר סוד ששמרת לעצמך.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, padding: "16px 18px" }}>
+                    <span style={{ fontSize: 24, flexShrink: 0 }}>💡</span>
+                    <div>
+                      <p style={{ color: "#F0F6FF", fontSize: 14, fontWeight: 700, marginBottom: 4 }}>המערכת עוזרת לך לבנות את זה — צעד אחר צעד</p>
+                      <p style={{ color: "#6B7FA3", fontSize: 13, lineHeight: 1.6 }}>
+                        במקום לנחש, המערכת מנחה אותך לזהות קהל יעד, לבנות מסרים שיווקיים שמדברים אליו, וליצור תוכנית השקה שעובדת. ככה חוסכים זמן, כסף, וטעויות יקרות.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "center", marginTop: 28, background: "rgba(255,107,53,0.06)", border: "1px solid rgba(255,107,53,0.2)", borderRadius: 14, padding: "16px 20px" }}>
+                  <p style={{ color: "#F0F6FF", fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
+                    ⚡ 90% מהסטארטאפים נכשלים בגלל חוסר התאמה לשוק
+                  </p>
+                  <p style={{ color: "#6B7FA3", fontSize: 12, lineHeight: 1.5 }}>
+                    אל תהיה חלק מהסטטיסטיקה. תתחיל עם אסטרטגיה — המוצר יבוא אחר כך.
+                  </p>
+                </div>
+
+                <p style={{ color: "#3D4F6F", fontSize: 11, textAlign: "center", marginTop: 24, marginBottom: 20 }}>
+                  יש שאלות? דברו איתנו בוואטסאפ
+                </p>
+              </div>
             </div>
           </div>
         )}
