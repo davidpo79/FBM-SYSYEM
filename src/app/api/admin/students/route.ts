@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     // Fetch all projects
     const { data: projects, error: projError } = await supabaseAdmin
       .from("projects")
-      .select("id, user_id, user_name, status, pipeline_data, created_at, owner_niche");
+      .select("id, user_id, user_name, status, pipeline_data, created_at, owner_niche, track");
 
     if (projError) {
       console.error("admin/students - projects error:", projError);
@@ -109,6 +109,14 @@ export async function GET(req: NextRequest) {
         null;
       const nicheDisplay = typeof userNiche === "string" ? userNiche : "";
 
+      // Determine user track: GTM, FBM, or both
+      const hasGtmProject = userProjects.some((p) => (p as Record<string, unknown>).track === "gtm");
+      const hasFbmProject = userProjects.some((p) => !(p as Record<string, unknown>).track || (p as Record<string, unknown>).track === "fbm");
+      const isGtmPlan = ["gtm_diy", "gtm_pro"].includes(profile?.plan || "");
+      const userTrack: "gtm" | "fbm" | "both" =
+        (hasGtmProject || isGtmPlan) && hasFbmProject ? "both" :
+        (hasGtmProject || isGtmPlan) ? "gtm" : "fbm";
+
       const profile = profileMap[user.id];
 
       // Calculate trial days left
@@ -139,6 +147,7 @@ export async function GET(req: NextRequest) {
         plan: userPlan,
         trialDays: profile?.trialDays ?? 30,
         trialDaysLeft,
+        userTrack,
       };
     });
 

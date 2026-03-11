@@ -20,6 +20,7 @@ interface Student {
   plan: string;
   trialDays: number;
   trialDaysLeft: number | null;
+  userTrack: "gtm" | "fbm" | "both";
 }
 
 function getPlanBadge(plan: string, daysLeft: number | null): {
@@ -345,6 +346,9 @@ export default function StudentsPage() {
                     תוכנית
                   </th>
                   <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
+                    מסלול
+                  </th>
+                  <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
                     התחברות אחרונה
                   </th>
                   <th className="pb-3 pr-2 font-semibold text-[var(--text-secondary)]">
@@ -438,6 +442,34 @@ export default function StudentsPage() {
                                 </div>
                               )}
                             </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 pr-2">
+                        <div className="flex items-center gap-1">
+                          {(student.userTrack === "fbm" || student.userTrack === "both") && (
+                            <span
+                              className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full"
+                              style={{
+                                backgroundColor: "rgba(212, 175, 55, 0.12)",
+                                color: "#D4AF37",
+                                border: "1px solid rgba(212, 175, 55, 0.3)",
+                              }}
+                            >
+                              FBM
+                            </span>
+                          )}
+                          {(student.userTrack === "gtm" || student.userTrack === "both") && (
+                            <span
+                              className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full"
+                              style={{
+                                backgroundColor: "rgba(0, 255, 136, 0.08)",
+                                color: "#00FF88",
+                                border: "1px solid rgba(0, 255, 136, 0.3)",
+                              }}
+                            >
+                              GTM
+                            </span>
                           )}
                         </div>
                       </td>
