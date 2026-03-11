@@ -66,7 +66,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
           setError(authError.message);
           return;
         }
-        router.push(isGtmTrack ? "/questionnaire?track=gtm" : "/dashboard");
+        if (isGtmTrack) {
+          const ideaParam = gtmIdeaName ? "&idea=" + encodeURIComponent(gtmIdeaName) : "";
+          router.push("/questionnaire?track=gtm" + ideaParam);
+        } else {
+          router.push("/dashboard");
+        }
       } else {
         const { data, error: authError } = await supabase.auth.signUp({
           email,
@@ -106,7 +111,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
         // If session exists, user is immediately logged in (no email confirmation needed)
         if (data.session) {
-          router.push(isGtmTrack ? "/questionnaire?track=gtm" : "/dashboard");
+          if (isGtmTrack) {
+            const ideaParam = gtmIdeaName ? "&idea=" + encodeURIComponent(gtmIdeaName) : "";
+            router.push("/questionnaire?track=gtm" + ideaParam);
+          } else {
+            router.push("/dashboard");
+          }
         } else {
           // Email confirmation required
           setConfirmEmail(true);
@@ -126,7 +136,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback${isGtmTrack ? "?track=gtm" : ""}`,
+          redirectTo: `${window.location.origin}/auth/callback${isGtmTrack ? "?track=gtm" + (gtmIdeaName ? "&idea=" + encodeURIComponent(gtmIdeaName) : "") : ""}`,
         },
       });
       if (authError) {
