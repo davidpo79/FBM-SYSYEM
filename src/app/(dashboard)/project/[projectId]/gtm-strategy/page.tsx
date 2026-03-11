@@ -300,33 +300,166 @@ export default function GTMStrategyPage() {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              background: "rgba(8,10,15,0.85)",
-              backdropFilter: "blur(8px)",
+              background: "rgba(8,10,15,0.9)",
+              backdropFilter: "blur(10px)",
               borderRadius: 16,
+              padding: 32,
             }}
           >
-            <span style={{ fontSize: 40, marginBottom: 16 }}>🔒</span>
-            <h3 style={{ color: "#F0F6FF", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
-              Upgrade to Unlock
+            <span style={{ fontSize: 40, marginBottom: 12 }}>🔒</span>
+            <h3 style={{ color: "#F0F6FF", fontSize: 22, fontWeight: 800, marginBottom: 6 }}>
+              Unlock Full GTM Strategy
             </h3>
-            <p style={{ color: "#6B7FA3", fontSize: 14, marginBottom: 20, textAlign: "center", maxWidth: 360 }}>
-              Upgrade to GTM Pro to access {currentTabInfo?.label}, and the full 90-day launch playbook.
+            <p style={{ color: "#6B7FA3", fontSize: 13, marginBottom: 28, textAlign: "center", maxWidth: 480 }}>
+              ICP &amp; Validation are free. Upgrade to access {currentTabInfo?.label}, full channels, paid ads plan, content strategy, and the 90-day launch playbook.
             </p>
-            <a
-              href="/settings?tab=plan"
-              style={{
-                padding: "12px 32px",
-                borderRadius: 10,
-                background: "linear-gradient(135deg, #00FF88, #00CC6A)",
-                color: "#080A0F",
-                fontWeight: 700,
-                textDecoration: "none",
-                fontSize: 14,
-                boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
-              }}
-            >
-              Upgrade Now
-            </a>
+
+            {/* 3-Tier Pricing */}
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", maxWidth: 780 }}>
+              {/* DIY Tier */}
+              <div
+                style={{
+                  flex: "1 1 220px",
+                  maxWidth: 250,
+                  background: "#161D2B",
+                  border: "1px solid #1E2D45",
+                  borderRadius: 14,
+                  padding: 20,
+                  textAlign: "center",
+                }}
+              >
+                <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>DIY</p>
+                <p style={{ color: "#F0F6FF", fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
+                  290<span style={{ fontSize: 14, color: "#6B7FA3" }}>&#8362;</span>
+                </p>
+                <p style={{ color: "#6B7FA3", fontSize: 11, marginBottom: 16 }}>one-time payment</p>
+                <ul style={{ textAlign: "left", color: "#9DA3B4", fontSize: 12, lineHeight: 2, listStyle: "none", padding: 0 }}>
+                  <li>&#10003; Full strategy document</li>
+                  <li>&#10003; All 7 sections unlocked</li>
+                  <li>&#10003; 90-day launch playbook</li>
+                  <li style={{ color: "#3D4F6F" }}>&#10007; No coaching calls</li>
+                </ul>
+                <a
+                  href="/settings?tab=plan&tier=diy"
+                  style={{
+                    display: "block",
+                    marginTop: 16,
+                    padding: "10px 0",
+                    borderRadius: 8,
+                    border: "1px solid #1E2D45",
+                    color: "#F0F6FF",
+                    textDecoration: "none",
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Get DIY Access
+                </a>
+              </div>
+
+              {/* Pro Tier - Highlighted */}
+              <div
+                style={{
+                  flex: "1 1 220px",
+                  maxWidth: 250,
+                  background: "linear-gradient(180deg, rgba(0,255,136,0.08) 0%, #161D2B 100%)",
+                  border: "1.5px solid #00FF88",
+                  borderRadius: 14,
+                  padding: 20,
+                  textAlign: "center",
+                  position: "relative",
+                  boxShadow: "0 0 24px rgba(0,255,136,0.12)",
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    top: -10,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    background: "linear-gradient(135deg, #00FF88, #00CC6A)",
+                    color: "#080A0F",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: "3px 12px",
+                    borderRadius: 20,
+                    fontFamily: "monospace",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Most Popular
+                </span>
+                <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Pro</p>
+                <p style={{ color: "#F0F6FF", fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
+                  99<span style={{ fontSize: 14, color: "#6B7FA3" }}>&#8362;/mo</span>
+                </p>
+                <p style={{ color: "#6B7FA3", fontSize: 11, marginBottom: 16 }}>cancel anytime</p>
+                <ul style={{ textAlign: "left", color: "#9DA3B4", fontSize: 12, lineHeight: 2, listStyle: "none", padding: 0 }}>
+                  <li style={{ color: "#00FF88" }}>&#10003; Everything in DIY</li>
+                  <li style={{ color: "#00FF88" }}>&#10003; Unlimited regenerations</li>
+                  <li style={{ color: "#00FF88" }}>&#10003; AI strategy assistant</li>
+                  <li style={{ color: "#00FF88" }}>&#10003; Monthly coaching call</li>
+                </ul>
+                <a
+                  href="/settings?tab=plan&tier=pro"
+                  style={{
+                    display: "block",
+                    marginTop: 16,
+                    padding: "10px 0",
+                    borderRadius: 8,
+                    background: "linear-gradient(135deg, #00FF88, #00CC6A)",
+                    color: "#080A0F",
+                    textDecoration: "none",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
+                  }}
+                >
+                  Start Pro
+                </a>
+              </div>
+
+              {/* BootCamp Tier */}
+              <div
+                style={{
+                  flex: "1 1 220px",
+                  maxWidth: 250,
+                  background: "linear-gradient(180deg, rgba(255,107,53,0.06) 0%, #161D2B 100%)",
+                  border: "1px solid rgba(255,107,53,0.3)",
+                  borderRadius: 14,
+                  padding: 20,
+                  textAlign: "center",
+                }}
+              >
+                <p style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>BootCamp</p>
+                <p style={{ color: "#F0F6FF", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
+                  Apply
+                </p>
+                <p style={{ color: "#FF6B35", fontSize: 11, marginBottom: 16, fontWeight: 600 }}>Limited spots</p>
+                <ul style={{ textAlign: "left", color: "#9DA3B4", fontSize: 12, lineHeight: 2, listStyle: "none", padding: 0 }}>
+                  <li style={{ color: "#FF6B35" }}>&#10003; Everything in Pro</li>
+                  <li style={{ color: "#FF6B35" }}>&#10003; 8-week live program</li>
+                  <li style={{ color: "#FF6B35" }}>&#10003; Weekly group coaching</li>
+                  <li style={{ color: "#FF6B35" }}>&#10003; Private community</li>
+                </ul>
+                <a
+                  href="/settings?tab=plan&tier=bootcamp"
+                  style={{
+                    display: "block",
+                    marginTop: 16,
+                    padding: "10px 0",
+                    borderRadius: 8,
+                    border: "1px solid rgba(255,107,53,0.4)",
+                    color: "#FF6B35",
+                    textDecoration: "none",
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Apply Now
+                </a>
+              </div>
+            </div>
           </div>
         )}
 

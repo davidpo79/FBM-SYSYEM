@@ -1,58 +1,61 @@
 "use client";
 
 import { useState } from "react";
+import Script from "next/script";
 
-const CATEGORIES = [
-  { value: "ai-automation", label: "AI & Automation", emoji: "🤖" },
-  { value: "fintech", label: "FinTech", emoji: "💰" },
-  { value: "healthtech", label: "HealthTech", emoji: "🏥" },
-  { value: "edtech", label: "EdTech", emoji: "📚" },
-  { value: "ecommerce", label: "E-Commerce & Retail", emoji: "🛒" },
-  { value: "devtools", label: "Developer Tools", emoji: "⚙️" },
-  { value: "saas-b2b", label: "SaaS B2B", emoji: "🏢" },
-  { value: "creator-economy", label: "Creator Economy", emoji: "🎬" },
-  { value: "sustainability", label: "Sustainability", emoji: "🌱" },
-  { value: "proptech", label: "PropTech", emoji: "🏠" },
+const API_BADGES = [
+  "Twilio", "Stripe", "OpenAI", "Shopify", "Slack",
+  "Google Sheets", "Notion", "Airtable", "Zapier", "HubSpot",
+  "SendGrid", "Firebase", "AWS S3", "Vercel", "GitHub",
+  "Discord", "Telegram", "WhatsApp", "Google Maps", "Calendly",
+  "Zoom", "LinkedIn", "Twitter/X", "YouTube", "Plaid",
 ];
 
 interface IdeaResult {
   name: string;
-  tagline: string;
-  problem: string;
-  solution: string;
-  target_audience: string;
+  pitch: string;
+  architecture: string;
   monetization: string;
-  mvp_scope: string[];
-  competitive_edge: string;
-  market_size: string;
-  difficulty: "easy" | "medium" | "hard";
 }
 
 type Stage = "select" | "building" | "results";
 
 export default function IdeatorPage() {
-  const [category, setCategory] = useState("");
+  const [selectedApis, setSelectedApis] = useState<string[]>([]);
+  const [customApi, setCustomApi] = useState("");
   const [stage, setStage] = useState<Stage>("select");
   const [ideas, setIdeas] = useState<IdeaResult[]>([]);
   const [error, setError] = useState("");
   const [buildStep, setBuildStep] = useState(0);
 
   const buildSteps = [
-    "Scanning market trends...",
-    "Analyzing competitor gaps...",
-    "Identifying pain points...",
-    "Assembling product concepts...",
-    "Validating business models...",
-    "Finalizing ideas...",
+    "Connecting nodes...",
+    "Synthesizing architecture...",
+    "Compiling SaaS models...",
+    "Validating revenue streams...",
+    "Assembling final blueprints...",
   ];
 
+  const toggleApi = (api: string) => {
+    setSelectedApis((prev) =>
+      prev.includes(api) ? prev.filter((a) => a !== api) : [...prev, api]
+    );
+  };
+
+  const addCustomApi = () => {
+    const trimmed = customApi.trim();
+    if (trimmed && !selectedApis.includes(trimmed)) {
+      setSelectedApis((prev) => [...prev, trimmed]);
+      setCustomApi("");
+    }
+  };
+
   const handleGenerate = async () => {
-    if (!category) return;
+    if (selectedApis.length === 0) return;
     setStage("building");
     setError("");
     setBuildStep(0);
 
-    // Animate build steps
     const interval = setInterval(() => {
       setBuildStep((s) => {
         if (s >= buildSteps.length - 1) {
@@ -61,13 +64,13 @@ export default function IdeatorPage() {
         }
         return s + 1;
       });
-    }, 1500);
+    }, 1800);
 
     try {
       const res = await fetch("/api/public/ideator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category }),
+        body: JSON.stringify({ apis: selectedApis }),
       });
       const data = await res.json();
       clearInterval(interval);
@@ -87,21 +90,8 @@ export default function IdeatorPage() {
     }
   };
 
-  const difficultyColor = (d: string) => {
-    if (d === "easy") return { bg: "rgba(0,255,136,0.15)", color: "#00FF88" };
-    if (d === "medium") return { bg: "rgba(255,107,53,0.15)", color: "#FF6B35" };
-    return { bg: "rgba(239,68,68,0.15)", color: "#EF4444" };
-  };
-
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #080A0F 0%, #0D1117 50%, #080A0F 100%)",
-        color: "#F0F6FF",
-        fontFamily: "'Rubik', -apple-system, sans-serif",
-      }}
-    >
+    <div className="theme-gtm min-h-screen bg-[#080A0F] text-[#F0F6FF] pb-20">
       {/* Header */}
       <header
         style={{
@@ -116,7 +106,7 @@ export default function IdeatorPage() {
           <span style={{ fontSize: 28, fontWeight: 800, color: "#00FF88", fontFamily: "monospace" }}>
             GTM
           </span>
-          <span style={{ fontSize: 20, fontWeight: 600, color: "#F0F6FF" }}>BootCamp</span>
+          <span style={{ fontSize: 20, fontWeight: 600 }}>BootCamp</span>
           <span
             style={{
               fontSize: 10,
@@ -156,22 +146,14 @@ export default function IdeatorPage() {
       </header>
 
       <main style={{ maxWidth: 960, margin: "0 auto", padding: "48px 24px" }}>
-        {/* Hero Section */}
+        {/* Hero */}
         {stage === "select" && (
           <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <h1
-              style={{
-                fontSize: "clamp(32px, 5vw, 56px)",
-                fontWeight: 800,
-                lineHeight: 1.1,
-                marginBottom: 16,
-              }}
-            >
-              Micro-SaaS{" "}
-              <span style={{ color: "#00FF88" }}>Idea Generator</span>
+            <h1 style={{ fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 800, lineHeight: 1.1, marginBottom: 16 }}>
+              Micro-SaaS <span style={{ color: "#00FF88" }}>Idea Engine</span>
             </h1>
             <p style={{ fontSize: 18, color: "#6B7FA3", maxWidth: 560, margin: "0 auto 8px" }}>
-              Pick a category. Get 3 validated micro-SaaS ideas you can build and launch in weeks.
+              Select the APIs &amp; tools you want to combine. We&apos;ll architect 3 profitable Micro-SaaS ideas.
             </p>
             <p style={{ fontSize: 13, color: "#3D4F6F", fontFamily: "monospace" }}>
               Powered by GTM BootCamp AI Engine
@@ -179,40 +161,82 @@ export default function IdeatorPage() {
           </div>
         )}
 
-        {/* Category Selector */}
+        {/* API Selector */}
         {stage === "select" && (
           <>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                gap: 12,
-                marginBottom: 32,
-              }}
-            >
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  onClick={() => setCategory(cat.value)}
-                  style={{
-                    padding: "16px",
-                    borderRadius: 12,
-                    border: `1.5px solid ${category === cat.value ? "#00FF88" : "#1E2D45"}`,
-                    background: category === cat.value ? "rgba(0,255,136,0.08)" : "#161D2B",
-                    color: category === cat.value ? "#00FF88" : "#F0F6FF",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    textAlign: "left",
-                    fontSize: 14,
-                    fontWeight: 500,
-                  }}
-                >
-                  <span style={{ fontSize: 24, display: "block", marginBottom: 6 }}>
-                    {cat.emoji}
-                  </span>
-                  {cat.label}
-                </button>
-              ))}
+            {/* Selected count */}
+            {selectedApis.length > 0 && (
+              <div style={{ textAlign: "center", marginBottom: 16 }}>
+                <span style={{ fontFamily: "monospace", fontSize: 13, color: "#00FF88" }}>
+                  {selectedApis.length} API{selectedApis.length !== 1 ? "s" : ""} selected
+                </span>
+              </div>
+            )}
+
+            {/* Badge Grid */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 20 }}>
+              {API_BADGES.map((api) => {
+                const isSelected = selectedApis.includes(api);
+                return (
+                  <button
+                    key={api}
+                    onClick={() => toggleApi(api)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      border: `1.5px solid ${isSelected ? "#00FF88" : "#1E2D45"}`,
+                      background: isSelected ? "rgba(0,255,136,0.1)" : "#161D2B",
+                      color: isSelected ? "#00FF88" : "#F0F6FF",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    {isSelected ? "✓ " : ""}{api}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom API input */}
+            <div style={{ display: "flex", gap: 8, maxWidth: 400, margin: "0 auto 32px" }}>
+              <input
+                type="text"
+                value={customApi}
+                onChange={(e) => setCustomApi(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addCustomApi(); }}
+                placeholder="Add custom API/Tool..."
+                style={{
+                  flex: 1,
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  border: "1px solid #1E2D45",
+                  background: "#161D2B",
+                  color: "#F0F6FF",
+                  fontSize: 13,
+                  fontFamily: "monospace",
+                  outline: "none",
+                }}
+              />
+              <button
+                onClick={addCustomApi}
+                disabled={!customApi.trim()}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 8,
+                  border: "1px solid #1E2D45",
+                  background: customApi.trim() ? "rgba(0,255,136,0.15)" : "#161D2B",
+                  color: customApi.trim() ? "#00FF88" : "#3D4F6F",
+                  cursor: customApi.trim() ? "pointer" : "not-allowed",
+                  fontSize: 13,
+                  fontFamily: "monospace",
+                  fontWeight: 600,
+                }}
+              >
+                + Add
+              </button>
             </div>
 
             {error && (
@@ -222,90 +246,64 @@ export default function IdeatorPage() {
             <div style={{ textAlign: "center" }}>
               <button
                 onClick={handleGenerate}
-                disabled={!category}
+                disabled={selectedApis.length === 0}
                 style={{
                   padding: "14px 48px",
                   borderRadius: 12,
                   border: "none",
-                  background: category
+                  background: selectedApis.length > 0
                     ? "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)"
                     : "#1E2D45",
-                  color: category ? "#080A0F" : "#3D4F6F",
+                  color: selectedApis.length > 0 ? "#080A0F" : "#3D4F6F",
                   fontSize: 16,
                   fontWeight: 700,
-                  cursor: category ? "pointer" : "not-allowed",
+                  cursor: selectedApis.length > 0 ? "pointer" : "not-allowed",
                   transition: "all 0.3s",
-                  boxShadow: category
-                    ? "0 4px 16px rgba(0,255,136,0.3)"
-                    : "none",
+                  boxShadow: selectedApis.length > 0 ? "0 4px 16px rgba(0,255,136,0.3)" : "none",
                 }}
               >
-                Generate Ideas
+                Assemble Ideas
               </button>
             </div>
           </>
         )}
 
-        {/* Building Animation (Lego Assembly) */}
+        {/* Lego Stacking / Tower Assembly Animation */}
         {stage === "building" && (
           <div style={{ textAlign: "center", padding: "80px 0" }}>
-            {/* Animated blocks */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 8,
-                marginBottom: 40,
-              }}
-            >
-              {[0, 1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: 40,
-                    height: buildStep >= i ? 40 + i * 12 : 8,
-                    borderRadius: 6,
-                    background:
-                      buildStep >= i
-                        ? `linear-gradient(135deg, #00FF88 ${20 + i * 15}%, #00CC6A 100%)`
-                        : "#1E2D45",
-                    transition: "all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                    opacity: buildStep >= i ? 1 : 0.3,
-                    boxShadow:
-                      buildStep >= i
-                        ? "0 0 12px rgba(0,255,136,0.3)"
-                        : "none",
-                  }}
-                />
-              ))}
+            {/* Stacking blocks */}
+            <div style={{ display: "flex", flexDirection: "column-reverse", alignItems: "center", gap: 6, marginBottom: 40, minHeight: 180 }}>
+              {[0, 1, 2, 3, 4].map((i) => {
+                const visible = buildStep >= i;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      width: 60 + (4 - i) * 10,
+                      height: visible ? 28 : 0,
+                      borderRadius: 6,
+                      background: visible
+                        ? `linear-gradient(135deg, #00FF88 ${10 + i * 20}%, #00CC6A 100%)`
+                        : "transparent",
+                      transition: "all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                      opacity: visible ? 1 : 0,
+                      boxShadow: visible ? `0 0 ${12 + i * 4}px rgba(0,255,136,${0.2 + i * 0.05})` : "none",
+                      transform: visible ? "translateY(0)" : "translateY(-40px)",
+                    }}
+                  />
+                );
+              })}
             </div>
 
-            <p
-              style={{
-                fontSize: 18,
-                fontWeight: 600,
-                color: "#00FF88",
-                fontFamily: "monospace",
-                marginBottom: 8,
-              }}
-            >
+            <p style={{ fontSize: 18, fontWeight: 600, color: "#00FF88", fontFamily: "monospace", marginBottom: 8 }}>
               {buildSteps[buildStep]}
             </p>
-            <p style={{ fontSize: 13, color: "#3D4F6F" }}>
-              Step {buildStep + 1} of {buildSteps.length}
+            <p style={{ fontSize: 13, color: "#3D4F6F", fontFamily: "monospace" }}>
+              [{selectedApis.join(" + ")}]
             </p>
 
             {/* Progress bar */}
-            <div
-              style={{
-                maxWidth: 300,
-                margin: "24px auto 0",
-                height: 4,
-                borderRadius: 2,
-                background: "#1E2D45",
-                overflow: "hidden",
-              }}
-            >
+            <div style={{ maxWidth: 300, margin: "24px auto 0", height: 4, borderRadius: 2, background: "#1E2D45", overflow: "hidden" }}>
               <div
                 style={{
                   height: "100%",
@@ -324,160 +322,83 @@ export default function IdeatorPage() {
           <>
             <div style={{ textAlign: "center", marginBottom: 40 }}>
               <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-                Your <span style={{ color: "#00FF88" }}>3 Ideas</span> Are Ready
+                Your <span style={{ color: "#00FF88" }}>3 SaaS Blueprints</span> Are Ready
               </h2>
-              <p style={{ color: "#6B7FA3", fontSize: 14 }}>
-                Each idea is validated for market fit, buildability, and monetization potential.
+              <p style={{ color: "#6B7FA3", fontSize: 14, fontFamily: "monospace" }}>
+                Built with: {selectedApis.join(" + ")}
               </p>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              {ideas.map((idea, idx) => {
-                const dc = difficultyColor(idea.difficulty);
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      background: "#161D2B",
-                      border: "1px solid #1E2D45",
-                      borderRadius: 16,
-                      padding: 28,
-                      animation: `fadeInUp 0.5s ${idx * 0.15}s both`,
-                    }}
-                  >
-                    {/* Header */}
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        justifyContent: "space-between",
-                        marginBottom: 16,
-                        flexWrap: "wrap",
-                        gap: 8,
-                      }}
-                    >
-                      <div>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontFamily: "monospace",
-                            color: "#3D4F6F",
-                            display: "block",
-                            marginBottom: 4,
-                          }}
-                        >
-                          IDEA #{idx + 1}
-                        </span>
-                        <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
-                          {idea.name}
-                        </h3>
-                        <p style={{ color: "#00FF88", fontSize: 14, fontWeight: 500 }}>
-                          {idea.tagline}
-                        </p>
-                      </div>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontFamily: "monospace",
-                          fontWeight: 600,
-                          padding: "4px 10px",
-                          borderRadius: 6,
-                          background: dc.bg,
-                          color: dc.color,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {idea.difficulty}
-                      </span>
-                    </div>
+              {ideas.map((idea, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: "#161D2B",
+                    border: "1px solid #1E2D45",
+                    borderRadius: 16,
+                    padding: 28,
+                    animation: `fadeInUp 0.5s ${idx * 0.15}s both`,
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontFamily: "monospace", color: "#3D4F6F", display: "block", marginBottom: 4 }}>
+                    BLUEPRINT #{idx + 1}
+                  </span>
+                  <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
+                    {idea.name}
+                  </h3>
+                  <p style={{ color: "#FF6B35", fontSize: 15, fontWeight: 600, marginBottom: 16, lineHeight: 1.5 }}>
+                    {idea.pitch}
+                  </p>
 
-                    {/* Grid sections */}
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                        gap: 16,
-                      }}
-                    >
-                      <Section title="Problem" text={idea.problem} />
-                      <Section title="Solution" text={idea.solution} />
-                      <Section title="Target Audience" text={idea.target_audience} />
-                      <Section title="Monetization" text={idea.monetization} />
-                      <Section title="Competitive Edge" text={idea.competitive_edge} />
-                      <Section title="Market Size" text={idea.market_size} />
-                    </div>
-
-                    {/* MVP Scope */}
-                    {idea.mvp_scope && idea.mvp_scope.length > 0 && (
-                      <div style={{ marginTop: 16 }}>
-                        <p
-                          style={{
-                            fontSize: 11,
-                            fontFamily: "monospace",
-                            color: "#6B7FA3",
-                            marginBottom: 8,
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          MVP Scope
-                        </p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                          {idea.mvp_scope.map((item, i) => (
-                            <span
-                              key={i}
-                              style={{
-                                fontSize: 12,
-                                padding: "4px 10px",
-                                borderRadius: 6,
-                                background: "rgba(0,255,136,0.08)",
-                                border: "1px solid rgba(0,255,136,0.2)",
-                                color: "#00FF88",
-                              }}
-                            >
-                              {item}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  {/* Architecture - highlighted in green */}
+                  <div style={{ marginBottom: 16, padding: 16, borderRadius: 10, background: "rgba(0,255,136,0.05)", border: "1px solid rgba(0,255,136,0.15)", borderLeft: "3px solid #00FF88" }}>
+                    <p style={{ fontSize: 11, fontFamily: "monospace", color: "#00FF88", marginBottom: 6, textTransform: "uppercase" }}>
+                      Architecture
+                    </p>
+                    <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                      {idea.architecture}
+                    </p>
                   </div>
-                );
-              })}
+
+                  {/* Monetization */}
+                  <div style={{ padding: 12, borderRadius: 8, background: "rgba(8,10,15,0.5)", border: "1px solid rgba(30,45,69,0.5)" }}>
+                    <p style={{ fontSize: 11, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 4, textTransform: "uppercase" }}>
+                      Monetization
+                    </p>
+                    <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.5 }}>
+                      {idea.monetization}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {/* CTA */}
-            <div
-              style={{
-                marginTop: 48,
-                textAlign: "center",
-                padding: 32,
-                background: "linear-gradient(135deg, rgba(0,255,136,0.05), rgba(255,107,53,0.05))",
-                border: "1px solid #1E2D45",
-                borderRadius: 16,
-              }}
-            >
-              <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-                Ready to Build Your Micro-SaaS?
-              </h3>
-              <p style={{ color: "#6B7FA3", fontSize: 14, marginBottom: 20 }}>
-                Join GTM BootCamp to get a full Go-To-Market strategy, validation framework, and launch playbook.
-              </p>
-              <a
-                href="/login?track=gtm"
-                style={{
-                  display: "inline-block",
-                  padding: "14px 40px",
-                  borderRadius: 12,
-                  background: "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)",
-                  color: "#080A0F",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  textDecoration: "none",
-                  boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
-                }}
-              >
-                Join GTM BootCamp
-              </a>
+            {/* GoHighLevel Lead Capture Form */}
+            <div className="w-full max-w-2xl mx-auto mt-12 bg-[#161D2B] p-4 rounded-xl border border-[#1E2D45]">
+              <div style={{ textAlign: "center", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
+                  Want the Full <span style={{ color: "#00FF88" }}>GTM Playbook</span>?
+                </h3>
+                <p style={{ color: "#6B7FA3", fontSize: 13 }}>
+                  Join GTM BootCamp — get a complete Go-To-Market strategy, validation framework, and 90-day launch plan.
+                </p>
+              </div>
+              <iframe
+                src="https://api.leadconnectorhq.com/widget/form/VY7Wpt7X70ijeluHvP8D"
+                style={{ width: "100%", height: "691px", border: "none", borderRadius: "4px" }}
+                id="inline-VY7Wpt7X70ijeluHvP8D"
+                data-layout="{'id':'INLINE'}"
+                data-trigger-type="alwaysShow"
+                data-activation-type="alwaysActivated"
+                data-deactivation-type="neverDeactivate"
+                data-form-name="bootcamp"
+                data-height="691"
+                data-layout-iframe-id="inline-VY7Wpt7X70ijeluHvP8D"
+                data-form-id="VY7Wpt7X70ijeluHvP8D"
+                title="bootcamp"
+              />
+              <Script src="https://link.msgsndr.com/js/form_embed.js" strategy="lazyOnload" />
             </div>
 
             {/* Try again */}
@@ -495,40 +416,15 @@ export default function IdeatorPage() {
                   borderRadius: 8,
                   cursor: "pointer",
                   fontSize: 14,
+                  fontFamily: "monospace",
                 }}
               >
-                Try Another Category
+                Try Different APIs
               </button>
             </div>
           </>
         )}
       </main>
-    </div>
-  );
-}
-
-function Section({ title, text }: { title: string; text: string }) {
-  return (
-    <div
-      style={{
-        padding: 12,
-        borderRadius: 8,
-        background: "rgba(8,10,15,0.5)",
-        border: "1px solid rgba(30,45,69,0.5)",
-      }}
-    >
-      <p
-        style={{
-          fontSize: 11,
-          fontFamily: "monospace",
-          color: "#6B7FA3",
-          marginBottom: 4,
-          textTransform: "uppercase",
-        }}
-      >
-        {title}
-      </p>
-      <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.5 }}>{text}</p>
     </div>
   );
 }

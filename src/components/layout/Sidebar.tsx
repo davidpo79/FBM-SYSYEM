@@ -87,11 +87,13 @@ export default function Sidebar({
 
   const gtmNav: NavItem[] = projectId && isGTM
     ? [
-        { href: `/project/${projectId}/gtm-strategy`, label: "GTM Strategy", icon: Rocket },
-        { href: `/project/${projectId}/gtm-icp`, label: "ICP & Positioning", icon: Crosshair },
-        { href: `/project/${projectId}/gtm-validation`, label: "Validation", icon: TrendingUp },
-        { href: `/project/${projectId}/gtm-funnel`, label: "Funnel & Sales", icon: Users },
-        { href: `/project/${projectId}/gtm-channels`, label: "Channels & Paid", icon: Megaphone },
+        { href: `/project/${projectId}/gtm-strategy`, label: "GTM BootCamp Plan", icon: Rocket },
+      ]
+    : [];
+
+  const gtmPublicNav: NavItem[] = isGTM
+    ? [
+        { href: "/ideator", label: "Ideation Lab", icon: Lightbulb },
       ]
     : [];
 
@@ -296,6 +298,19 @@ export default function Sidebar({
         )}
 
         <div className="mx-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
+
+        {/* GTM Public Tools */}
+        {gtmPublicNav.length > 0 && (
+          <div>
+            <p
+              className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider"
+              style={{ color: "#6B7FA3", fontFamily: "monospace" }}
+            >
+              GTM Tools
+            </p>
+            <div className="space-y-1">{gtmPublicNav.map(renderNavItem)}</div>
+          </div>
+        )}
 
         {/* Tools section */}
         <div>
