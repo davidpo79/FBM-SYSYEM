@@ -322,87 +322,87 @@ function getOwnerSelfQuestions(niche: string): Question[] {
 // ========================================
 
 const GTM_SECTION_TITLES: Record<string, string> = {
-  product: 'Product & Problem',
-  market: 'Market & ICP',
-  gtm: 'Go-To-Market Strategy',
+  product: 'המוצר והבעיה',
+  market: 'שוק וקהל יעד',
+  gtm: 'אסטרטגיית Go-To-Market',
 };
 
 export function getGTMQuestions(): Question[] {
   return [
-    // ── Product & Problem ──
+    // ── המוצר והבעיה ──
     {
       id: '1',
       section: 'product',
       sectionTitle: GTM_SECTION_TITLES.product,
-      title: 'The Problem',
-      text: 'What specific problem does your product solve? Describe the pain point in detail — who feels it, how often, and what happens if it stays unsolved?',
+      title: 'הבעיה',
+      text: 'איזו בעיה ספציפית המוצר שלך פותר? תאר את נקודת הכאב בפירוט — מי מרגיש אותה, כמה פעמים, ומה קורה אם היא לא נפתרת?',
     },
     {
       id: '2',
       section: 'product',
       sectionTitle: GTM_SECTION_TITLES.product,
-      title: 'Your Solution',
-      text: 'Describe your product/solution in 2-3 sentences. What makes it different from existing alternatives? What is your unique approach or technology?',
+      title: 'הפתרון שלך',
+      text: 'תאר את המוצר/פתרון שלך ב-2-3 משפטים. מה מבדיל אותו מחלופות קיימות? מה הגישה או הטכנולוגיה הייחודית שלך?',
     },
     {
       id: '3',
       section: 'product',
       sectionTitle: GTM_SECTION_TITLES.product,
-      title: 'Origin Story',
-      text: 'How did you discover this problem? What personal experience or insight led you to build this solution? Why are YOU the right person to solve it?',
+      title: 'סיפור המקור',
+      text: 'איך גילית את הבעיה הזו? איזו חוויה אישית או תובנה הובילה אותך לבנות את הפתרון הזה? למה דווקא אתה האדם הנכון לפתור את זה?',
     },
 
-    // ── Market & ICP ──
+    // ── שוק וקהל יעד ──
     {
       id: '4',
       section: 'market',
       sectionTitle: GTM_SECTION_TITLES.market,
-      title: 'Ideal Customer Profile',
-      text: 'Describe your ideal first 100 customers in detail. What is their role/title? Company size? Industry? What tools do they currently use?',
+      title: 'פרופיל לקוח אידיאלי',
+      text: 'תאר את 100 הלקוחות הראשונים האידיאליים שלך בפירוט. מה התפקיד/תואר שלהם? גודל חברה? תעשייה? אילו כלים הם משתמשים כיום?',
     },
     {
       id: '5',
       section: 'market',
       sectionTitle: GTM_SECTION_TITLES.market,
-      title: 'Market Size & Opportunity',
-      text: 'How big is the market for your solution? How many potential customers exist? What is the estimated TAM/SAM/SOM? Any market trends in your favor?',
+      title: 'גודל שוק והזדמנות',
+      text: 'כמה גדול השוק לפתרון שלך? כמה לקוחות פוטנציאליים קיימים? מה ה-TAM/SAM/SOM המשוער? יש טרנדים בשוק שמשחקים לטובתך?',
     },
     {
       id: '6',
       section: 'market',
       sectionTitle: GTM_SECTION_TITLES.market,
-      title: 'Competitive Landscape',
-      text: 'Who are your main competitors (direct and indirect)? What do they do well? What do they miss? How do you position against them?',
+      title: 'נוף תחרותי',
+      text: 'מי המתחרים העיקריים שלך (ישירים ועקיפים)? מה הם עושים טוב? מה הם מפספסים? איך אתה ממוקם מולם?',
     },
 
-    // ── Go-To-Market ──
+    // ── אסטרטגיית Go-To-Market ──
     {
       id: '7',
       section: 'gtm',
       sectionTitle: GTM_SECTION_TITLES.gtm,
-      title: 'Pricing & Monetization',
-      text: 'What is your pricing model? (SaaS subscription, usage-based, freemium, one-time?) What price point are you considering and why?',
+      title: 'תמחור ומודל הכנסות',
+      text: 'מה מודל התמחור שלך? (מנוי SaaS, מבוסס שימוש, פרימיום, חד פעמי?) איזה מחיר אתה שוקל ולמה?',
     },
     {
       id: '8',
       section: 'gtm',
       sectionTitle: GTM_SECTION_TITLES.gtm,
-      title: 'Distribution Channels',
-      text: 'Where do your target customers hang out online? What channels will you use to reach them? (Product Hunt, LinkedIn, communities, SEO, paid ads, partnerships?)',
+      title: 'ערוצי הפצה',
+      text: 'איפה לקוחות היעד שלך מבלים אונליין? אילו ערוצים תשתמש כדי להגיע אליהם? (Product Hunt, LinkedIn, קהילות, SEO, פרסום ממומן, שותפויות?)',
     },
     {
       id: '9',
       section: 'gtm',
       sectionTitle: GTM_SECTION_TITLES.gtm,
-      title: 'Validation Status',
-      text: 'What validation have you done so far? Do you have any early users, waitlist signups, LOIs, or revenue? What feedback have you received?',
+      title: 'סטטוס ולידציה',
+      text: 'איזו ולידציה עשית עד כה? יש לך משתמשים מוקדמים, רשימת המתנה, LOI, או הכנסות? איזה פידבק קיבלת?',
     },
     {
       id: '10',
       section: 'gtm',
       sectionTitle: GTM_SECTION_TITLES.gtm,
-      title: 'Launch Goals',
-      text: 'What does success look like in the next 90 days? What are your key metrics (users, revenue, retention)? What is your MVP timeline?',
+      title: 'יעדי השקה',
+      text: 'איך נראית הצלחה ב-90 הימים הקרובים? מה המדדים המרכזיים שלך (משתמשים, הכנסות, שימור)? מה לוח הזמנים ל-MVP שלך?',
     },
   ];
 }

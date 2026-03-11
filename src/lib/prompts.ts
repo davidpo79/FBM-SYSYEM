@@ -466,164 +466,167 @@ ${strategyDocument}
 // ========================================
 
 export function buildGTMStrategyPrompt(input: PromptAnswers): string {
-  return `You are a world-class Go-To-Market strategist for tech startups and micro-SaaS products.
-You specialize in helping solo founders and small teams launch products successfully.
+  return `אתה אסטרטג Go-To-Market ברמה עולמית לסטארטאפים טכנולוגיים ומוצרי Micro-SaaS.
+אתה מתמחה בעזרה לפאונדרים יחידים וצוותים קטנים להשיק מוצרים בהצלחה.
 
-Analyze the questionnaire answers from ${input.userName} and generate a comprehensive GTM strategy document.
+נתח את תשובות השאלון של ${input.userName} וצור מסמך אסטרטגיית GTM מקיף.
 
-Questionnaire Answers:
+תשובות השאלון:
 
-1. The Problem:
+1. הבעיה:
 ${input.answers["1"]}
 
-2. The Solution:
+2. הפתרון:
 ${input.answers["2"]}
 
-3. Origin Story:
+3. סיפור המקור:
 ${input.answers["3"]}
 
-4. Ideal Customer Profile:
+4. פרופיל לקוח אידיאלי:
 ${input.answers["4"]}
 
-5. Market Size & Opportunity:
+5. גודל שוק והזדמנות:
 ${input.answers["5"]}
 
-6. Competitive Landscape:
+6. נוף תחרותי:
 ${input.answers["6"]}
 
-7. Pricing & Monetization:
+7. תמחור ומודל הכנסות:
 ${input.answers["7"]}
 
-8. Distribution Channels:
+8. ערוצי הפצה:
 ${input.answers["8"]}
 
-9. Validation Status:
+9. סטטוס ולידציה:
 ${input.answers["9"]}
 
-10. Launch Goals:
+10. יעדי השקה:
 ${input.answers["10"]}
 
-Return a JSON object with the following structure (no markdown backticks, pure JSON):
+החזר אובייקט JSON במבנה הבא (ללא backticks של markdown, JSON טהור).
+חשוב: כל הערכים (values) חייבים להיות בעברית!
+
 {
   "icp": {
-    "title": "Ideal Customer Profile",
-    "persona_name": "A descriptive name for the persona",
-    "demographics": "Company size, industry, geography, role/title",
-    "psychographics": "Goals, frustrations, motivations, decision criteria",
-    "jobs_to_be_done": ["Job 1", "Job 2", "Job 3"],
-    "watering_holes": ["Where they hang out online - specific communities, platforms, events"],
-    "budget_authority": "Typical budget range and who makes the purchase decision"
+    "title": "פרופיל לקוח אידיאלי",
+    "persona_name": "שם תיאורי לפרסונה",
+    "demographics": "גודל חברה, תעשייה, גיאוגרפיה, תפקיד",
+    "psychographics": "מטרות, תסכולים, מוטיבציות, קריטריונים להחלטה",
+    "jobs_to_be_done": ["משימה 1", "משימה 2", "משימה 3"],
+    "watering_holes": ["איפה הם מבלים אונליין - קהילות ספציפיות, פלטפורמות, אירועים"],
+    "budget_authority": "טווח תקציב אופייני ומי מקבל החלטות רכש"
   },
   "positioning": {
-    "title": "Positioning & Messaging",
-    "oneliner": "One sentence describing what the product does and for whom",
-    "value_proposition": "3-sentence value proposition",
-    "category": "The market category you're creating or entering",
-    "differentiators": ["Differentiator 1", "Differentiator 2", "Differentiator 3"],
-    "alternatives": "What customers do today without your product",
-    "positioning_statement": "For [target], who [need], [product] is a [category] that [benefit]. Unlike [alternatives], we [differentiator]."
+    "title": "מיצוב ומסרים",
+    "oneliner": "משפט אחד שמתאר מה המוצר עושה ולמי",
+    "value_proposition": "הצעת ערך ב-3 משפטים",
+    "category": "קטגוריית השוק שאתה יוצר או נכנס אליה",
+    "differentiators": ["מבדל 1", "מבדל 2", "מבדל 3"],
+    "alternatives": "מה לקוחות עושים היום בלי המוצר שלך",
+    "positioning_statement": "עבור [קהל יעד], שזקוק ל[צורך], [מוצר] הוא [קטגוריה] ש[תועלת]. בשונה מ[חלופות], אנחנו [מבדל]."
   },
   "validation": {
-    "title": "Validation Framework",
-    "current_stage": "pre-revenue | early-revenue | growing",
+    "title": "מסגרת ולידציה",
+    "current_stage": "לפני הכנסות | הכנסות ראשוניות | בצמיחה",
     "validation_score": 1-10,
-    "evidence": ["What validation exists already"],
-    "gaps": ["What still needs validation"],
+    "evidence": ["אילו ולידציות כבר קיימות"],
+    "gaps": ["מה עדיין צריך ולידציה"],
     "experiments": [
       {
-        "name": "Experiment name",
-        "hypothesis": "If we do X, then Y will happen",
-        "method": "How to run it",
-        "success_metric": "What success looks like",
-        "timeline": "How long it takes"
+        "name": "שם הניסוי",
+        "hypothesis": "אם נעשה X, אז Y יקרה",
+        "method": "איך להריץ אותו",
+        "success_metric": "איך נראית הצלחה",
+        "timeline": "כמה זמן לוקח"
       }
     ],
-    "risk_assessment": "Key risks and mitigation strategies"
+    "risk_assessment": "סיכונים מרכזיים ואסטרטגיות מיטיגציה"
   },
   "funnel": {
-    "title": "Funnel & Sales Strategy",
-    "model": "self-serve | sales-assisted | enterprise",
+    "title": "משפך ואסטרטגיית מכירות",
+    "model": "שירות עצמי | מכירות מסייעות | אנטרפרייז",
     "stages": [
       {
-        "stage": "Awareness | Interest | Decision | Action",
-        "goal": "What happens at this stage",
-        "tactics": ["Tactic 1", "Tactic 2"],
-        "metrics": "Key metric for this stage"
+        "stage": "מודעות | עניין | החלטה | פעולה",
+        "goal": "מה קורה בשלב הזה",
+        "tactics": ["טקטיקה 1", "טקטיקה 2"],
+        "metrics": "מדד מפתח לשלב הזה"
       }
     ],
     "pricing_recommendation": {
-      "model": "Recommended pricing model",
-      "tiers": "Suggested pricing tiers",
-      "rationale": "Why this pricing works"
+      "model": "מודל תמחור מומלץ",
+      "tiers": "שכבות תמחור מוצעות",
+      "rationale": "למה התמחור הזה עובד"
     },
-    "sales_motion": "How the sales process works end-to-end"
+    "sales_motion": "איך תהליך המכירות עובד מקצה לקצה"
   },
   "channels": {
-    "title": "Growth Channels",
+    "title": "ערוצי צמיחה",
     "primary": [
       {
-        "channel": "Channel name",
-        "why": "Why this channel fits",
-        "tactics": ["Specific tactic 1", "Specific tactic 2"],
-        "expected_cac": "Estimated customer acquisition cost",
-        "timeline_to_results": "When to expect results"
+        "channel": "שם הערוץ",
+        "why": "למה הערוץ הזה מתאים",
+        "tactics": ["טקטיקה ספציפית 1", "טקטיקה ספציפית 2"],
+        "expected_cac": "עלות גיוס לקוח צפויה",
+        "timeline_to_results": "מתי לצפות לתוצאות"
       }
     ],
     "secondary": [
       {
-        "channel": "Channel name",
-        "why": "Why to consider this later",
-        "when_to_start": "When to activate this channel"
+        "channel": "שם הערוץ",
+        "why": "למה לשקול את זה בהמשך",
+        "when_to_start": "מתי להפעיל את הערוץ"
       }
     ]
   },
   "paid": {
-    "title": "Paid Acquisition Strategy",
-    "recommended_budget": "Monthly budget recommendation",
+    "title": "אסטרטגיית פרסום ממומן",
+    "recommended_budget": "המלצת תקציב חודשי",
     "platforms": [
       {
-        "platform": "Platform name",
-        "budget_split": "% of budget",
-        "targeting": "How to target",
-        "creative_angles": ["Angle 1", "Angle 2"],
-        "expected_metrics": "Expected CPC, CPL, CPA"
+        "platform": "שם הפלטפורמה",
+        "budget_split": "% מהתקציב",
+        "targeting": "איך למקד",
+        "creative_angles": ["זווית 1", "זווית 2"],
+        "expected_metrics": "CPC, CPL, CPA צפויים"
       }
     ],
-    "scaling_plan": "When and how to scale paid"
+    "scaling_plan": "מתי ואיך לסקייל את הממומן"
   },
   "creatives": {
-    "title": "Content & Creative Strategy",
-    "content_pillars": ["Pillar 1", "Pillar 2", "Pillar 3"],
+    "title": "אסטרטגיית תוכן וקריאייטיב",
+    "content_pillars": ["עמוד תוכן 1", "עמוד תוכן 2", "עמוד תוכן 3"],
     "content_calendar": [
       {
-        "type": "Content type (blog, video, social, etc.)",
-        "frequency": "How often",
-        "topics": ["Topic 1", "Topic 2"],
-        "distribution": "Where to publish"
+        "type": "סוג תוכן (בלוג, וידאו, סושיאל וכו')",
+        "frequency": "תדירות",
+        "topics": ["נושא 1", "נושא 2"],
+        "distribution": "היכן לפרסם"
       }
     ],
-    "launch_assets": ["Asset 1 needed for launch", "Asset 2", "Asset 3"]
+    "launch_assets": ["נכס 1 נדרש להשקה", "נכס 2", "נכס 3"]
   },
   "weekly_routine": {
-    "title": "90-Day Launch Playbook",
+    "title": "תוכנית השקה ל-90 יום",
     "weeks": [
       {
-        "week": "Week 1-2",
-        "theme": "Theme for this period",
-        "tasks": ["Task 1", "Task 2", "Task 3"],
-        "milestone": "What should be achieved"
+        "week": "שבוע 1-2",
+        "theme": "נושא התקופה",
+        "tasks": ["משימה 1", "משימה 2", "משימה 3"],
+        "milestone": "מה צריך להיות מושג"
       }
     ]
   },
-  "summary": "2-3 sentence executive summary of the GTM strategy"
+  "summary": "תקציר מנהלים של 2-3 משפטים על אסטרטגיית ה-GTM"
 }
 
-Important:
-- Be SPECIFIC to ${input.userName}'s product and market — no generic advice
-- Include concrete numbers, metrics, and timelines where possible
-- Prioritize actionable recommendations over theory
-- Consider the validation status and adjust recommendations accordingly
-- If information is missing, make reasonable assumptions based on the context`;
+חשוב:
+- היה ספציפי למוצר ולשוק של ${input.userName} — ללא עצות גנריות
+- כלול מספרים קונקרטיים, מדדים ולוחות זמנים כמה שאפשר
+- העדף המלצות פרקטיות על פני תיאוריה
+- התחשב בסטטוס הולידציה והתאם את ההמלצות בהתאם
+- אם חסר מידע, בצע הנחות סבירות על בסיס ההקשר
+- כל הטקסט חייב להיות בעברית!`;
 }
 
 export function buildScriptsPrompt(

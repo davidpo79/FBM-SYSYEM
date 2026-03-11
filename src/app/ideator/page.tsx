@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Script from "next/script";
+import Image from "next/image";
 
 const API_BADGES = [
   "Twilio", "Stripe", "OpenAI", "Shopify", "Slack",
@@ -19,21 +20,24 @@ interface IdeaResult {
 }
 
 type Stage = "select" | "building" | "results";
+type Market = "israel" | "international";
 
 export default function IdeatorPage() {
   const [selectedApis, setSelectedApis] = useState<string[]>([]);
   const [customApi, setCustomApi] = useState("");
+  const [apiSystems, setApiSystems] = useState("");
+  const [market, setMarket] = useState<Market>("international");
   const [stage, setStage] = useState<Stage>("select");
   const [ideas, setIdeas] = useState<IdeaResult[]>([]);
   const [error, setError] = useState("");
   const [buildStep, setBuildStep] = useState(0);
 
   const buildSteps = [
-    "Connecting nodes...",
-    "Synthesizing architecture...",
-    "Compiling SaaS models...",
-    "Validating revenue streams...",
-    "Assembling final blueprints...",
+    "מחבר צמתים...",
+    "מסנתז ארכיטקטורה...",
+    "מקמפל מודלי SaaS...",
+    "מאמת זרמי הכנסות...",
+    "מרכיב את השרטוטים הסופיים...",
   ];
 
   const toggleApi = (api: string) => {
@@ -70,7 +74,7 @@ export default function IdeatorPage() {
       const res = await fetch("/api/public/ideator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apis: selectedApis }),
+        body: JSON.stringify({ apis: selectedApis, market, apiSystems: apiSystems.trim() || undefined }),
       });
       const data = await res.json();
       clearInterval(interval);
@@ -85,13 +89,13 @@ export default function IdeatorPage() {
       setStage("results");
     } catch {
       clearInterval(interval);
-      setError("Something went wrong. Please try again.");
+      setError("משהו השתבש. נסה שוב.");
       setStage("select");
     }
   };
 
   return (
-    <div className="theme-gtm min-h-screen bg-[#080A0F] text-[#F0F6FF] pb-20">
+    <div className="theme-gtm min-h-screen bg-[#080A0F] text-[#F0F6FF] pb-20" dir="rtl">
       {/* Header */}
       <header
         style={{
@@ -103,10 +107,8 @@ export default function IdeatorPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 28, fontWeight: 800, color: "#00FF88", fontFamily: "monospace" }}>
-            GTM
-          </span>
-          <span style={{ fontSize: 20, fontWeight: 600 }}>BootCamp</span>
+          <Image src="/gtm-logo.svg" alt="GTM BootCamp" width={40} height={40} />
+          <span style={{ fontSize: 20, fontWeight: 600 }}>GTM BootCamp</span>
           <span
             style={{
               fontSize: 10,
@@ -122,26 +124,19 @@ export default function IdeatorPage() {
           </span>
         </div>
         <a
-          href="/login?track=gtm"
+          href="/signup?track=gtm"
           style={{
             padding: "8px 20px",
             borderRadius: 8,
-            border: "1px solid #1E2D45",
-            color: "#6B7FA3",
+            background: "linear-gradient(135deg, #00FF88, #00CC6A)",
+            color: "#080A0F",
             fontSize: 14,
+            fontWeight: 700,
             textDecoration: "none",
             transition: "all 0.2s",
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "#00FF88";
-            e.currentTarget.style.color = "#00FF88";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "#1E2D45";
-            e.currentTarget.style.color = "#6B7FA3";
-          }}
         >
-          Sign In
+          הצטרף לבוטקאמפ
         </a>
       </header>
 
@@ -150,13 +145,13 @@ export default function IdeatorPage() {
         {stage === "select" && (
           <div style={{ textAlign: "center", marginBottom: 48 }}>
             <h1 style={{ fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 800, lineHeight: 1.1, marginBottom: 16 }}>
-              Micro-SaaS <span style={{ color: "#00FF88" }}>Idea Engine</span>
+              מנוע רעיונות <span style={{ color: "#00FF88" }}>Micro-SaaS</span>
             </h1>
             <p style={{ fontSize: 18, color: "#6B7FA3", maxWidth: 560, margin: "0 auto 8px" }}>
-              Select the APIs &amp; tools you want to combine. We&apos;ll architect 3 profitable Micro-SaaS ideas.
+              בחר את ה-APIs והכלים שאתה רוצה לשלב. נתכנן לך 3 רעיונות Micro-SaaS רווחיים.
             </p>
             <p style={{ fontSize: 13, color: "#3D4F6F", fontFamily: "monospace" }}>
-              Powered by GTM BootCamp AI Engine
+              GTM BootCamp AI Engine מופעל על ידי
             </p>
           </div>
         )}
@@ -164,11 +159,47 @@ export default function IdeatorPage() {
         {/* API Selector */}
         {stage === "select" && (
           <>
+            {/* Market Selection */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: 24 }}>
+              <button
+                onClick={() => setMarket("israel")}
+                style={{
+                  padding: "10px 24px",
+                  borderRadius: 10,
+                  border: `1.5px solid ${market === "israel" ? "#00FF88" : "#1E2D45"}`,
+                  background: market === "israel" ? "rgba(0,255,136,0.1)" : "#161D2B",
+                  color: market === "israel" ? "#00FF88" : "#6B7FA3",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  transition: "all 0.2s",
+                }}
+              >
+                🇮🇱 שוק ישראלי
+              </button>
+              <button
+                onClick={() => setMarket("international")}
+                style={{
+                  padding: "10px 24px",
+                  borderRadius: 10,
+                  border: `1.5px solid ${market === "international" ? "#00FF88" : "#1E2D45"}`,
+                  background: market === "international" ? "rgba(0,255,136,0.1)" : "#161D2B",
+                  color: market === "international" ? "#00FF88" : "#6B7FA3",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  transition: "all 0.2s",
+                }}
+              >
+                🌍 שוק בינלאומי
+              </button>
+            </div>
+
             {/* Selected count */}
             {selectedApis.length > 0 && (
               <div style={{ textAlign: "center", marginBottom: 16 }}>
                 <span style={{ fontFamily: "monospace", fontSize: 13, color: "#00FF88" }}>
-                  {selectedApis.length} API{selectedApis.length !== 1 ? "s" : ""} selected
+                  {selectedApis.length} APIs נבחרו
                 </span>
               </div>
             )}
@@ -192,6 +223,7 @@ export default function IdeatorPage() {
                       fontSize: 13,
                       fontWeight: 500,
                       fontFamily: "monospace",
+                      direction: "ltr",
                     }}
                   >
                     {isSelected ? "✓ " : ""}{api}
@@ -201,13 +233,13 @@ export default function IdeatorPage() {
             </div>
 
             {/* Custom API input */}
-            <div style={{ display: "flex", gap: 8, maxWidth: 400, margin: "0 auto 32px" }}>
+            <div style={{ display: "flex", gap: 8, maxWidth: 400, margin: "0 auto 20px", direction: "ltr" }}>
               <input
                 type="text"
                 value={customApi}
                 onChange={(e) => setCustomApi(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addCustomApi(); }}
-                placeholder="Add custom API/Tool..."
+                placeholder="הוסף API/כלי מותאם אישית..."
                 style={{
                   flex: 1,
                   padding: "10px 14px",
@@ -218,6 +250,7 @@ export default function IdeatorPage() {
                   fontSize: 13,
                   fontFamily: "monospace",
                   outline: "none",
+                  direction: "rtl",
                 }}
               />
               <button
@@ -235,8 +268,37 @@ export default function IdeatorPage() {
                   fontWeight: 600,
                 }}
               >
-                + Add
+                + הוסף
               </button>
+            </div>
+
+            {/* API Systems textarea */}
+            <div style={{ maxWidth: 600, margin: "0 auto 32px" }}>
+              <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 600, color: "#F0F6FF" }}>
+                באילו מערכות API המוצר ישתמש כדי לייצר את החיבורים?
+              </label>
+              <textarea
+                value={apiSystems}
+                onChange={(e) => setApiSystems(e.target.value)}
+                placeholder="לדוגמה: אנחנו משתמשים ב-Stripe לתשלומים, Twilio ל-SMS, ו-OpenAI לעיבוד טקסט. החיבור בין הכלים יהיה דרך Webhook..."
+                style={{
+                  width: "100%",
+                  minHeight: 80,
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  border: "1px solid #1E2D45",
+                  background: "#161D2B",
+                  color: "#F0F6FF",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  fontFamily: "monospace",
+                  outline: "none",
+                  resize: "vertical",
+                }}
+              />
+              <p style={{ fontSize: 11, color: "#3D4F6F", marginTop: 4, fontFamily: "monospace" }}>
+                אופציונלי — תאר את מערכות ה-API והחיבורים שאתה מתכנן להשתמש בהם
+              </p>
             </div>
 
             {error && (
@@ -262,7 +324,7 @@ export default function IdeatorPage() {
                   boxShadow: selectedApis.length > 0 ? "0 4px 16px rgba(0,255,136,0.3)" : "none",
                 }}
               >
-                Assemble Ideas
+                הרכב רעיונות
               </button>
             </div>
           </>
@@ -298,7 +360,7 @@ export default function IdeatorPage() {
             <p style={{ fontSize: 18, fontWeight: 600, color: "#00FF88", fontFamily: "monospace", marginBottom: 8 }}>
               {buildSteps[buildStep]}
             </p>
-            <p style={{ fontSize: 13, color: "#3D4F6F", fontFamily: "monospace" }}>
+            <p style={{ fontSize: 13, color: "#3D4F6F", fontFamily: "monospace", direction: "ltr" }}>
               [{selectedApis.join(" + ")}]
             </p>
 
@@ -322,10 +384,13 @@ export default function IdeatorPage() {
           <>
             <div style={{ textAlign: "center", marginBottom: 40 }}>
               <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-                Your <span style={{ color: "#00FF88" }}>3 SaaS Blueprints</span> Are Ready
+                <span style={{ color: "#00FF88" }}>3 שרטוטי SaaS</span> מוכנים
               </h2>
-              <p style={{ color: "#6B7FA3", fontSize: 14, fontFamily: "monospace" }}>
-                Built with: {selectedApis.join(" + ")}
+              <p style={{ color: "#6B7FA3", fontSize: 14, fontFamily: "monospace", direction: "ltr" }}>
+                נבנה עם: {selectedApis.join(" + ")}
+              </p>
+              <p style={{ color: "#3D4F6F", fontSize: 12, fontFamily: "monospace", marginTop: 4 }}>
+                {market === "israel" ? "🇮🇱 שוק ישראלי" : "🌍 שוק בינלאומי"}
               </p>
             </div>
 
@@ -342,7 +407,7 @@ export default function IdeatorPage() {
                   }}
                 >
                   <span style={{ fontSize: 11, fontFamily: "monospace", color: "#3D4F6F", display: "block", marginBottom: 4 }}>
-                    BLUEPRINT #{idx + 1}
+                    שרטוט #{idx + 1}
                   </span>
                   <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
                     {idea.name}
@@ -352,9 +417,9 @@ export default function IdeatorPage() {
                   </p>
 
                   {/* Architecture - highlighted in green */}
-                  <div style={{ marginBottom: 16, padding: 16, borderRadius: 10, background: "rgba(0,255,136,0.05)", border: "1px solid rgba(0,255,136,0.15)", borderLeft: "3px solid #00FF88" }}>
-                    <p style={{ fontSize: 11, fontFamily: "monospace", color: "#00FF88", marginBottom: 6, textTransform: "uppercase" }}>
-                      Architecture
+                  <div style={{ marginBottom: 16, padding: 16, borderRadius: 10, background: "rgba(0,255,136,0.05)", border: "1px solid rgba(0,255,136,0.15)", borderRight: "3px solid #00FF88" }}>
+                    <p style={{ fontSize: 11, fontFamily: "monospace", color: "#00FF88", marginBottom: 6 }}>
+                      ארכיטקטורה
                     </p>
                     <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
                       {idea.architecture}
@@ -363,8 +428,8 @@ export default function IdeatorPage() {
 
                   {/* Monetization */}
                   <div style={{ padding: 12, borderRadius: 8, background: "rgba(8,10,15,0.5)", border: "1px solid rgba(30,45,69,0.5)" }}>
-                    <p style={{ fontSize: 11, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 4, textTransform: "uppercase" }}>
-                      Monetization
+                    <p style={{ fontSize: 11, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 4 }}>
+                      מונטיזציה
                     </p>
                     <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.5 }}>
                       {idea.monetization}
@@ -378,10 +443,10 @@ export default function IdeatorPage() {
             <div className="w-full max-w-2xl mx-auto mt-12 bg-[#161D2B] p-4 rounded-xl border border-[#1E2D45]">
               <div style={{ textAlign: "center", marginBottom: 16 }}>
                 <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
-                  Want the Full <span style={{ color: "#00FF88" }}>GTM Playbook</span>?
+                  רוצה את ה-<span style={{ color: "#00FF88" }}>GTM Playbook</span> המלא?
                 </h3>
                 <p style={{ color: "#6B7FA3", fontSize: 13 }}>
-                  Join GTM BootCamp — get a complete Go-To-Market strategy, validation framework, and 90-day launch plan.
+                  הצטרף ל-GTM BootCamp — קבל אסטרטגיית Go-To-Market מלאה, מסגרת ולידציה, ותוכנית השקה ל-90 יום.
                 </p>
               </div>
               <iframe
@@ -419,7 +484,7 @@ export default function IdeatorPage() {
                   fontFamily: "monospace",
                 }}
               >
-                Try Different APIs
+                נסה APIs אחרים
               </button>
             </div>
           </>

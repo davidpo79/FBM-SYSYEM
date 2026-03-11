@@ -87,13 +87,13 @@ export default function Sidebar({
 
   const gtmNav: NavItem[] = projectId && isGTM
     ? [
-        { href: `/project/${projectId}/gtm-strategy`, label: "GTM BootCamp Plan", icon: Rocket },
+        { href: `/project/${projectId}/gtm-strategy`, label: "תוכנית GTM BootCamp", icon: Rocket },
       ]
     : [];
 
   const gtmPublicNav: NavItem[] = isGTM
     ? [
-        { href: "/ideator", label: "Ideation Lab", icon: Lightbulb },
+        { href: "/ideator", label: "מעבדת רעיונות", icon: Lightbulb },
       ]
     : [];
 

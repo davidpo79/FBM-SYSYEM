@@ -29,36 +29,49 @@ export async function POST(req: Request) {
         );
       }
     }
-    const { apis } = await req.json();
+    const { apis, market, apiSystems } = await req.json();
 
     if (!apis || !Array.isArray(apis) || apis.length === 0) {
-      return Response.json({ error: "Please select at least one API/tool" }, { status: 400 });
+      return Response.json({ error: "יש לבחור לפחות API/כלי אחד" }, { status: 400 });
     }
 
     const apiList = apis.join(", ");
+    const marketLabel = market === "israel" ? "ישראלי" : "בינלאומי";
+    const marketContext = market === "israel"
+      ? `השוק הוא ישראלי. התאם את גודל השוק, קהל היעד, והתמחור לשוק הישראלי (שקלים, עסקים ישראליים, הקשר מקומי). קח בחשבון את גודל האוכלוסייה (~9M), מאפייני השוק המקומי, והעדפות תשלום בישראל.`
+      : `השוק הוא בינלאומי/גלובלי. התאם את גודל השוק, קהל היעד, והתמחור לשוק הגלובלי (דולרים, קהל עולמי). קח בחשבון שווקים מרכזיים כמו ארה"ב, אירופה, ו-APAC.`;
 
-    const prompt = `You are an elite Silicon Valley Tech Lead. The user provides specific APIs or tools: ${apiList}.
+    const apiSystemsContext = apiSystems
+      ? `\nהמשתמש תיאר את מערכות ה-API והחיבורים שהוא מתכנן:\n${apiSystems}\nקח את זה בחשבון בתכנון הארכיטקטורה.\n`
+      : "";
 
-Architect 3 hyper-specific, highly profitable Micro-SaaS startup ideas combining exactly these APIs.
+    const prompt = `אתה Tech Lead ברמה עולמית מעמק הסיליקון. המשתמש מספק APIs או כלים ספציפיים: ${apiList}.
 
-Return ONLY valid JSON in this format:
+שוק יעד: ${marketLabel}
+${marketContext}
+${apiSystemsContext}
+תכנן 3 רעיונות Micro-SaaS היפר-ספציפיים ורווחיים במיוחד המשלבים בדיוק את ה-APIs האלה.
+
+החזר JSON תקני בלבד בפורמט הבא:
 {
   "ideas": [
     {
-      "name": "Product Name (2-3 words)",
-      "pitch": "One aggressive sentence about what it does and why it prints money",
-      "architecture": "Step-by-step API connection logic. How ${apiList} connect together technically. Be specific about data flow and integration points.",
-      "monetization": "Who pays, why they pay, pricing model, and expected revenue per customer"
+      "name": "שם המוצר (2-3 מילים באנגלית)",
+      "pitch": "משפט אחד אגרסיבי על מה המוצר עושה ולמה הוא מכונת כסף",
+      "architecture": "לוגיקת חיבור API צעד-אחר-צעד. איך ${apiList} מתחברים טכנית. היה ספציפי לגבי זרימת הנתונים ונקודות האינטגרציה.",
+      "monetization": "מי משלם, למה הם משלמים, מודל תמחור, והכנסה צפויה ללקוח. כלול גודל שוק מוערך ו-TAM."
     }
   ]
 }
 
-Rules:
-- Each idea MUST use ALL of the provided APIs/tools: ${apiList}
-- Ideas must be buildable by a solo developer in 2-4 weeks
-- Focus on B2B or prosumer — people who pay for tools
-- Be specific and technical in the architecture section
-- Return exactly 3 ideas`;
+כללים:
+- כל רעיון חייב להשתמש בכל ה-APIs/כלים שסופקו: ${apiList}
+- רעיונות שניתן לבנות על ידי מפתח יחיד ב-2-4 שבועות
+- התמקד ב-B2B או prosumer — אנשים שמשלמים על כלים
+- היה ספציפי וטכני בסעיף הארכיטקטורה
+- התאם את נתוני גודל השוק והקהל לשוק ה${marketLabel}
+- החזר בדיוק 3 רעיונות
+- כל הטקסט בעברית (חוץ משמות APIs ומונחים טכניים)`;
 
     const text = await callAI("", prompt, 4000, { jsonMode: true });
     const parsed = JSON.parse(text);
@@ -81,7 +94,7 @@ Rules:
     });
 
     return Response.json(
-      { error: error instanceof Error ? error.message : "Failed to generate ideas" },
+      { error: error instanceof Error ? error.message : "נכשל ביצירת רעיונות" },
       { status: 500 },
     );
   }
