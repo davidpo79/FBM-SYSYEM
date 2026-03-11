@@ -170,15 +170,19 @@ export default function QuestionnairePage() {
         }
       } catch { /* ignore */ }
 
-      // GTM Magic: bypass mode selection, go directly to manual Question 1
-      // If user has a name from URL/localStorage, skip name step too
-      if (nameParam) {
-        setMode("manual");
-        setManualStep(0);
-        setFlowStage("manual");
-      } else {
-        setFlowStage("name"); // Only ask for name, then skip to manual
+      // GTM Magic: bypass mode selection AND name step — go directly to manual Question 1
+      // Use name from URL param, auth, or fallback to "יזם"
+      if (!nameParam) {
+        // Try to get name from auth/localStorage
+        try {
+          const savedName = localStorage.getItem("fbm_user_name");
+          if (savedName) setOwnerName(savedName);
+          else setOwnerName("יזם");
+        } catch { setOwnerName("יזם"); }
       }
+      setMode("manual");
+      setManualStep(0);
+      setFlowStage("manual");
     }
 
     if (params.get("new") === "true") {
@@ -1088,6 +1092,7 @@ export default function QuestionnairePage() {
               error={error}
               track={track}
               ideaName={ideaName}
+              allAnswers={answers}
             />
           )}
 

@@ -563,40 +563,54 @@ export default function GTMStrategyPage() {
               </p>
 
               {/* 2-Tier Pricing: DIY + PRO */}
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", maxWidth: 560, direction: "ltr", margin: "0 auto" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, maxWidth: 640, direction: "rtl", margin: "0 auto" }}>
                 {/* DIY Tier */}
-                <div className="gtm-pricing-card">
-                  <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>DIY</p>
-                  <p style={{ color: "#F0F6FF", fontSize: 32, fontWeight: 800, marginBottom: 4 }}>
-                    290<span style={{ fontSize: 14, color: "#6B7FA3" }}>&#8362;</span>
+                <div className="gtm-pricing-card" style={{ display: "flex", flexDirection: "column" }}>
+                  <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 13, marginBottom: 4, textTransform: "uppercase", fontWeight: 600 }}>DIY</p>
+                  <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 700, marginBottom: 8, lineHeight: 1.4 }}>
+                    GTM BOOTCAMP
+                  </h4>
+                  <p style={{ color: "#9DA3B4", fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
+                    יצירת תוכנית השקה ל-90 ימים — מסמך אסטרטגיה מלא הכולל קהל יעד, מיצוב, ולידציה, משפך מכירות, ערוצי שיווק ותוכנית פעולה שבועית.
                   </p>
-                  <p style={{ color: "#6B7FA3", fontSize: 12, marginBottom: 20 }}>תשלום חד פעמי</p>
-                  <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 13, lineHeight: 2.2, listStyle: "none", padding: 0, direction: "rtl" }}>
+                  <p style={{ color: "#F0F6FF", fontSize: 36, fontWeight: 800, marginBottom: 4 }}>
+                    290<span style={{ fontSize: 16, color: "#6B7FA3" }}>&#8362;</span>
+                  </p>
+                  <p style={{ color: "#6B7FA3", fontSize: 13, marginBottom: 20 }}>כולל מע&quot;מ · תשלום חד פעמי</p>
+                  <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 14, lineHeight: 2.4, listStyle: "none", padding: 0, direction: "rtl", flex: 1 }}>
                     <li>&#10003; מסמך אסטרטגיה מלא</li>
                     <li>&#10003; כל 7 הסעיפים פתוחים</li>
-                    <li>&#10003; תוכנית השקה ל-90 יום</li>
+                    <li>&#10003; תוכנית השקה ל-90 יום (גאנט)</li>
+                    <li>&#10003; ייצוא וגישה לצמיתות</li>
                     <li style={{ color: "#3D4F6F" }}>&#10007; ללא שיחות ליווי</li>
                   </ul>
-                  <button onClick={() => handleTierSelect("diy")} className="gtm-btn-outline" style={{ width: "100%", marginTop: 20 }}>
+                  <button onClick={() => handleTierSelect("diy")} className="gtm-btn-outline" style={{ width: "100%", marginTop: 20, padding: "12px 0", fontSize: 15 }}>
                     קבל גישת DIY
                   </button>
                 </div>
 
                 {/* Pro Tier */}
-                <div className="gtm-pricing-card gtm-pricing-pro">
+                <div className="gtm-pricing-card gtm-pricing-pro" style={{ display: "flex", flexDirection: "column" }}>
                   <span className="gtm-popular-badge">הכי פופולרי</span>
-                  <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Pro</p>
-                  <p style={{ color: "#F0F6FF", fontSize: 32, fontWeight: 800, marginBottom: 4 }}>
-                    99<span style={{ fontSize: 14, color: "#6B7FA3" }}>&#8362;/חודש</span>
+                  <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 13, marginBottom: 4, textTransform: "uppercase", fontWeight: 600 }}>Pro</p>
+                  <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 700, marginBottom: 8, lineHeight: 1.4 }}>
+                    GTM BOOTCAMP
+                  </h4>
+                  <p style={{ color: "#9DA3B4", fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
+                    מנוי חודשי למערכת — כל מה שב-DIY ובנוסף גישה בלתי מוגבלת לכלי AI, עוזר אסטרטגי חכם ושיחת ליווי חודשית עם מומחה.
                   </p>
-                  <p style={{ color: "#6B7FA3", fontSize: 12, marginBottom: 20 }}>ביטול בכל עת</p>
-                  <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 13, lineHeight: 2.2, listStyle: "none", padding: 0, direction: "rtl" }}>
+                  <p style={{ color: "#F0F6FF", fontSize: 36, fontWeight: 800, marginBottom: 4 }}>
+                    99<span style={{ fontSize: 16, color: "#6B7FA3" }}>&#8362;/חודש</span>
+                  </p>
+                  <p style={{ color: "#6B7FA3", fontSize: 13, marginBottom: 20 }}>הוראת קבע · ביטול בכל עת</p>
+                  <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 14, lineHeight: 2.4, listStyle: "none", padding: 0, direction: "rtl", flex: 1 }}>
                     <li style={{ color: "#00FF88" }}>&#10003; הכל ב-DIY</li>
                     <li style={{ color: "#00FF88" }}>&#10003; יצירות ללא הגבלה</li>
                     <li style={{ color: "#00FF88" }}>&#10003; עוזר אסטרטגי AI</li>
                     <li style={{ color: "#00FF88" }}>&#10003; שיחת ליווי חודשית</li>
+                    <li style={{ color: "#00FF88" }}>&#10003; עדכונים ותכנים חדשים</li>
                   </ul>
-                  <button onClick={() => handleTierSelect("pro")} className="gtm-btn-primary" style={{ width: "100%", marginTop: 20 }}>
+                  <button onClick={() => handleTierSelect("pro")} className="gtm-btn-primary" style={{ width: "100%", marginTop: 20, padding: "12px 0", fontSize: 15 }}>
                     התחל Pro
                   </button>
                 </div>
@@ -605,15 +619,18 @@ export default function GTMStrategyPage() {
               {/* ── Bootcamp Hero Section (Burn Orange) ── */}
               <div className="gtm-bootcamp-hero" style={{ marginTop: 32, maxWidth: 560, margin: "32px auto 0" }}>
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "linear-gradient(90deg, #FF6B35, #E55A2B)" }} />
-                <p style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 11, textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.1em" }}>
+                <p style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 12, marginBottom: 6 }}>
+                  תוכנית הדגל של דוד פופוביץ
+                </p>
+                <h3 style={{ color: "#F0F6FF", fontSize: 24, fontWeight: 800, lineHeight: 1.3, marginBottom: 12 }}>
                   GTM BOOTCAMP
-                </p>
-                <h3 style={{ color: "#F0F6FF", fontSize: 22, fontWeight: 800, lineHeight: 1.4, marginBottom: 12 }}>
-                  מהרעיון ללקוח המשלם הראשון ב-90 יום
                 </h3>
-                <p style={{ color: "#9DA3B4", fontSize: 14, lineHeight: 1.7, marginBottom: 20, maxWidth: 460, margin: "0 auto 20px" }}>
-                  הליווי האישי של דוד פופוביץ למפתחים ויזמים שלא מוכנים להשאיר את ההצלחה שלהם ליד המקרה.
-                </p>
+                <div style={{ color: "#9DA3B4", fontSize: 15, lineHeight: 1.8, marginBottom: 20, maxWidth: 480, margin: "0 auto 20px", textAlign: "center" }}>
+                  <p>מחנה אימונים אינטנסיבי למשך 30 ימים</p>
+                  <p>ליווי אישי במסגרת קבוצתית</p>
+                  <p>למפתחים ויזמים שרוצים לייצר תוכנית שיווקית</p>
+                  <p>חדירה לשוק ולקוחות משלמים</p>
+                </div>
                 <button onClick={() => setShowBootcampModal(true)} className="gtm-btn-orange">
                   תיאום שיחת אבחון אסטרטגית של 15 דקות עם דוד פופוביץ (ללא עלות)
                 </button>
@@ -1010,7 +1027,7 @@ function Card({ children, title }: { children: React.ReactNode; title?: string }
   return (
     <div className="gtm-card-rounded" style={{ padding: 24, marginBottom: 16 }}>
       {title && (
-        <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11, marginBottom: 12 }}>
+        <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 13, fontWeight: 600, marginBottom: 12, textTransform: "uppercase" }}>
           {title}
         </p>
       )}
@@ -1024,15 +1041,15 @@ function Chip({ children }: { children: React.ReactNode }) {
     <span
       style={{
         display: "inline-block",
-        padding: "4px 12px",
-        borderRadius: 6,
+        padding: "6px 14px",
+        borderRadius: 8,
         background: "rgba(0,255,136,0.08)",
         border: "1px solid rgba(0,255,136,0.2)",
         color: "#00FF88",
-        fontSize: 12,
+        fontSize: 14,
         fontFamily: "monospace",
         marginLeft: 6,
-        marginBottom: 6,
+        marginBottom: 8,
       }}
     >
       {children}
@@ -1280,8 +1297,8 @@ function WeeklyTab({ strategy }: { strategy: GTMStrategy }) {
 function InfoBlock({ label, text }: { label: string; text: string }) {
   return (
     <div style={{ marginBottom: 8 }}>
-      <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11, marginBottom: 2 }}>{label}</p>
-      <p style={{ color: "#F0F6FF", fontSize: 15, lineHeight: 1.7 }}>{text}</p>
+      <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 13, marginBottom: 3 }}>{label}</p>
+      <p style={{ color: "#F0F6FF", fontSize: 16, lineHeight: 1.7 }}>{text}</p>
     </div>
   );
 }

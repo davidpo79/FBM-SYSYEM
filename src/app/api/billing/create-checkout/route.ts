@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { createPaymentLink } from "@/lib/sumit";
+import { createPaymentLink, createRecurringPaymentLink } from "@/lib/sumit";
 import { PLAN_PRICES } from "@/lib/plan-limits";
 
 export async function POST(req: NextRequest) {
@@ -49,18 +49,46 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const planLabel = plan === "premium" ? "פרימיום" : "סטנדרט";
+    // Determine plan label and payment type
+    let result;
 
-    const result = await createPaymentLink({
-      customerName,
-      customerEmail,
-      companyNumber,
-      description: `ייעוץ עסקי - FBM Studio תוכנית ${planLabel}`,
-      price,
-      redirectUrl,
-      webhookUrl,
-      creditCardOnly: true,
-    });
+    if (plan === "gtm_diy") {
+      // GTM DIY: one-time payment, 290 NIS including VAT
+      result = await createPaymentLink({
+        customerName,
+        customerEmail,
+        companyNumber,
+        description: "GTM BOOTCAMP / יצירת תוכנית השקה ל 90 ימים",
+        price,
+        redirectUrl,
+        webhookUrl,
+        creditCardOnly: true,
+      });
+    } else if (plan === "gtm_pro") {
+      // GTM PRO: recurring standing order (הוראת קבע)
+      result = await createRecurringPaymentLink({
+        customerName,
+        customerEmail,
+        companyNumber,
+        description: "GTM BOOTCAMP / מנוי חודשי למערכת",
+        price,
+        redirectUrl,
+        webhookUrl,
+      });
+    } else {
+      // FBM plans: standard one-time
+      const planLabel = plan === "premium" ? "פרימיום" : "סטנדרט";
+      result = await createPaymentLink({
+        customerName,
+        customerEmail,
+        companyNumber,
+        description: `ייעוץ עסקי - FBM Studio תוכנית ${planLabel}`,
+        price,
+        redirectUrl,
+        webhookUrl,
+        creditCardOnly: true,
+      });
+    }
 
     if (!result.success) {
       return NextResponse.json(

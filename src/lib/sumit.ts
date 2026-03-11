@@ -131,6 +131,61 @@ export async function createPaymentLink(params: {
 }
 
 /**
+ * Create a recurring payment redirect page (standing order / הוראת קבע).
+ * The customer is redirected to Sumit's secure page to set up a standing order,
+ * then redirected back to `redirectUrl` after setup.
+ */
+export async function createRecurringPaymentLink(params: {
+  customerName: string;
+  customerEmail: string;
+  companyNumber?: string;
+  description: string;
+  price: number;
+  redirectUrl: string;
+  webhookUrl?: string;
+}): Promise<{ success: boolean; paymentUrl?: string; error?: string }> {
+  try {
+    const response = await sumitRequest("/billing/recurring/beginredirect/", {
+      Customer: {
+        Name: params.customerName,
+        EmailAddress: params.customerEmail,
+        ...(params.companyNumber ? { CompanyNumber: params.companyNumber } : {}),
+        SearchMode: "AutoCreateOrUpdate",
+      },
+      Items: [
+        {
+          Item: {
+            Name: params.description,
+            Price: params.price,
+            Currency: "ILS",
+          },
+          Quantity: 1,
+          UnitPrice: params.price,
+          Description: params.description,
+        },
+      ],
+      RedirectURL: params.redirectUrl,
+      ...(params.webhookUrl ? { WebhookURL: params.webhookUrl } : {}),
+      SendDocumentByEmail: true,
+      DocumentDescription: `הוראת קבע - ${params.description}`,
+      VATIncluded: true,
+    });
+
+    if (response.Data?.RedirectURL) {
+      return { success: true, paymentUrl: response.Data.RedirectURL };
+    }
+
+    return {
+      success: false,
+      error: response.UserErrorMessage || "Failed to create recurring payment link",
+    };
+  } catch (e) {
+    console.error("Sumit createRecurringPaymentLink error:", e);
+    return { success: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+/**
  * Store a payment method (tokenize card) for future recurring charges.
  */
 export async function setPaymentMethodForCustomer(params: {

@@ -113,9 +113,7 @@ export default function Sidebar({
   const pipelineNav = isGTM ? gtmNav : fbmNav;
 
   const toolsNav: NavItem[] = isGTM
-    ? [
-        { href: "/settings", label: "הגדרות", icon: Settings },
-      ]
+    ? [] // No tools for GTM — settings hidden until registration
     : [
         { href: "#expert", label: "מומחה FBM", icon: BotMessageSquare, badge: "●", isExpert: true },
         { href: "#suggest", label: "הצעה לייעול", icon: Lightbulb, isSuggest: true },
@@ -276,15 +274,17 @@ export default function Sidebar({
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto sidebar-scroll px-3 py-4 space-y-6">
-        {/* Main section */}
-        <div>
-          <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>
-            ראשי
-          </p>
-          <div className="space-y-1">{mainNav.map(renderNavItem)}</div>
-        </div>
+        {/* Main section — hidden for GTM track (only shown after registration) */}
+        {!isGTM && (
+          <div>
+            <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>
+              ראשי
+            </p>
+            <div className="space-y-1">{mainNav.map(renderNavItem)}</div>
+          </div>
+        )}
 
-        {pipelineNav.length > 0 && (
+        {pipelineNav.length > 0 && !isGTM && (
           <div className="mx-1 h-px" style={{ background: "linear-gradient(to left, transparent, #2A2D3A, transparent)" }} />
         )}
 
@@ -317,12 +317,14 @@ export default function Sidebar({
         )}
 
         {/* Tools section */}
-        <div>
-          <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>
-            כלים
-          </p>
-          <div className="space-y-1">{toolsNav.map(renderNavItem)}</div>
-        </div>
+        {toolsNav.length > 0 && (
+          <div>
+            <p className="px-3 mb-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "#9DA3B4" }}>
+              כלים
+            </p>
+            <div className="space-y-1">{toolsNav.map(renderNavItem)}</div>
+          </div>
+        )}
 
         {/* Admin section */}
         {adminNav.length > 0 && (

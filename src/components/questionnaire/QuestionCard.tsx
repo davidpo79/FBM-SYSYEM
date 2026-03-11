@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Question } from "@/lib/questions";
 
 interface QuestionCardProps {
@@ -8,6 +8,7 @@ interface QuestionCardProps {
   error?: string;
   track?: "fbm" | "gtm";
   ideaName?: string;
+  allAnswers?: Record<string, string>;
 }
 
 export default function QuestionCard({
@@ -17,10 +18,12 @@ export default function QuestionCard({
   error,
   track,
   ideaName,
+  allAnswers,
 }: QuestionCardProps) {
   const isGtm = track === "gtm";
   const [magicFillAvailable, setMagicFillAvailable] = useState(false);
   const [magicData, setMagicData] = useState<Record<string, string> | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Check if ideator data is available for magic fill
   useEffect(() => {
@@ -45,6 +48,31 @@ export default function QuestionCard({
     onChange(magicData[question.id]);
   };
 
+  const handleAiSuggest = useCallback(async () => {
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/suggest-gtm-answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questionId: question.id,
+          questionTitle: question.title,
+          questionText: question.text,
+          ideaName: ideaName || "",
+          existingAnswers: allAnswers || {},
+        }),
+      });
+      const json = await res.json();
+      if (json.answer) {
+        onChange(json.answer);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setAiLoading(false);
+    }
+  }, [question.id, question.title, question.text, ideaName, allAnswers, onChange]);
+
   const canMagicFill = isGtm && magicFillAvailable && magicData?.[question.id] && (!value || value.length < 5);
 
   return (
@@ -57,7 +85,7 @@ export default function QuestionCard({
     >
       {/* Section badge */}
       <span
-        className={`inline-block text-xs font-semibold px-3 py-1 rounded-full mb-4 ${
+        className={`inline-block text-sm font-semibold px-3 py-1 rounded-full mb-4 ${
           isGtm ? "text-[#00FF88] bg-[rgba(0,255,136,0.1)]" : "text-[var(--gold)] bg-[var(--gold-soft)]"
         }`}
       >
@@ -118,6 +146,38 @@ export default function QuestionCard({
         >
           <span>✨</span>
           השתמש בניתוח ה-AI מהרעיון שלי
+        </button>
+      )}
+
+      {/* AI Answer Suggestion Button */}
+      {isGtm && (
+        <button
+          type="button"
+          onClick={handleAiSuggest}
+          disabled={aiLoading}
+          className="mb-4 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer w-full sm:w-auto"
+          style={{
+            background: aiLoading ? "rgba(59,130,246,0.15)" : "linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.12))",
+            border: "1px solid rgba(59,130,246,0.3)",
+            color: aiLoading ? "#6B7FA3" : "#60A5FA",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            opacity: aiLoading ? 0.7 : 1,
+          }}
+        >
+          {aiLoading ? (
+            <>
+              <span className="gtm-skeleton" style={{ width: 16, height: 16, borderRadius: "50%", display: "inline-block" }} />
+              <span>...AI מייצר תשובה</span>
+            </>
+          ) : (
+            <>
+              <span>🤖</span>
+              <span>לחץ לתשובה מוכנה מה-AI</span>
+            </>
+          )}
         </button>
       )}
 
