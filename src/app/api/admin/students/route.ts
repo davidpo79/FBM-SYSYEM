@@ -109,6 +109,8 @@ export async function GET(req: NextRequest) {
         null;
       const nicheDisplay = typeof userNiche === "string" ? userNiche : "";
 
+      const profile = profileMap[user.id];
+
       // Determine user track: GTM, FBM, or both
       const hasGtmProject = userProjects.some((p) => (p as Record<string, unknown>).track === "gtm");
       const hasFbmProject = userProjects.some((p) => !(p as Record<string, unknown>).track || (p as Record<string, unknown>).track === "fbm");
@@ -116,8 +118,6 @@ export async function GET(req: NextRequest) {
       const userTrack: "gtm" | "fbm" | "both" =
         (hasGtmProject || isGtmPlan) && hasFbmProject ? "both" :
         (hasGtmProject || isGtmPlan) ? "gtm" : "fbm";
-
-      const profile = profileMap[user.id];
 
       // Calculate trial days left
       let trialDaysLeft: number | null = null;
