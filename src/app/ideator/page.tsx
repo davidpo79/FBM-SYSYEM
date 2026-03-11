@@ -241,24 +241,28 @@ export default function IdeatorPage() {
                   {cat.label}
                 </button>
               ))}
+            </div>
 
-              {/* Custom category tile */}
+            {/* Custom category tile — centered, separated */}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
               <button
                 onClick={() => setCategory("custom")}
                 style={{
-                  padding: 16,
+                  padding: "14px 32px",
                   borderRadius: 12,
-                  border: `1.5px solid ${category === "custom" ? "#00FF88" : "#1E2D45"}`,
+                  border: `1.5px dashed ${category === "custom" ? "#00FF88" : "#1E2D45"}`,
                   background: category === "custom" ? "rgba(0,255,136,0.08)" : "#161D2B",
-                  color: category === "custom" ? "#00FF88" : "#F0F6FF",
+                  color: category === "custom" ? "#00FF88" : "#6B7FA3",
                   cursor: "pointer",
                   transition: "all 0.2s",
-                  textAlign: "right",
                   fontSize: 14,
                   fontWeight: 500,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
                 }}
               >
-                <span style={{ fontSize: 24, display: "block", marginBottom: 6 }}>✏️</span>
+                <span style={{ fontSize: 20 }}>✏️</span>
                 קטגוריה מותאמת אישית
               </button>
             </div>
