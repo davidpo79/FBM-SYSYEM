@@ -582,6 +582,12 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 8px;
 }
 
+/* ── GTM Terminal line appear animation ── */
+@keyframes gtm-line-appear {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ── GTM Page Container — smooth transitions ── */
 .gtm-page-container {
   animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;

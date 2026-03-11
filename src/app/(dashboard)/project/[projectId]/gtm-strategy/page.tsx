@@ -124,6 +124,139 @@ interface GanttTimeline {
 
 type StrategyStage = "core" | "validation" | "marketing";
 
+/* ──── Code Terminal Loading Animation ──── */
+const CODE_LINES = [
+  { text: "$ gtm init --strategy=full", color: "#00FF88", delay: 0 },
+  { text: "  Loading market intelligence...", color: "#6B7FA3", delay: 400 },
+  { text: "  ✓ ICP profile generated", color: "#3B82F6", delay: 1200 },
+  { text: "  ✓ Positioning framework ready", color: "#3B82F6", delay: 2000 },
+  { text: "$ gtm analyze --validation", color: "#00FF88", delay: 3000 },
+  { text: "  Running competitive analysis...", color: "#6B7FA3", delay: 3400 },
+  { text: "  ✓ Market gaps identified", color: "#3B82F6", delay: 4200 },
+  { text: "  ✓ Validation experiments designed", color: "#3B82F6", delay: 5000 },
+  { text: "$ gtm build --funnel --channels", color: "#00FF88", delay: 5800 },
+  { text: "  Mapping acquisition channels...", color: "#6B7FA3", delay: 6200 },
+  { text: "  ✓ Funnel architecture complete", color: "#3B82F6", delay: 7000 },
+  { text: "  ✓ Paid strategy optimized", color: "#3B82F6", delay: 7800 },
+  { text: "$ gtm compile --output=strategy.json", color: "#00FF88", delay: 8600 },
+  { text: "  Building 90-day execution plan...", color: "#6B7FA3", delay: 9000 },
+  { text: "  ⟳ Compiling final strategy document...", color: "#FF6B35", delay: 10000 },
+];
+
+function GTMLoadingAnimation() {
+  const [visibleLines, setVisibleLines] = useState(0);
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    // Reveal lines one by one
+    const timers = CODE_LINES.map((line, i) =>
+      setTimeout(() => setVisibleLines(i + 1), line.delay)
+    );
+    // Cursor blink
+    const cursorInterval = setInterval(() => setCursorVisible((v) => !v), 530);
+    // Progress bar
+    const progressInterval = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 95) return 95; // cap at 95 until real completion
+        return p + Math.random() * 3 + 0.5;
+      });
+    }, 400);
+
+    return () => {
+      timers.forEach(clearTimeout);
+      clearInterval(cursorInterval);
+      clearInterval(progressInterval);
+    };
+  }, []);
+
+  return (
+    <div style={{ padding: "40px 0", direction: "ltr" }}>
+      {/* Terminal window */}
+      <div style={{
+        background: "#0A0E17",
+        border: "1px solid #1E2D45",
+        borderRadius: 16,
+        overflow: "hidden",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+      }}>
+        {/* Terminal header bar */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "12px 16px",
+          background: "#111827",
+          borderBottom: "1px solid #1E2D45",
+        }}>
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#EF4444" }} />
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#F59E0B" }} />
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#22C55E" }} />
+          <span style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 12, marginRight: 12 }}>
+            gtm-strategy-engine v2.0
+          </span>
+        </div>
+
+        {/* Terminal body */}
+        <div style={{ padding: "20px 24px", minHeight: 340, fontFamily: "monospace", fontSize: 13, lineHeight: 2 }}>
+          {CODE_LINES.slice(0, visibleLines).map((line, i) => (
+            <div key={i} style={{
+              color: line.color,
+              opacity: 0,
+              animation: "gtm-line-appear 0.3s ease forwards",
+            }}>
+              {line.text}
+            </div>
+          ))}
+          {/* Blinking cursor */}
+          <span style={{
+            color: "#00FF88",
+            opacity: cursorVisible ? 1 : 0,
+            transition: "opacity 0.1s",
+          }}>
+            ▋
+          </span>
+        </div>
+
+        {/* Progress bar at bottom */}
+        <div style={{ padding: "0 24px 16px" }}>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 6,
+          }}>
+            <span style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11 }}>
+              Generating strategy...
+            </span>
+            <span style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11 }}>
+              {Math.round(progress)}%
+            </span>
+          </div>
+          <div style={{ height: 4, background: "#1E2D45", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{
+              height: "100%",
+              width: `${progress}%`,
+              background: "linear-gradient(90deg, #00FF88, #3B82F6)",
+              borderRadius: 2,
+              transition: "width 0.4s ease",
+            }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Hebrew status below terminal */}
+      <div dir="rtl" style={{ textAlign: "center", marginTop: 24 }}>
+        <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 15, fontWeight: 600 }}>
+          מייצר אסטרטגיית GTM...
+        </p>
+        <p style={{ color: "#6B7FA3", fontSize: 13, marginTop: 6 }}>
+          מנתח את המוצר, השוק והיעדים שלך
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function GTMStrategyPage() {
   const { project } = useProject();
   const [strategy, setStrategy] = useState<GTMStrategy | null>(null);
@@ -150,6 +283,16 @@ export default function GTMStrategyPage() {
   const [ganttTimeline, setGanttTimeline] = useState<GanttTimeline | null>(null);
   const [ganttGenerating, setGanttGenerating] = useState(false);
   const [ganttConfirmed, setGanttConfirmed] = useState(false);
+
+  const stageNavRef = useRef<HTMLDivElement>(null);
+
+  const switchStage = (stage: StrategyStage) => {
+    setCurrentStage(stage);
+    // Scroll to top of stage navigation
+    setTimeout(() => {
+      stageNavRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
 
   // Check if already purchased
   useEffect(() => {
@@ -377,52 +520,9 @@ export default function GTMStrategyPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project]);
 
-  /* ──── Skeleton Shimmer Loading UI ──── */
+  /* ──── Code Terminal Loading Animation ──── */
   if (isGenerating) {
-    return (
-      <div style={{ padding: "40px 0", direction: "rtl" }}>
-        {/* Skeleton Header */}
-        <div style={{
-          background: "#161D2B",
-          border: "1px solid #1E2D45",
-          borderRadius: 24,
-          padding: 24,
-          marginBottom: 24,
-          overflow: "hidden",
-        }}>
-          <div className="gtm-skeleton" style={{ height: 12, width: 120, borderRadius: 6, marginBottom: 12 }} />
-          <div className="gtm-skeleton" style={{ height: 20, width: "90%", borderRadius: 8, marginBottom: 8 }} />
-          <div className="gtm-skeleton" style={{ height: 20, width: "70%", borderRadius: 8 }} />
-        </div>
-        {/* Skeleton Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-          {[1, 2, 3].map(i => (
-            <div key={i} className="gtm-skeleton" style={{ flex: 1, height: 44, borderRadius: 12 }} />
-          ))}
-        </div>
-        {/* Skeleton Cards */}
-        {[1, 2].map(i => (
-          <div key={i} style={{
-            background: "#161D2B",
-            border: "1px solid #1E2D45",
-            borderRadius: 24,
-            padding: 24,
-            marginBottom: 16,
-          }}>
-            <div className="gtm-skeleton" style={{ height: 12, width: 100, borderRadius: 6, marginBottom: 16 }} />
-            <div className="gtm-skeleton" style={{ height: 18, width: "80%", borderRadius: 8, marginBottom: 10 }} />
-            <div className="gtm-skeleton" style={{ height: 14, width: "60%", borderRadius: 6, marginBottom: 8 }} />
-            <div className="gtm-skeleton" style={{ height: 14, width: "75%", borderRadius: 6 }} />
-          </div>
-        ))}
-        <p dir="rtl" style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 14, fontWeight: 600, textAlign: "center", marginTop: 24 }}>
-          מייצר אסטרטגיית GTM...
-        </p>
-        <p dir="rtl" style={{ color: "#6B7FA3", fontSize: 13, textAlign: "center", marginTop: 8 }}>
-          מנתח את המוצר, השוק והיעדים שלך
-        </p>
-      </div>
-    );
+    return <GTMLoadingAnimation />;
   }
 
   if (error) {
@@ -530,7 +630,7 @@ export default function GTMStrategyPage() {
       )}
 
       {/* Interactive Stage Navigation */}
-      <div className="gtm-stage-nav">
+      <div className="gtm-stage-nav" ref={stageNavRef}>
         {[
           { key: "core" as const, label: "קהל יעד ומיצוב", icon: "\uD83C\uDFAF" },
           { key: "validation" as const, label: "ולידציה ומשפך", icon: "\uD83E\uDDEA" },
@@ -538,7 +638,7 @@ export default function GTMStrategyPage() {
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setCurrentStage(tab.key)}
+            onClick={() => switchStage(tab.key)}
             className={`gtm-stage-tab ${currentStage === tab.key ? "active" : ""}`}
           >
             <span style={{ fontSize: 16 }}>{tab.icon}</span>
@@ -651,7 +751,7 @@ export default function GTMStrategyPage() {
             <div>
               <ICPTab strategy={strategy} />
               <div style={{ textAlign: "center", marginTop: 32 }}>
-                <button onClick={() => setCurrentStage("validation")} className="gtm-btn-primary gtm-btn-scale">
+                <button onClick={() => switchStage("validation")} className="gtm-btn-primary gtm-btn-scale">
                   הבא: תוכנית ולידציה (אימות הרעיון) &#10132;
                 </button>
               </div>
@@ -664,7 +764,7 @@ export default function GTMStrategyPage() {
               <ValidationTab strategy={strategy} />
               <FunnelTab strategy={strategy} />
               <div style={{ textAlign: "center", marginTop: 32 }}>
-                <button onClick={() => setCurrentStage("marketing")} className="gtm-btn-primary gtm-btn-scale">
+                <button onClick={() => switchStage("marketing")} className="gtm-btn-primary gtm-btn-scale">
                   הבא: אסטרטגיית שיווק ומכירות &#10132;
                 </button>
               </div>
