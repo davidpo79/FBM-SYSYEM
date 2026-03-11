@@ -221,6 +221,79 @@ export default function Paywall({ daysLeft, currentPlan, projectCount }: Paywall
         ))}
       </div>
 
+      {/* GTM motivation section */}
+      <div className="max-w-2xl w-full mt-14 space-y-8">
+        <div className="text-center">
+          <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">
+            למה אסטרטגיית שיווק חשובה עוד לפני שורת קוד אחת?
+          </h3>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            רוב היזמים מתחילים בבניית המוצר — ורק אחר כך שואלים &quot;למי אני מוכר?&quot;.
+            הגישה הזו גורמת לבזבוז חודשים של פיתוח על פיצ&apos;רים שאף אחד לא צריך.
+          </p>
+        </div>
+
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            background: "rgba(255,255,255,0.6)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid var(--card-border)",
+          }}
+        >
+          <div className="flex items-start gap-3 mb-4">
+            <span className="text-2xl flex-shrink-0">🎯</span>
+            <div>
+              <h4 className="text-sm font-bold text-[var(--text-primary)] mb-1">
+                קודם הלקוח, אחר כך המוצר
+              </h4>
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                אסטרטגיית שיווק אמיתית מתחילה בהבנה עמוקה של מי הלקוח שלך — מה הכאב שלו, איפה הוא נמצא, ומה גורם לו לשלוף כרטיס אשראי. רק אחרי שזה ברור, מתאימים את המוצר ללקוח — ולא הפוך.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 mb-4">
+            <span className="text-2xl flex-shrink-0">🚀</span>
+            <div>
+              <h4 className="text-sm font-bold text-[var(--text-primary)] mb-1">
+                GTM זה לא רק באזוורד — זה ההבדל בין הצלחה לכישלון
+              </h4>
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                Go-To-Market היא התוכנית שלך להגיע ללקוח הנכון, עם המסר הנכון, בערוץ הנכון, ובתזמון הנכון. בלי GTM ברור, גם המוצר הכי טוב בעולם יישאר סוד ששמרת לעצמך.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0">💡</span>
+            <div>
+              <h4 className="text-sm font-bold text-[var(--text-primary)] mb-1">
+                FBM עוזר לך לבנות את זה — צעד אחר צעד
+              </h4>
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                במקום לנחש, המערכת מנחה אותך לזהות קהל יעד, לבנות מסרים שיווקיים שמדברים אליו, וליצור תסריטי פרסום שעובדים. ככה חוסכים זמן, כסף, וטעויות יקרות.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="text-center rounded-2xl p-5"
+          style={{
+            background: "linear-gradient(135deg, rgba(212,168,67,0.06) 0%, rgba(212,168,67,0.02) 100%)",
+            border: "1px solid rgba(212,168,67,0.2)",
+          }}
+        >
+          <p className="text-sm font-bold text-[var(--text-primary)] mb-1">
+            ⚡ 90% מהסטארטאפים נכשלים בגלל חוסר התאמה לשוק
+          </p>
+          <p className="text-xs text-[var(--text-secondary)]">
+            אל תהיה חלק מהסטטיסטיקה. תתחיל עם אסטרטגיה — המוצר יבוא אחר כך.
+          </p>
+        </div>
+      </div>
+
       {/* Consulting section */}
       <div className="text-center mt-10 max-w-md w-full">
         <div className="mx-4 h-px mb-6" style={{ background: "linear-gradient(to left, transparent, var(--card-border), transparent)" }} />
