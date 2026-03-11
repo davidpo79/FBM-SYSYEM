@@ -54,6 +54,30 @@ export default function IdeatorPage() {
   const [error, setError] = useState("");
   const [buildStep, setBuildStep] = useState(0);
   const [showModal, setShowModal] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  const toggleExpand = (idx: number) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const cardAccents = [
+    "linear-gradient(90deg, #00FF88, #00CC6A)",
+    "linear-gradient(90deg, #FF6B35, #FF8F6B)",
+    "linear-gradient(90deg, #00D4FF, #0099CC)",
+  ];
 
   const buildSteps = [
     "סורק מגמות שוק...",
@@ -416,207 +440,294 @@ export default function IdeatorPage() {
         {/* ── RESULTS ── */}
         {stage === "results" && (
           <>
-            <div style={{ textAlign: "center", marginBottom: 40 }}>
-              <h2 style={{ fontSize: 30, fontWeight: 700, marginBottom: 8 }}>
+            <div style={{ textAlign: "center", marginBottom: 56, animation: "fadeInUp 0.6s both" }}>
+              <h2 style={{ fontSize: 36, fontWeight: 800, marginBottom: 10, letterSpacing: "-0.02em" }}>
                 <span style={{ color: "#00FF88" }}>3 שרטוטי SaaS</span> מוכנים
               </h2>
-              <p style={{ color: "#6B7FA3", fontSize: 14 }}>
+              <p style={{ color: "#64748B", fontSize: 15, maxWidth: 500, margin: "0 auto" }}>
                 כל רעיון אומת עבור התאמה לשוק, יכולת בנייה, ופוטנציאל הכנסות.
               </p>
-              <p style={{ fontSize: 12, color: "#3D4F6F", fontFamily: "monospace", marginTop: 4 }}>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12,
+                padding: "6px 16px", borderRadius: 20,
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
+                fontSize: 12, fontFamily: "monospace", color: "#64748B",
+              }}>
                 {market === "israel" ? "🇮🇱 שוק ישראלי" : "🌍 שוק בינלאומי"}
-              </p>
+              </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
               {ideas.map((idea, idx) => {
                 const dc = difficultyColor(idea.difficulty);
+                const isExpanded = expandedCards.has(idx);
                 return (
                   <div
                     key={idx}
                     style={{
-                      background: "#161D2B",
-                      border: "1px solid #1E2D45",
-                      borderRadius: 16,
-                      padding: 28,
+                      background: "rgba(22, 29, 43, 0.55)",
+                      backdropFilter: "blur(24px) saturate(1.3)",
+                      WebkitBackdropFilter: "blur(24px) saturate(1.3)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: 20,
                       position: "relative",
                       overflow: "hidden",
-                      animation: `fadeInUp 0.5s ${idx * 0.15}s both`,
+                      animation: `fadeInUp 0.6s ${idx * 0.2}s both`,
+                      boxShadow: "0 4px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.03)",
+                      transition: "transform 0.3s ease, box-shadow 0.3s ease",
                     }}
                   >
-                    {/* Glow accent */}
-                    <div style={{ position: "absolute", top: 0, right: 0, width: 160, height: 160, pointerEvents: "none", background: "radial-gradient(circle at top right, rgba(0,255,136,0.06), transparent 70%)" }} />
+                    {/* ── Top Glow Bar (card identity color) ── */}
+                    <div style={{
+                      position: "absolute", top: 0, right: 0, left: 0, height: 2,
+                      background: cardAccents[idx % 3], opacity: 0.8,
+                    }} />
 
-                    {/* Header */}
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 16 }}>
+                    {/* ── Zone A: Hero Header ── */}
+                    <div style={{
+                      padding: isMobile ? "24px 20px 20px" : "32px 32px 24px",
+                      display: "grid",
+                      gridTemplateColumns: isMobile ? "1fr" : "1fr auto",
+                      gap: 20, alignItems: "start",
+                    }}>
                       <div>
-                        <span style={{ fontSize: 10, fontFamily: "monospace", color: "#3D4F6F", display: "block", marginBottom: 4 }}>
-                          שרטוט #{idx + 1}
-                        </span>
-                        <h3 style={{ fontSize: 20, fontWeight: 700, color: "#F0F6FF", direction: "ltr", textAlign: "right" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                          <span style={{ fontSize: 11, fontFamily: "monospace", color: "#334155", letterSpacing: "0.05em" }}>
+                            IDEA #{idx + 1}
+                          </span>
+                          <span style={{
+                            fontSize: 11, fontFamily: "monospace", fontWeight: 600,
+                            padding: "2px 8px", borderRadius: 4, background: dc.bg, color: dc.color,
+                          }}>
+                            {difficultyLabel(idea.difficulty)}
+                          </span>
+                        </div>
+                        <h3 style={{
+                          fontSize: 26, fontWeight: 800, color: "#F1F5F9",
+                          direction: "ltr", textAlign: "right",
+                          letterSpacing: "-0.01em", lineHeight: 1.2, marginBottom: 8,
+                        }}>
                           {idea.name}
                         </h3>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontFamily: "monospace",
-                            fontWeight: 600,
-                            padding: "4px 10px",
-                            borderRadius: 6,
-                            background: dc.bg,
-                            color: dc.color,
-                          }}
-                        >
-                          {difficultyLabel(idea.difficulty)}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 12,
-                            fontFamily: "monospace",
-                            padding: "4px 12px",
-                            borderRadius: 20,
-                            background: "rgba(0,255,136,0.1)",
-                            border: "1px solid rgba(0,255,136,0.2)",
-                            color: "#00FF88",
-                          }}
-                        >
-                          Micro-SaaS
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Tagline */}
-                    <p style={{ color: "#FF6B35", fontSize: 15, fontWeight: 600, lineHeight: 1.6, marginBottom: 20 }}>
-                      {idea.tagline}
-                    </p>
-
-                    {/* Info Row: Target Audience + Market Size — dark boxes */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-                      <div style={{ background: "#0D1117", borderRadius: 12, padding: 16, border: "1px solid #1E2D45" }}>
-                        <p style={{ fontSize: 10, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 4 }}>קהל יעד</p>
-                        <p style={{ fontSize: 14, color: "#F0F6FF", fontWeight: 600 }}>{idea.target_audience}</p>
-                      </div>
-                      <div style={{ background: "#0D1117", borderRadius: 12, padding: 16, border: "1px solid #1E2D45" }}>
-                        <p style={{ fontSize: 10, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 4 }}>גודל שוק</p>
-                        <p style={{ fontSize: 14, color: "#F0F6FF", fontWeight: 600 }}>{idea.market_size}</p>
-                      </div>
-                    </div>
-
-                    {/* Problem + Solution — dark boxes */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-                      <div style={{ background: "#0D1117", borderRadius: 12, padding: 16, border: "1px solid #1E2D45" }}>
-                        <p style={{ fontSize: 10, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 4 }}>הבעיה</p>
-                        <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.5 }}>{idea.problem}</p>
-                      </div>
-                      <div style={{ background: "#0D1117", borderRadius: 12, padding: 16, border: "1px solid #1E2D45" }}>
-                        <p style={{ fontSize: 10, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 4 }}>הפתרון</p>
-                        <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.5 }}>{idea.solution}</p>
-                      </div>
-                    </div>
-
-                    {/* Monetization + Competitive Edge — dark boxes */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-                      <div style={{ background: "rgba(8,10,15,0.6)", borderRadius: 12, padding: 16, border: "1px solid rgba(30,45,69,0.5)" }}>
-                        <p style={{ fontSize: 10, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 4 }}>מונטיזציה</p>
-                        <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.5 }}>{idea.monetization}</p>
-                      </div>
-                      <div style={{ background: "rgba(8,10,15,0.6)", borderRadius: 12, padding: 16, border: "1px solid rgba(30,45,69,0.5)" }}>
-                        <p style={{ fontSize: 10, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 4 }}>יתרון תחרותי</p>
-                        <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.5 }}>{idea.competitive_edge}</p>
-                      </div>
-                    </div>
-
-                    {/* API Tags — Neon glow style */}
-                    {idea.apis_used && idea.apis_used.length > 0 && (
-                      <div style={{ marginBottom: 20 }}>
-                        <p style={{ fontSize: 10, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 8 }}>טכנולוגיות API בשימוש</p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10, direction: "ltr" }}>
-                          {idea.apis_used.map((api, j) => (
-                            <span
-                              key={j}
-                              style={{
-                                fontSize: 11,
-                                fontFamily: "monospace",
-                                padding: "4px 10px",
-                                borderRadius: 6,
-                                background: "rgba(0,255,136,0.08)",
-                                border: "1px solid rgba(0,255,136,0.25)",
-                                color: "#00FF88",
-                                boxShadow: "0 0 6px rgba(0,255,136,0.1)",
-                              }}
-                            >
-                              {api}
-                            </span>
-                          ))}
-                        </div>
-                        <p style={{ fontSize: 13, color: "#B0BEC5", lineHeight: 1.6 }}>
-                          {idea.api_explanation}
+                        <p style={{ color: "#FF6B35", fontSize: 16, fontWeight: 500, lineHeight: 1.6, maxWidth: 500 }}>
+                          {idea.tagline}
                         </p>
                       </div>
-                    )}
 
-                    {/* MVP Scope */}
-                    {idea.mvp_scope && idea.mvp_scope.length > 0 && (
-                      <div style={{ marginBottom: 20 }}>
-                        <p style={{ fontSize: 10, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 8 }}>היקף MVP</p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                          {idea.mvp_scope.map((item, i) => (
-                            <span
-                              key={i}
-                              style={{
-                                fontSize: 12,
-                                padding: "4px 10px",
-                                borderRadius: 6,
-                                background: "rgba(0,255,136,0.08)",
-                                border: "1px solid rgba(0,255,136,0.2)",
-                                color: "#00FF88",
-                              }}
-                            >
-                              {item}
-                            </span>
-                          ))}
-                        </div>
+                      {/* Market Size Hero Metric */}
+                      <div style={{
+                        textAlign: "center", padding: "16px 20px", borderRadius: 16,
+                        background: "rgba(0,255,136,0.04)", border: "1px solid rgba(0,255,136,0.1)",
+                        minWidth: isMobile ? "auto" : 140,
+                      }}>
+                        <p style={{
+                          fontSize: 10, fontFamily: "monospace", color: "#64748B",
+                          marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase",
+                        }}>גודל שוק</p>
+                        <p style={{
+                          fontSize: 15, fontWeight: 800, color: "#00FF88",
+                          direction: "ltr", fontFamily: "monospace", lineHeight: 1.4,
+                        }}>{idea.market_size}</p>
                       </div>
-                    )}
+                    </div>
 
-                    {/* CTA Button — outline style */}
+                    {/* ── Divider ── */}
+                    <div style={{
+                      height: 1, margin: "0 32px",
+                      background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)",
+                    }} />
+
+                    {/* ── Zone B: Bento Grid ── */}
+                    <div style={{
+                      padding: isMobile ? "20px 20px" : "24px 32px",
+                      display: "grid",
+                      gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr",
+                      gridTemplateRows: "auto auto",
+                      gap: 12,
+                    }}>
+                      {/* Problem — large cell */}
+                      <div style={{
+                        background: "rgba(8,10,15,0.5)", borderRadius: 14,
+                        padding: "18px 20px", border: "1px solid rgba(239,68,68,0.08)",
+                      }}>
+                        <p style={{
+                          fontSize: 10, fontFamily: "monospace", color: "#EF4444",
+                          marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase",
+                        }}>הבעיה</p>
+                        <p style={{ fontSize: 14, color: "#B0BEC5", lineHeight: 1.7 }}>{idea.problem}</p>
+                      </div>
+
+                      {/* Target Audience — narrow right */}
+                      <div style={{
+                        background: "rgba(167,139,250,0.04)", borderRadius: 14,
+                        padding: "18px 20px", border: "1px solid rgba(167,139,250,0.1)",
+                      }}>
+                        <p style={{
+                          fontSize: 10, fontFamily: "monospace", color: "#A78BFA",
+                          marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase",
+                        }}>קהל יעד</p>
+                        <p style={{ fontSize: 14, color: "#F1F5F9", fontWeight: 600, lineHeight: 1.5 }}>{idea.target_audience}</p>
+                      </div>
+
+                      {/* Solution — large cell */}
+                      <div style={{
+                        background: "rgba(0,255,136,0.03)", borderRadius: 14,
+                        padding: "18px 20px", border: "1px solid rgba(0,255,136,0.06)",
+                      }}>
+                        <p style={{
+                          fontSize: 10, fontFamily: "monospace", color: "#00FF88",
+                          marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase",
+                        }}>הפתרון</p>
+                        <p style={{ fontSize: 14, color: "#B0BEC5", lineHeight: 1.7 }}>{idea.solution}</p>
+                      </div>
+
+                      {/* Monetization — narrow right */}
+                      <div style={{
+                        background: "rgba(255,107,53,0.04)", borderRadius: 14,
+                        padding: "18px 20px", border: "1px solid rgba(255,107,53,0.1)",
+                      }}>
+                        <p style={{
+                          fontSize: 10, fontFamily: "monospace", color: "#FF6B35",
+                          marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase",
+                        }}>מונטיזציה</p>
+                        <p style={{ fontSize: 14, color: "#F1F5F9", fontWeight: 500, lineHeight: 1.5 }}>{idea.monetization}</p>
+                      </div>
+                    </div>
+
+                    {/* ── Zone C: Competitive Edge Bar ── */}
+                    <div style={{
+                      margin: isMobile ? "0 20px 20px" : "0 32px 20px",
+                      padding: "14px 20px", borderRadius: 12,
+                      background: "linear-gradient(135deg, rgba(0,255,136,0.04), rgba(0,212,255,0.04))",
+                      border: "1px solid rgba(0,255,136,0.08)",
+                      display: "flex", alignItems: "flex-start", gap: 10,
+                    }}>
+                      <span style={{ fontSize: 16, flexShrink: 0, marginTop: 2 }}>⚡</span>
+                      <div>
+                        <p style={{
+                          fontSize: 10, fontFamily: "monospace", color: "#00D4FF",
+                          marginBottom: 4, letterSpacing: "0.05em", textTransform: "uppercase",
+                        }}>יתרון תחרותי</p>
+                        <p style={{ fontSize: 14, color: "#F1F5F9", lineHeight: 1.6, fontWeight: 500 }}>
+                          {idea.competitive_edge}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* ── Zone D: Expandable Toggle ── */}
                     <button
-                      onClick={() => handleActivateIdea(idea)}
+                      onClick={() => toggleExpand(idx)}
                       style={{
-                        width: "100%",
-                        padding: "12px",
-                        borderRadius: 12,
-                        border: "1.5px solid rgba(0,255,136,0.3)",
-                        background: "linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,255,136,0.05))",
-                        color: "#00FF88",
-                        fontSize: 14,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        transition: "all 0.2s",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                        width: "100%", padding: "12px",
+                        background: "transparent", border: "none",
+                        borderTop: "1px solid rgba(255,255,255,0.04)",
+                        color: "#64748B", fontSize: 12, fontFamily: "monospace",
+                        cursor: "pointer", transition: "color 0.2s",
                       }}
                     >
-                      🚀 הוצא את הרעיון לפועל
+                      <span style={{
+                        transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                        transition: "transform 0.3s ease", display: "inline-block",
+                      }}>▼</span>
+                      {isExpanded ? "הסתר פרטים טכניים" : "פרטים טכניים ו-MVP"}
                     </button>
+
+                    {/* ── Expandable Content ── */}
+                    <div style={{
+                      maxHeight: isExpanded ? 500 : 0,
+                      overflow: "hidden",
+                      transition: "max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                    }}>
+                      <div style={{ padding: isMobile ? "0 20px 20px" : "0 32px 20px" }}>
+                        {/* API Tags — Cyan theme */}
+                        {idea.apis_used && idea.apis_used.length > 0 && (
+                          <div style={{ marginBottom: 16, marginTop: 8 }}>
+                            <p style={{
+                              fontSize: 10, fontFamily: "monospace", color: "#00D4FF",
+                              marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase",
+                            }}>APIs</p>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, direction: "ltr", marginBottom: 10 }}>
+                              {idea.apis_used.map((api, j) => (
+                                <span key={j} style={{
+                                  fontSize: 11, fontFamily: "monospace", padding: "4px 10px",
+                                  borderRadius: 6, background: "rgba(0,212,255,0.08)",
+                                  border: "1px solid rgba(0,212,255,0.2)", color: "#00D4FF",
+                                }}>
+                                  {api}
+                                </span>
+                              ))}
+                            </div>
+                            <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6 }}>
+                              {idea.api_explanation}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* MVP Scope — bullet list */}
+                        {idea.mvp_scope && idea.mvp_scope.length > 0 && (
+                          <div>
+                            <p style={{
+                              fontSize: 10, fontFamily: "monospace", color: "#A78BFA",
+                              marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase",
+                            }}>היקף MVP</p>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                              {idea.mvp_scope.map((item, i) => (
+                                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#B0BEC5" }}>
+                                  <span style={{
+                                    width: 6, height: 6, borderRadius: "50%",
+                                    background: "#A78BFA", flexShrink: 0,
+                                  }} />
+                                  {item}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ── Zone E: CTA Button ── */}
+                    <div style={{ padding: isMobile ? "0 20px 24px" : "0 32px 28px" }}>
+                      <button
+                        onClick={() => handleActivateIdea(idea)}
+                        style={{
+                          width: "100%", padding: "14px", borderRadius: 14,
+                          border: "none",
+                          background: "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)",
+                          color: "#080A0F", fontSize: 15, fontWeight: 700,
+                          cursor: "pointer", transition: "all 0.25s ease",
+                          boxShadow: "0 4px 20px rgba(0,255,136,0.25)",
+                          letterSpacing: "-0.01em",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = "0 6px 28px rgba(0,255,136,0.4)";
+                          e.currentTarget.style.transform = "translateY(-1px)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,255,136,0.25)";
+                          e.currentTarget.style.transform = "translateY(0)";
+                        }}
+                      >
+                        הוצא את הרעיון לפועל
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
 
             {/* Try again */}
-            <div style={{ textAlign: "center", marginTop: 32 }}>
+            <div style={{ textAlign: "center", marginTop: 40 }}>
               <button
-                onClick={() => { setStage("select"); setIdeas([]); }}
+                onClick={() => { setStage("select"); setIdeas([]); setExpandedCards(new Set()); }}
                 style={{
-                  background: "transparent",
-                  border: "1px solid #1E2D45",
-                  color: "#6B7FA3",
-                  padding: "10px 24px",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontFamily: "monospace",
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  color: "#64748B", padding: "10px 28px",
+                  borderRadius: 10, cursor: "pointer",
+                  fontSize: 13, fontFamily: "monospace",
+                  transition: "all 0.2s",
                 }}
               >
                 נסה שילוב אחר
@@ -717,29 +828,3 @@ export default function IdeatorPage() {
   );
 }
 
-/* ── Reusable section component ── */
-function Section({ title, text, highlight }: { title: string; text: string; highlight?: boolean }) {
-  return (
-    <div
-      style={{
-        padding: 12,
-        borderRadius: 8,
-        background: highlight ? "rgba(0,255,136,0.05)" : "rgba(8,10,15,0.5)",
-        border: `1px solid ${highlight ? "rgba(0,255,136,0.15)" : "rgba(30,45,69,0.5)"}`,
-      }}
-    >
-      <p
-        style={{
-          fontSize: 11,
-          fontFamily: "monospace",
-          color: highlight ? "#00FF88" : "#6B7FA3",
-          marginBottom: 4,
-          textTransform: "uppercase",
-        }}
-      >
-        {title}
-      </p>
-      <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.5 }}>{text}</p>
-    </div>
-  );
-}
