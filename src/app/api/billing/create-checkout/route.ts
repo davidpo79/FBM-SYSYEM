@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { createPaymentLink, createRecurringPaymentLink } from "@/lib/sumit";
+import { createPaymentLink } from "@/lib/sumit";
 import { PLAN_PRICES } from "@/lib/plan-limits";
 
 export async function POST(req: NextRequest) {
@@ -65,15 +65,16 @@ export async function POST(req: NextRequest) {
         creditCardOnly: true,
       });
     } else if (plan === "gtm_pro") {
-      // GTM PRO: recurring standing order (הוראת קבע)
-      result = await createRecurringPaymentLink({
+      // GTM PRO: first month payment via redirect, recurring set up in webhook after payment
+      result = await createPaymentLink({
         customerName,
         customerEmail,
         companyNumber,
-        description: "GTM BOOTCAMP / מנוי חודשי למערכת",
+        description: "GTM BOOTCAMP / מנוי חודשי למערכת — חודש ראשון",
         price,
         redirectUrl,
         webhookUrl,
+        creditCardOnly: true,
       });
     } else {
       // FBM plans: standard one-time
