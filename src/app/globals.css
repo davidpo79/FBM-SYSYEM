@@ -1033,10 +1033,32 @@ input[type="range"]::-moz-range-thumb {
     font-size: 13px;
   }
 
-  /* ── GTM Pricing cards — stack vertically ── */
+  /* ── GTM Pricing grid — side by side on mobile ── */
+  .gtm-pricing-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    max-width: 100% !important;
+  }
   .gtm-pricing-card {
     max-width: 100%;
-    flex: 1 1 100%;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 14px 10px;
+    border-radius: 14px;
+  }
+  .gtm-pricing-card p[style*="fontSize: 36"] {
+    font-size: 24px !important;
+  }
+  .gtm-pricing-card ul {
+    font-size: 12px !important;
+    line-height: 2 !important;
+  }
+  .gtm-pricing-card h4 {
+    font-size: 14px !important;
+  }
+  .gtm-pricing-card button {
+    font-size: 13px !important;
+    padding: 10px 0 !important;
   }
 
   /* ── GTM Bootcamp hero — mobile spacing ── */
