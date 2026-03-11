@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Script from "next/script";
-import Image from "next/image";
 
 const API_BADGES = [
   "Twilio", "Stripe", "OpenAI", "Shopify", "Slack",
@@ -15,7 +14,9 @@ const API_BADGES = [
 interface IdeaResult {
   name: string;
   pitch: string;
-  architecture: string;
+  niche: string;
+  marketSize: string;
+  apisUsed: string[];
   monetization: string;
 }
 
@@ -25,12 +26,13 @@ type Market = "israel" | "international";
 export default function IdeatorPage() {
   const [selectedApis, setSelectedApis] = useState<string[]>([]);
   const [customApi, setCustomApi] = useState("");
-  const [apiSystems, setApiSystems] = useState("");
+  const [niche, setNiche] = useState("");
   const [market, setMarket] = useState<Market>("international");
   const [stage, setStage] = useState<Stage>("select");
   const [ideas, setIdeas] = useState<IdeaResult[]>([]);
   const [error, setError] = useState("");
   const [buildStep, setBuildStep] = useState(0);
+  const [showModal, setShowModal] = useState(false);
 
   const buildSteps = [
     "מחבר צמתים...",
@@ -74,7 +76,11 @@ export default function IdeatorPage() {
       const res = await fetch("/api/public/ideator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apis: selectedApis, market, apiSystems: apiSystems.trim() || undefined }),
+        body: JSON.stringify({
+          apis: selectedApis,
+          market,
+          niche: niche.trim() || undefined,
+        }),
       });
       const data = await res.json();
       clearInterval(interval);
@@ -94,262 +100,204 @@ export default function IdeatorPage() {
     }
   };
 
+  const handleActivateIdea = (idea: IdeaResult) => {
+    try {
+      localStorage.setItem("gtm-ideator-selected", JSON.stringify({
+        name: idea.name,
+        pitch: idea.pitch,
+        niche: idea.niche,
+        apisUsed: idea.apisUsed,
+      }));
+    } catch { /* ignore */ }
+    setShowModal(true);
+  };
+
+  const canGenerate = selectedApis.length > 0;
+
   return (
     <div className="theme-gtm min-h-screen bg-[#080A0F] text-[#F0F6FF] pb-20" dir="rtl">
       {/* Header */}
-      <header
-        style={{
-          padding: "24px 32px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          borderBottom: "1px solid #1E2D45",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Image src="/gtm-logo.svg" alt="GTM BootCamp" width={40} height={40} />
-          <span style={{ fontSize: 20, fontWeight: 600 }}>GTM BootCamp</span>
-          <span
-            style={{
-              fontSize: 10,
-              padding: "2px 8px",
-              borderRadius: 4,
-              background: "rgba(0,255,136,0.15)",
-              color: "#00FF88",
-              fontFamily: "monospace",
-              fontWeight: 600,
-            }}
-          >
-            BETA
-          </span>
+      <header className="flex items-center justify-between px-6 md:px-8 py-5 border-b border-[#1E2D45]">
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/gtm-logo.svg" alt="GTM BootCamp" className="h-10 w-10 object-contain" />
+          <span className="text-lg font-bold tracking-tight" style={{ fontFamily: "monospace" }}>&lt;GTM&gt; BootCamp</span>
+          <span className="text-[10px] px-2 py-0.5 rounded bg-[#00FF88]/15 text-[#00FF88] font-mono font-semibold">BETA</span>
         </div>
         <a
           href="/signup?track=gtm"
+          className="px-5 py-2 rounded-lg text-sm font-bold no-underline transition-all hover:shadow-lg"
           style={{
-            padding: "8px 20px",
-            borderRadius: 8,
             background: "linear-gradient(135deg, #00FF88, #00CC6A)",
             color: "#080A0F",
-            fontSize: 14,
-            fontWeight: 700,
-            textDecoration: "none",
-            transition: "all 0.2s",
+            boxShadow: "0 2px 12px rgba(0,255,136,0.25)",
           }}
         >
           הצטרף לבוטקאמפ
         </a>
       </header>
 
-      <main style={{ maxWidth: 960, margin: "0 auto", padding: "48px 24px" }}>
-        {/* Hero */}
-        {stage === "select" && (
-          <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <h1 style={{ fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 800, lineHeight: 1.1, marginBottom: 16 }}>
-              מנוע רעיונות <span style={{ color: "#00FF88" }}>Micro-SaaS</span>
-            </h1>
-            <p style={{ fontSize: 18, color: "#6B7FA3", maxWidth: 560, margin: "0 auto 8px" }}>
-              בחר את ה-APIs והכלים שאתה רוצה לשלב. נתכנן לך 3 רעיונות Micro-SaaS רווחיים.
-            </p>
-            <p style={{ fontSize: 13, color: "#3D4F6F", fontFamily: "monospace" }}>
-              GTM BootCamp AI Engine מופעל על ידי
-            </p>
-          </div>
-        )}
-
-        {/* API Selector */}
+      <main className="max-w-[960px] mx-auto px-5 pt-12 pb-6">
+        {/* ── SELECT STAGE ── */}
         {stage === "select" && (
           <>
-            {/* Market Selection */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: 24 }}>
-              <button
-                onClick={() => setMarket("israel")}
-                style={{
-                  padding: "10px 24px",
-                  borderRadius: 10,
-                  border: `1.5px solid ${market === "israel" ? "#00FF88" : "#1E2D45"}`,
-                  background: market === "israel" ? "rgba(0,255,136,0.1)" : "#161D2B",
-                  color: market === "israel" ? "#00FF88" : "#6B7FA3",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  transition: "all 0.2s",
-                }}
-              >
-                🇮🇱 שוק ישראלי
-              </button>
-              <button
-                onClick={() => setMarket("international")}
-                style={{
-                  padding: "10px 24px",
-                  borderRadius: 10,
-                  border: `1.5px solid ${market === "international" ? "#00FF88" : "#1E2D45"}`,
-                  background: market === "international" ? "rgba(0,255,136,0.1)" : "#161D2B",
-                  color: market === "international" ? "#00FF88" : "#6B7FA3",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  transition: "all 0.2s",
-                }}
-              >
-                🌍 שוק בינלאומי
-              </button>
+            {/* Hero */}
+            <div className="text-center mb-10">
+              <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-4">
+                מנוע רעיונות{" "}
+                <span className="text-[#00FF88]">Micro-SaaS</span>
+              </h1>
+              <p className="text-base text-[#6B7FA3] max-w-xl mx-auto">
+                בחר APIs, הגדר קהל יעד — ונייצר לך 3 רעיונות SaaS רווחיים שאפשר לבנות תוך שבועות.
+              </p>
             </div>
 
-            {/* Selected count */}
-            {selectedApis.length > 0 && (
-              <div style={{ textAlign: "center", marginBottom: 16 }}>
-                <span style={{ fontFamily: "monospace", fontSize: 13, color: "#00FF88" }}>
-                  {selectedApis.length} APIs נבחרו
-                </span>
-              </div>
-            )}
+            {/* Market Selection */}
+            <div className="flex justify-center gap-3 mb-8">
+              {(["israel", "international"] as Market[]).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMarket(m)}
+                  className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
+                  style={{
+                    border: `1.5px solid ${market === m ? "#00FF88" : "#1E2D45"}`,
+                    background: market === m ? "rgba(0,255,136,0.1)" : "#161D2B",
+                    color: market === m ? "#00FF88" : "#6B7FA3",
+                  }}
+                >
+                  {m === "israel" ? "🇮🇱 שוק ישראלי" : "🌍 שוק בינלאומי"}
+                </button>
+              ))}
+            </div>
 
-            {/* Badge Grid */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 20 }}>
+            {/* Niche / Target Audience input */}
+            <div className="max-w-lg mx-auto mb-8">
+              <label className="block mb-2 text-sm font-semibold text-[#F0F6FF]">
+                קהל יעד או בעיה לפתרון
+              </label>
+              <input
+                type="text"
+                value={niche}
+                onChange={(e) => setNiche(e.target.value)}
+                placeholder='לדוגמה: "סוכני נדל״ן שצריכים לנהל לידים" או "מאמני כושר שרוצים לאסוף תשלומים"'
+                className="w-full px-4 py-3 rounded-xl text-sm font-mono outline-none transition-all"
+                style={{
+                  border: "1.5px solid #1E2D45",
+                  background: "#0D1117",
+                  color: "#F0F6FF",
+                }}
+              />
+              <p className="text-[11px] text-[#3D4F6F] font-mono mt-1.5">
+                אופציונלי — אם תגדיר נישה, הרעיונות יותאמו ספציפית אליה
+              </p>
+            </div>
+
+            {/* Section title */}
+            <div className="text-center mb-4">
+              <p className="text-xs font-mono text-[#6B7FA3] uppercase tracking-widest">בחר APIs לשילוב</p>
+              {selectedApis.length > 0 && (
+                <p className="text-xs font-mono text-[#00FF88] mt-1">{selectedApis.length} נבחרו</p>
+              )}
+            </div>
+
+            {/* API Badge Grid — Lego blocks */}
+            <div className="flex flex-wrap gap-2 justify-center mb-5 max-w-3xl mx-auto">
               {API_BADGES.map((api) => {
-                const isSelected = selectedApis.includes(api);
+                const sel = selectedApis.includes(api);
                 return (
                   <button
                     key={api}
                     onClick={() => toggleApi(api)}
+                    className="transition-all cursor-pointer"
                     style={{
                       padding: "8px 16px",
-                      borderRadius: 8,
-                      border: `1.5px solid ${isSelected ? "#00FF88" : "#1E2D45"}`,
-                      background: isSelected ? "rgba(0,255,136,0.1)" : "#161D2B",
-                      color: isSelected ? "#00FF88" : "#F0F6FF",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
+                      borderRadius: 10,
+                      border: `1.5px solid ${sel ? "#00FF88" : "#1E2D45"}`,
+                      background: sel ? "rgba(0,255,136,0.12)" : "#161D2B",
+                      color: sel ? "#00FF88" : "#F0F6FF",
                       fontSize: 13,
-                      fontWeight: 500,
+                      fontWeight: sel ? 600 : 400,
                       fontFamily: "monospace",
-                      direction: "ltr",
+                      direction: "ltr" as const,
+                      boxShadow: sel ? "0 0 12px rgba(0,255,136,0.15)" : "none",
                     }}
                   >
-                    {isSelected ? "✓ " : ""}{api}
+                    {sel ? "✓ " : ""}{api}
                   </button>
                 );
               })}
             </div>
 
             {/* Custom API input */}
-            <div style={{ display: "flex", gap: 8, maxWidth: 400, margin: "0 auto 20px", direction: "ltr" }}>
+            <div className="flex gap-2 max-w-sm mx-auto mb-10" style={{ direction: "ltr" }}>
               <input
                 type="text"
                 value={customApi}
                 onChange={(e) => setCustomApi(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addCustomApi(); }}
-                placeholder="הוסף API/כלי מותאם אישית..."
-                style={{
-                  flex: 1,
-                  padding: "10px 14px",
-                  borderRadius: 8,
-                  border: "1px solid #1E2D45",
-                  background: "#161D2B",
-                  color: "#F0F6FF",
-                  fontSize: 13,
-                  fontFamily: "monospace",
-                  outline: "none",
-                  direction: "rtl",
-                }}
+                placeholder="+ הוסף API מותאם..."
+                className="flex-1 px-3 py-2.5 rounded-lg text-sm font-mono outline-none"
+                style={{ border: "1px solid #1E2D45", background: "#0D1117", color: "#F0F6FF", direction: "rtl" }}
               />
               <button
                 onClick={addCustomApi}
                 disabled={!customApi.trim()}
+                className="px-4 py-2.5 rounded-lg text-sm font-mono font-semibold transition-all"
                 style={{
-                  padding: "10px 16px",
-                  borderRadius: 8,
                   border: "1px solid #1E2D45",
                   background: customApi.trim() ? "rgba(0,255,136,0.15)" : "#161D2B",
                   color: customApi.trim() ? "#00FF88" : "#3D4F6F",
                   cursor: customApi.trim() ? "pointer" : "not-allowed",
-                  fontSize: 13,
-                  fontFamily: "monospace",
-                  fontWeight: 600,
                 }}
               >
-                + הוסף
+                הוסף
               </button>
             </div>
 
-            {/* API Systems textarea */}
-            <div style={{ maxWidth: 600, margin: "0 auto 32px" }}>
-              <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 600, color: "#F0F6FF" }}>
-                באילו מערכות API המוצר ישתמש כדי לייצר את החיבורים?
-              </label>
-              <textarea
-                value={apiSystems}
-                onChange={(e) => setApiSystems(e.target.value)}
-                placeholder="לדוגמה: אנחנו משתמשים ב-Stripe לתשלומים, Twilio ל-SMS, ו-OpenAI לעיבוד טקסט. החיבור בין הכלים יהיה דרך Webhook..."
-                style={{
-                  width: "100%",
-                  minHeight: 80,
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #1E2D45",
-                  background: "#161D2B",
-                  color: "#F0F6FF",
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                  fontFamily: "monospace",
-                  outline: "none",
-                  resize: "vertical",
-                }}
-              />
-              <p style={{ fontSize: 11, color: "#3D4F6F", marginTop: 4, fontFamily: "monospace" }}>
-                אופציונלי — תאר את מערכות ה-API והחיבורים שאתה מתכנן להשתמש בהם
-              </p>
-            </div>
+            {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
-            {error && (
-              <p style={{ color: "#EF4444", textAlign: "center", marginBottom: 16 }}>{error}</p>
-            )}
-
-            <div style={{ textAlign: "center" }}>
+            {/* Generate Button */}
+            <div className="text-center">
               <button
                 onClick={handleGenerate}
-                disabled={selectedApis.length === 0}
+                disabled={!canGenerate}
+                className="px-12 py-4 rounded-2xl text-base font-bold transition-all cursor-pointer"
                 style={{
-                  padding: "14px 48px",
-                  borderRadius: 12,
                   border: "none",
-                  background: selectedApis.length > 0
+                  background: canGenerate
                     ? "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)"
                     : "#1E2D45",
-                  color: selectedApis.length > 0 ? "#080A0F" : "#3D4F6F",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  cursor: selectedApis.length > 0 ? "pointer" : "not-allowed",
-                  transition: "all 0.3s",
-                  boxShadow: selectedApis.length > 0 ? "0 4px 16px rgba(0,255,136,0.3)" : "none",
+                  color: canGenerate ? "#080A0F" : "#3D4F6F",
+                  cursor: canGenerate ? "pointer" : "not-allowed",
+                  boxShadow: canGenerate ? "0 4px 24px rgba(0,255,136,0.35)" : "none",
                 }}
               >
-                הרכב רעיונות
+                🚀 הרכב רעיונות
               </button>
             </div>
           </>
         )}
 
-        {/* Lego Stacking / Tower Assembly Animation */}
+        {/* ── BUILDING STAGE ── */}
         {stage === "building" && (
-          <div style={{ textAlign: "center", padding: "80px 0" }}>
+          <div className="text-center py-20">
             {/* Stacking blocks */}
-            <div style={{ display: "flex", flexDirection: "column-reverse", alignItems: "center", gap: 6, marginBottom: 40, minHeight: 180 }}>
+            <div className="flex flex-col-reverse items-center gap-1.5 mb-10 min-h-[180px]">
               {[0, 1, 2, 3, 4].map((i) => {
                 const visible = buildStep >= i;
                 return (
                   <div
                     key={i}
                     style={{
-                      width: 60 + (4 - i) * 10,
+                      width: 60 + (4 - i) * 12,
                       height: visible ? 28 : 0,
-                      borderRadius: 6,
+                      borderRadius: 8,
                       background: visible
                         ? `linear-gradient(135deg, #00FF88 ${10 + i * 20}%, #00CC6A 100%)`
                         : "transparent",
                       transition: "all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
                       opacity: visible ? 1 : 0,
-                      boxShadow: visible ? `0 0 ${12 + i * 4}px rgba(0,255,136,${0.2 + i * 0.05})` : "none",
+                      boxShadow: visible ? `0 0 ${14 + i * 5}px rgba(0,255,136,${0.2 + i * 0.06})` : "none",
                       transform: visible ? "translateY(0)" : "translateY(-40px)",
                     }}
                   />
@@ -357,103 +305,182 @@ export default function IdeatorPage() {
               })}
             </div>
 
-            <p style={{ fontSize: 18, fontWeight: 600, color: "#00FF88", fontFamily: "monospace", marginBottom: 8 }}>
+            <p className="text-lg font-semibold text-[#00FF88] font-mono mb-2">
               {buildSteps[buildStep]}
             </p>
-            <p style={{ fontSize: 13, color: "#3D4F6F", fontFamily: "monospace", direction: "ltr" }}>
+            <p className="text-sm text-[#3D4F6F] font-mono" style={{ direction: "ltr" }}>
               [{selectedApis.join(" + ")}]
             </p>
 
             {/* Progress bar */}
-            <div style={{ maxWidth: 300, margin: "24px auto 0", height: 4, borderRadius: 2, background: "#1E2D45", overflow: "hidden" }}>
+            <div className="max-w-xs mx-auto mt-6 h-1 rounded bg-[#1E2D45] overflow-hidden">
               <div
+                className="h-full rounded transition-all duration-500"
                 style={{
-                  height: "100%",
                   width: `${((buildStep + 1) / buildSteps.length) * 100}%`,
                   background: "linear-gradient(90deg, #00FF88, #00CC6A)",
-                  borderRadius: 2,
-                  transition: "width 0.5s ease",
                 }}
               />
             </div>
           </div>
         )}
 
-        {/* Results */}
+        {/* ── RESULTS STAGE ── */}
         {stage === "results" && (
           <>
-            <div style={{ textAlign: "center", marginBottom: 40 }}>
-              <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-                <span style={{ color: "#00FF88" }}>3 שרטוטי SaaS</span> מוכנים
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold mb-2">
+                <span className="text-[#00FF88]">3 שרטוטי SaaS</span> מוכנים
               </h2>
-              <p style={{ color: "#6B7FA3", fontSize: 14, fontFamily: "monospace", direction: "ltr" }}>
-                נבנה עם: {selectedApis.join(" + ")}
+              <p className="text-sm text-[#6B7FA3] font-mono" style={{ direction: "ltr" }}>
+                {selectedApis.join(" + ")}
               </p>
-              <p style={{ color: "#3D4F6F", fontSize: 12, fontFamily: "monospace", marginTop: 4 }}>
+              <p className="text-xs text-[#3D4F6F] font-mono mt-1">
                 {market === "israel" ? "🇮🇱 שוק ישראלי" : "🌍 שוק בינלאומי"}
+                {niche ? ` · ${niche}` : ""}
               </p>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <div className="flex flex-col gap-6">
               {ideas.map((idea, idx) => (
                 <div
                   key={idx}
-                  style={{
-                    background: "#161D2B",
-                    border: "1px solid #1E2D45",
-                    borderRadius: 16,
-                    padding: 28,
-                    animation: `fadeInUp 0.5s ${idx * 0.15}s both`,
-                  }}
+                  className="bg-[#161D2B] border border-[#1E2D45] rounded-2xl p-7 relative overflow-hidden"
+                  style={{ animation: `fadeInUp 0.5s ${idx * 0.15}s both` }}
                 >
-                  <span style={{ fontSize: 11, fontFamily: "monospace", color: "#3D4F6F", display: "block", marginBottom: 4 }}>
-                    שרטוט #{idx + 1}
-                  </span>
-                  <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-                    {idea.name}
-                  </h3>
-                  <p style={{ color: "#FF6B35", fontSize: 15, fontWeight: 600, marginBottom: 16, lineHeight: 1.5 }}>
+                  {/* Glow accent */}
+                  <div className="absolute top-0 right-0 w-40 h-40 pointer-events-none" style={{ background: "radial-gradient(circle at top right, rgba(0,255,136,0.06), transparent 70%)" }} />
+
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                      <span className="text-[10px] font-mono text-[#3D4F6F] block mb-1">שרטוט #{idx + 1}</span>
+                      <h3 className="text-xl font-bold text-[#F0F6FF]" style={{ direction: "ltr", textAlign: "right" }}>{idea.name}</h3>
+                    </div>
+                    <span className="shrink-0 text-xs font-mono px-3 py-1 rounded-full bg-[#00FF88]/10 text-[#00FF88] border border-[#00FF88]/20">
+                      Micro-SaaS
+                    </span>
+                  </div>
+
+                  {/* Pitch */}
+                  <p className="text-[#FF6B35] text-[15px] font-semibold leading-relaxed mb-5">
                     {idea.pitch}
                   </p>
 
-                  {/* Architecture - highlighted in green */}
-                  <div style={{ marginBottom: 16, padding: 16, borderRadius: 10, background: "rgba(0,255,136,0.05)", border: "1px solid rgba(0,255,136,0.15)", borderRight: "3px solid #00FF88" }}>
-                    <p style={{ fontSize: 11, fontFamily: "monospace", color: "#00FF88", marginBottom: 6 }}>
-                      ארכיטקטורה
-                    </p>
-                    <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-                      {idea.architecture}
-                    </p>
+                  {/* Info Row: Niche + Market Size */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                    <div className="bg-[#0D1117] rounded-xl p-4 border border-[#1E2D45]">
+                      <p className="text-[10px] font-mono text-[#6B7FA3] mb-1">קהל יעד</p>
+                      <p className="text-sm text-[#F0F6FF] font-semibold">{idea.niche}</p>
+                    </div>
+                    <div className="bg-[#0D1117] rounded-xl p-4 border border-[#1E2D45]">
+                      <p className="text-[10px] font-mono text-[#6B7FA3] mb-1">גודל שוק</p>
+                      <p className="text-sm text-[#F0F6FF] font-semibold">{idea.marketSize}</p>
+                    </div>
+                  </div>
+
+                  {/* APIs Used — Neon Tags */}
+                  <div className="mb-5">
+                    <p className="text-[10px] font-mono text-[#6B7FA3] mb-2">טכנולוגיות API בשימוש</p>
+                    <div className="flex flex-wrap gap-1.5" style={{ direction: "ltr" }}>
+                      {(idea.apisUsed || []).map((api, j) => (
+                        <span
+                          key={j}
+                          className="text-[11px] font-mono px-2.5 py-1 rounded-md"
+                          style={{
+                            background: "rgba(0,255,136,0.08)",
+                            border: "1px solid rgba(0,255,136,0.25)",
+                            color: "#00FF88",
+                            boxShadow: "0 0 6px rgba(0,255,136,0.1)",
+                          }}
+                        >
+                          {api}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Monetization */}
-                  <div style={{ padding: 12, borderRadius: 8, background: "rgba(8,10,15,0.5)", border: "1px solid rgba(30,45,69,0.5)" }}>
-                    <p style={{ fontSize: 11, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 4 }}>
-                      מונטיזציה
-                    </p>
-                    <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.5 }}>
-                      {idea.monetization}
-                    </p>
+                  <div className="bg-[#080A0F]/60 rounded-xl p-4 border border-[#1E2D45]/50 mb-5">
+                    <p className="text-[10px] font-mono text-[#6B7FA3] mb-1">מונטיזציה</p>
+                    <p className="text-[13px] text-[#F0F6FF] leading-relaxed">{idea.monetization}</p>
                   </div>
+
+                  {/* CTA Button */}
+                  <button
+                    onClick={() => handleActivateIdea(idea)}
+                    className="w-full py-3 rounded-xl text-sm font-bold transition-all cursor-pointer"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,255,136,0.05))",
+                      border: "1.5px solid rgba(0,255,136,0.3)",
+                      color: "#00FF88",
+                    }}
+                  >
+                    🚀 הוצא את הרעיון לפועל
+                  </button>
                 </div>
               ))}
             </div>
 
-            {/* GoHighLevel Lead Capture Form */}
-            <div className="w-full max-w-2xl mx-auto mt-12 bg-[#161D2B] p-4 rounded-xl border border-[#1E2D45]">
-              <div style={{ textAlign: "center", marginBottom: 16 }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
-                  רוצה את ה-<span style={{ color: "#00FF88" }}>GTM Playbook</span> המלא?
-                </h3>
-                <p style={{ color: "#6B7FA3", fontSize: 13 }}>
-                  הצטרף ל-GTM BootCamp — קבל אסטרטגיית Go-To-Market מלאה, מסגרת ולידציה, ותוכנית השקה ל-90 יום.
-                </p>
+            {/* Try again */}
+            <div className="text-center mt-8">
+              <button
+                onClick={() => { setStage("select"); setIdeas([]); }}
+                className="px-6 py-2.5 rounded-lg text-sm font-mono cursor-pointer transition-all"
+                style={{ background: "transparent", border: "1px solid #1E2D45", color: "#6B7FA3" }}
+              >
+                נסה שילוב אחר
+              </button>
+            </div>
+          </>
+        )}
+      </main>
+
+      {/* ── LEAD CAPTURE MODAL ── */}
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)" }}
+        >
+          <div
+            className="relative w-full max-w-lg rounded-2xl overflow-hidden"
+            style={{
+              background: "#0D1117",
+              border: "1.5px solid #1E2D45",
+              boxShadow: "0 0 60px rgba(0,255,136,0.1), 0 25px 50px rgba(0,0,0,0.5)",
+            }}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 left-4 z-10 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #1E2D45", color: "#6B7FA3" }}
+            >
+              ✕
+            </button>
+
+            {/* Modal Header */}
+            <div className="p-6 pb-4 text-center" style={{ borderBottom: "1px solid #1E2D45" }}>
+              <div className="flex justify-center mb-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/gtm-logo.svg" alt="GTM" className="h-12 w-12" />
               </div>
+              <h3 className="text-xl font-bold mb-2" dir="rtl">
+                מוכן להפוך את הרעיון{" "}
+                <span className="text-[#00FF88]">לעסק רווחי?</span>
+              </h3>
+              <p className="text-sm text-[#6B7FA3]" dir="rtl">
+                הצטרף ל-GTM BootCamp — קבל אסטרטגיית Go-To-Market מלאה, מסגרת ולידציה, ותוכנית השקה ל-90 יום.
+              </p>
+            </div>
+
+            {/* GoHighLevel Form */}
+            <div className="p-4" style={{ maxHeight: "60vh", overflowY: "auto" }}>
               <iframe
                 src="https://api.leadconnectorhq.com/widget/form/VY7Wpt7X70ijeluHvP8D"
-                style={{ width: "100%", height: "691px", border: "none", borderRadius: "4px" }}
+                style={{ width: "100%", height: "691px", border: "none", borderRadius: "8px" }}
                 id="inline-VY7Wpt7X70ijeluHvP8D"
-                data-layout="{'id':'INLINE'}"
+                data-layout={"{'id':'INLINE'}"}
                 data-trigger-type="alwaysShow"
                 data-activation-type="alwaysActivated"
                 data-deactivation-type="neverDeactivate"
@@ -465,31 +492,9 @@ export default function IdeatorPage() {
               />
               <Script src="https://link.msgsndr.com/js/form_embed.js" strategy="lazyOnload" />
             </div>
-
-            {/* Try again */}
-            <div style={{ textAlign: "center", marginTop: 24 }}>
-              <button
-                onClick={() => {
-                  setStage("select");
-                  setIdeas([]);
-                }}
-                style={{
-                  background: "transparent",
-                  border: "1px solid #1E2D45",
-                  color: "#6B7FA3",
-                  padding: "10px 24px",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontFamily: "monospace",
-                }}
-              >
-                נסה APIs אחרים
-              </button>
-            </div>
-          </>
-        )}
-      </main>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
