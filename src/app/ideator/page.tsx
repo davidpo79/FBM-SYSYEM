@@ -207,11 +207,45 @@ export default function IdeatorPage() {
       dir="rtl"
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #080A0F 0%, #0D1117 50%, #080A0F 100%)",
+        background: "#080A0F",
         color: "#F0F6FF",
         paddingBottom: 80,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
+      {/* ── Ambient background orbs ── */}
+      <div style={{
+        position: "absolute",
+        top: "-10%",
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "80vw",
+        maxWidth: 900,
+        height: 600,
+        background: "radial-gradient(ellipse at center, rgba(0,255,136,0.07) 0%, rgba(0,255,136,0.02) 40%, transparent 70%)",
+        pointerEvents: "none",
+        zIndex: 0,
+      }} />
+      <div className="ideator-orb ideator-orb-1" />
+      <div className="ideator-orb ideator-orb-2" />
+      <div className="ideator-orb ideator-orb-3" />
+
+      {/* ── Subtle grid overlay ── */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        backgroundImage: `
+          linear-gradient(rgba(0,255,136,0.015) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,255,136,0.015) 1px, transparent 1px)
+        `,
+        backgroundSize: "80px 80px",
+        pointerEvents: "none",
+        zIndex: 0,
+        maskImage: "radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%)",
+        WebkitMaskImage: "radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%)",
+      }} />
+
       {/* Header */}
       <header
         style={{
@@ -221,6 +255,8 @@ export default function IdeatorPage() {
           justifyContent: "flex-start",
           borderBottom: "1px solid #1E2D45",
           gap: 8,
+          position: "relative",
+          zIndex: 1,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
@@ -229,7 +265,7 @@ export default function IdeatorPage() {
         </div>
       </header>
 
-      <main style={{ maxWidth: 960, margin: "0 auto", padding: isMobile ? "32px 16px" : "48px 24px" }}>
+      <main style={{ maxWidth: 960, margin: "0 auto", padding: isMobile ? "32px 16px" : "48px 24px", position: "relative", zIndex: 1 }}>
         {/* ── SELECT STAGE ── */}
         {stage === "select" && (
           <>

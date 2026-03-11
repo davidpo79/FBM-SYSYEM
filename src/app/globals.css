@@ -209,6 +209,46 @@ input[type="range"]::-moz-range-thumb {
   transform: none;
 }
 
+/* ──────────────── Ideator Ambient Background ──────────────── */
+.ideator-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(80px);
+  animation: ideatorFloat 12s ease-in-out infinite;
+}
+.ideator-orb-1 {
+  width: 400px;
+  height: 400px;
+  top: 5%;
+  right: 10%;
+  background: radial-gradient(circle, rgba(0,255,136,0.06) 0%, transparent 70%);
+  animation-duration: 14s;
+}
+.ideator-orb-2 {
+  width: 300px;
+  height: 300px;
+  top: 30%;
+  left: 5%;
+  background: radial-gradient(circle, rgba(0,200,106,0.04) 0%, transparent 70%);
+  animation-duration: 18s;
+  animation-delay: -4s;
+}
+.ideator-orb-3 {
+  width: 250px;
+  height: 250px;
+  top: 60%;
+  right: 20%;
+  background: radial-gradient(circle, rgba(0,255,136,0.03) 0%, transparent 70%);
+  animation-duration: 16s;
+  animation-delay: -8s;
+}
+@keyframes ideatorFloat {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 1; }
+  50% { transform: translateY(-30px) scale(1.05); opacity: 0.7; }
+}
+
 /* ──────────────── Rule 4: Entry Animations ──────────────── */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
