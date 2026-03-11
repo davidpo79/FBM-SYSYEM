@@ -511,8 +511,8 @@ export default function IdeatorPage() {
                 letterSpacing: "-0.02em",
                 lineHeight: 1.3,
               }}>
-                <span style={{ color: "#00FF88" }}>API Playbook:</span>{" "}
-                3 פריצות SaaS מאומתות מראש
+                <span style={{ color: "#00FF88" }}>מנוע הרעיונות:</span>{" "}
+                3 הזדמנויות SaaS שכבר הוכחו בשטח
               </h2>
               <div style={{
                 display: "inline-flex",
