@@ -340,7 +340,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             </div>
             <div className="flex justify-center mb-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/gtm-logo.svg" alt="GTM BootCamp" className="h-16 w-16" />
+              <img src="/gtm-logo.svg" alt="GTM BootCamp" style={{ height: 36, width: "auto" }} />
             </div>
             <h1 className="text-xl font-bold mb-1 text-[#F0F6FF]" style={{ fontFamily: "monospace" }}>
               כמעט סיימנו! מתכוננים לייצור האסטרטגיה...

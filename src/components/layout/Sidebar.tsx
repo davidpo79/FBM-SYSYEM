@@ -219,16 +219,7 @@ export default function Sidebar({
       <div className="px-5 pt-5 pb-4 flex flex-col items-center gap-2 mb-1">
         {isGTM ? (
           <>
-            <Image src="/gtm-logo.svg" alt="GTM BootCamp" width={48} height={48} className="rounded" />
-            <div className="flex items-center gap-2">
-              <span className="text-white font-bold text-lg">BootCamp</span>
-              <span
-                className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                style={{ backgroundColor: "rgba(0,255,136,0.12)", color: "#00FF88", fontFamily: "monospace" }}
-              >
-                BETA
-              </span>
-            </div>
+            <Image src="/gtm-logo.svg" alt="GTM BootCamp" width={200} height={28} style={{ height: "auto" }} />
             <p className="text-[11px] tracking-wide" style={{ color: "#6B7FA3", fontFamily: "monospace" }}>
               <span className="font-bold" style={{ color: "#00FF88" }}>G</span>o-
               <span className="font-bold" style={{ color: "#00FF88" }}>T</span>o-
@@ -240,12 +231,6 @@ export default function Sidebar({
             <Image src="/logo-fbm.png" alt="FBM" width={80} height={80} className="rounded" />
             <div className="flex items-center gap-2">
               <span className="text-white font-bold text-lg">FBM Studio</span>
-              <span
-                className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}
-              >
-                Beta
-              </span>
             </div>
             <p className="text-[11px] tracking-wide" style={{ color: "#9DA3B4" }}>
               <span className="font-bold" style={{ color: "#D4A843" }}>F</span>requency{" "}

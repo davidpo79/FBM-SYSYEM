@@ -100,7 +100,7 @@ export default function StepIndicator({ current, total, label, track, ideaName }
         {/* GTM Logo + Title */}
         <div className="flex flex-col items-center gap-3 mb-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/gtm-logo.svg" alt="GTM BootCamp" className="h-12 w-12" />
+          <img src="/gtm-logo.svg" alt="GTM BootCamp" style={{ height: 32, width: "auto" }} />
           {ideaName && (
             <h1 className="text-lg font-bold text-center text-[#F0F6FF]" style={{ fontFamily: "monospace" }}>
               בוא נבנה את אסטרטגיית ה-GTM עבור{" "}

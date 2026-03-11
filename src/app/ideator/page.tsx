@@ -202,23 +202,9 @@ export default function IdeatorPage() {
           gap: 8,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 12, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/gtm-logo.svg" alt="GTM Bootcamp" className="h-10 object-contain" style={{ height: isMobile ? 32 : 40, width: "auto", flexShrink: 0 }} />
-          <span style={{ fontSize: isMobile ? 15 : 20, fontWeight: 700, fontFamily: "monospace", whiteSpace: "nowrap" }}>&lt;GTM&gt; BootCamp</span>
-          <span
-            style={{
-              fontSize: 10,
-              padding: "2px 8px",
-              borderRadius: 4,
-              background: "rgba(0,255,136,0.15)",
-              color: "#00FF88",
-              fontFamily: "monospace",
-              fontWeight: 600,
-            }}
-          >
-            BETA
-          </span>
+          <img src="/gtm-logo.svg" alt="GTM Bootcamp" style={{ height: isMobile ? 24 : 32, width: "auto", flexShrink: 0 }} />
         </div>
       </header>
 
@@ -583,7 +569,21 @@ export default function IdeatorPage() {
 
                       {/* ── API Tags ── */}
                       {apis.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, direction: "ltr", marginBottom: 20 }}>
+                        <div style={{ direction: "rtl", marginBottom: 20 }}>
+                          <span style={{
+                            display: "inline-block",
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: "#00D4FF",
+                            marginBottom: 8,
+                            padding: "4px 12px",
+                            borderRadius: 6,
+                            background: "rgba(0,212,255,0.12)",
+                            border: "1px solid rgba(0,212,255,0.25)",
+                          }}>
+                            &#x1F517; שילוב מערכות API
+                          </span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, direction: "ltr" }}>
                           {apis.map((api, j) => (
                             <span key={j} style={{
                               fontSize: 11,
@@ -599,6 +599,7 @@ export default function IdeatorPage() {
                               {api}
                             </span>
                           ))}
+                        </div>
                         </div>
                       )}
 
