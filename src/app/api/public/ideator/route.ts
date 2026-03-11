@@ -68,7 +68,9 @@ Your superpower is finding creative, non-obvious API combinations that solve rea
    - Local Services: Jgive (donations), Madlan (real estate data), Yad2 (classifieds scraping), AllJobs API
 
 2. AI & LLMs:
-   - Text: OpenAI (GPT-4o, Assistants API, Function Calling), Anthropic (Claude), Google Gemini, Groq (ultra-fast inference), Mistral, Cohere (RAG-optimized)
+   - Text: OpenAI (GPT-4o, Assistants API, Function Calling), Groq (ultra-fast inference), Mistral, Cohere (RAG-optimized)
+   - Anthropic: Claude API (Claude Sonnet / Opus — text generation, analysis, coding, tool-use, vision, 200K context window, Message Batches API for bulk processing)
+   - Google Gemini: Gemini API (Gemini 2.5 Pro / Flash — multimodal text+image+video+audio, Function Calling, Grounding with Google Search, long context 1M tokens, JSON mode, code execution), Google AI Studio, Vertex AI
    - Voice: ElevenLabs (voice cloning & TTS), Vapi (voice agents & phone calls), Deepgram (speech-to-text), AssemblyAI (transcription + summarization), Whisper
    - Vision & Video: HeyGen (AI video avatars), Runway (video gen), Replicate (open-source models), GPT-4o Vision
    - Vector & RAG: Pinecone, Weaviate, Qdrant, ChromaDB
@@ -77,7 +79,8 @@ Your superpower is finding creative, non-obvious API combinations that solve rea
 3. COMMUNICATION & SOCIAL:
    - Messaging: WhatsApp Business API (Cloud API), Telegram Bot API, Twilio (SMS + Voice + WhatsApp), Vonage, MessageBird
    - Team: Discord API, Slack API (Bolt framework), Microsoft Teams (Graph API)
-   - Social: Instagram Graph API, LinkedIn API, Twitter/X API v2, TikTok Business API, Facebook Marketing API, YouTube Data API v3
+   - Social: LinkedIn API, Twitter/X API v2, TikTok Business API, YouTube Data API v3
+   - Meta / Facebook: Facebook Graph API (pages, groups, user data), Facebook Marketing API (ad campaigns, audiences, insights, custom conversions), Facebook Conversions API (server-side event tracking), Instagram Graph API (media publishing, stories, insights, comments), Instagram Basic Display API, Facebook Login / OAuth, Facebook Webhooks (real-time updates), Messenger Platform API (chatbots, customer service), Meta Business SDK
    - Email: Resend, SendGrid, Postmark, Mailgun, Amazon SES
    - Notifications: OneSignal, Firebase Cloud Messaging, Novu
 
@@ -136,6 +139,13 @@ Think like an architect — combine APIs from different categories:
 - Shopify + Cloudinary + GPT-4o Vision = auto product-description generator
 - Plaid + Google Sheets + SendGrid = personal finance digest
 - HeyGen + LinkedIn API + Lemon Squeezy = AI video prospecting tool
+- Gemini Vision + Shopify + Cloudinary = AI product photo analyzer & optimizer
+- Claude API + Apify + Facebook Marketing API = AI-powered ad copy generator from competitor analysis
+- Facebook Conversions API + Morning + Google Sheets = Israeli e-commerce ROAS tracker
+- Gemini Grounding + NewsAPI + Telegram = real-time market intelligence bot with source verification
+- Anthropic Claude + Unstructured.io + HubSpot = contract analyzer that auto-updates CRM
+- Facebook Messenger Platform + Claude + Tranzila = Hebrew customer-service chatbot with payment collection
+- Gemini multimodal + Instagram Graph API + Resend = AI social media content repurposer
 
 CRITICAL RULES:
 - ${isIsrael
