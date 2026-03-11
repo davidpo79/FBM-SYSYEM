@@ -252,7 +252,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className={`min-h-screen ${projectTrack === "gtm" || isGtmQuestionnaire ? "theme-gtm" : ""}`} style={{ backgroundColor: isGtmQuestionnaire ? "#0B111B" : projectTrack === "gtm" ? "#080A0F" : "#F5F6FA" }} dir="rtl">
+    <div className={`min-h-screen ${projectTrack === "gtm" || isGtmQuestionnaire ? "theme-gtm" : ""}`} style={{ backgroundColor: isGtmQuestionnaire ? "#0B111B" : projectTrack === "gtm" ? "#080A0F" : "#F5F6FA", overflowX: "hidden", maxWidth: "100vw" }} dir="rtl">
       {/* Desktop sidebar — hidden for GTM questionnaire */}
       {!isGtmQuestionnaire && (
         <Sidebar
@@ -308,15 +308,15 @@ export default function DashboardLayout({
       )}
 
       {/* Main content area */}
-      <div className={isGtmQuestionnaire ? "" : "lg:mr-[260px]"}>
+      <div className={isGtmQuestionnaire ? "" : "lg:mr-[260px]"} style={{ maxWidth: "100vw", overflowX: "hidden" }}>
         {/* Top bar with notification bell — hidden for GTM questionnaire */}
         {!isGtmQuestionnaire && (
-          <div className="flex items-center justify-between px-6 lg:px-8 pt-4 pb-0">
+          <div className="flex items-center justify-between px-4 lg:px-8 pt-3 lg:pt-4 pb-0">
             <div />
             {billingPlan !== "trial" && billingPlan !== "expired" && <NotificationBell />}
           </div>
         )}
-        <main className={isGtmQuestionnaire ? "p-6 lg:p-8 min-h-screen" : "p-6 lg:p-8 min-h-screen pb-20 lg:pb-8"}>
+        <main className={isGtmQuestionnaire ? "p-4 lg:p-8 min-h-screen" : "p-4 lg:p-8 min-h-screen pb-24 lg:pb-8"}>
           {/* Trial warning banner (3 days or less remaining) — not shown for GTM questionnaire */}
           {!isGtmQuestionnaire && shouldShowTrialBanner(billingPlan, billingDaysLeft) && (
             <TrialBanner

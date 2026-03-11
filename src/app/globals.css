@@ -842,3 +842,261 @@ input[type="range"]::-moz-range-thumb {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
+
+/* ══════════════════════════════════════════════════════
+   MOBILE-NATIVE EXPERIENCE — iOS App Feel
+   All rules scoped to max-width: 767px to protect desktop
+   ══════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* ── Phase 2: Zero Horizontal Overflow ── */
+  html, body {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  *, *::before, *::after {
+    max-width: 100vw;
+  }
+
+  /* ── Phase 3: Remove Tap Highlight ── */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  /* ── System font for native feel on mobile ── */
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      "Rubik", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── iOS safe area insets for standalone mode ── */
+  body {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* ── Main content overflow containment ── */
+  main,
+  [class*="lg:mr-"] {
+    width: 100% !important;
+    max-width: 100vw !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  /* ── Mobile content padding — airy iOS spacing ── */
+  main {
+    padding: 16px !important;
+    padding-bottom: 80px !important; /* Space for bottom nav */
+  }
+
+  /* ── Sticky TopBar with iOS blur ── */
+  header[class*="sticky"] {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    height: 56px;
+    padding: 0 16px;
+    background: rgba(248, 249, 252, 0.85) !important;
+    backdrop-filter: saturate(180%) blur(20px) !important;
+    -webkit-backdrop-filter: saturate(180%) blur(20px) !important;
+    border-bottom: 0.5px solid rgba(232, 234, 240, 0.8);
+  }
+
+  /* Push content below fixed header */
+  main {
+    padding-top: 72px !important;
+  }
+
+  /* ── Notification bell bar — compact on mobile ── */
+  .flex.items-center.justify-between.px-6 {
+    padding: 8px 16px !important;
+  }
+
+  /* ── Card Polishing — iOS Aesthetic ── */
+  .card-elevated {
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06),
+                0 4px 12px rgba(0, 0, 0, 0.04);
+  }
+  .card-elevated:hover {
+    transform: none; /* Disable hover lift on touch */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06),
+                0 4px 12px rgba(0, 0, 0, 0.04);
+  }
+
+  .card-static {
+    border-radius: 16px;
+    box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .card-subtle {
+    border-radius: 12px;
+  }
+
+  /* ── Buttons — 48px thumb-friendly targets ── */
+  .btn-gold,
+  .btn-outline,
+  .btn-success {
+    min-height: 48px;
+    border-radius: 14px;
+    font-size: 15px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-gold:hover,
+  .btn-outline:hover,
+  .btn-success:hover {
+    transform: none; /* Disable hover effects on touch */
+  }
+
+  .btn-gold:active,
+  .btn-outline:active,
+  .btn-success:active {
+    transform: scale(0.97);
+    transition: transform 0.1s ease;
+  }
+
+  /* ── GTM Buttons — thumb-friendly on mobile ── */
+  .gtm-btn-primary,
+  .gtm-btn-outline,
+  .gtm-btn-orange {
+    min-height: 48px;
+    width: 100%;
+    font-size: 15px;
+  }
+
+  /* ── Mobile bottom nav — polished iOS tab bar ── */
+  .mobile-bottom-nav {
+    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px)) !important;
+    border-top: 0.5px solid rgba(42, 45, 58, 0.8) !important;
+    box-shadow: 0 -1px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  /* ── Tables — horizontal scroll containment ── */
+  .markdown-content table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .markdown-content {
+    max-width: 100%;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* ── Images & media overflow containment ── */
+  img, video, canvas, svg, iframe {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* ── Inputs — proper sizing on mobile ── */
+  input, textarea, select {
+    font-size: 16px !important; /* Prevent iOS zoom on focus */
+    max-width: 100%;
+  }
+
+  /* ── GTM Cards — mobile-friendly border radius ── */
+  .gtm-card-rounded {
+    border-radius: 16px;
+  }
+
+  /* ── GTM Stage nav — scrollable on mobile ── */
+  .gtm-stage-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 4px;
+  }
+  .gtm-stage-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .gtm-stage-tab {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  /* ── GTM Pricing cards — stack vertically ── */
+  .gtm-pricing-card {
+    max-width: 100%;
+    flex: 1 1 100%;
+  }
+
+  /* ── GTM Bootcamp hero — mobile spacing ── */
+  .gtm-bootcamp-hero {
+    padding: 24px 16px;
+    border-radius: 16px;
+  }
+
+  /* ── GTM Sticky banner — safe area padding ── */
+  .gtm-sticky-banner {
+    padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ── GTM Modal — full-width on mobile ── */
+  .gtm-modal-card {
+    margin: 0 12px;
+    border-radius: 20px;
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Smooth scrolling & momentum ── */
+  :root {
+    scroll-behavior: smooth;
+  }
+
+  /* ── Prevent text selection on interactive elements ── */
+  button, a, [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* ── Fix any fixed-width elements that cause overflow ── */
+  pre, code {
+    max-width: 100%;
+    overflow-x: auto;
+    word-break: break-all;
+  }
+
+  /* ── Mobile sidebar overlay animation ── */
+  .fixed.inset-0.z-40 aside {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ── Scrollbar — hide on mobile for clean look ── */
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+  /* ── GTM theme-specific mobile adjustments ── */
+  .theme-gtm header[class*="sticky"] {
+    background: rgba(8, 10, 15, 0.85) !important;
+    border-bottom-color: rgba(30, 45, 69, 0.6);
+  }
+
+  .theme-gtm main {
+    padding-top: 72px !important;
+  }
+}
