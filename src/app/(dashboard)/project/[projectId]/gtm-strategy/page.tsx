@@ -124,73 +124,134 @@ interface GanttTimeline {
 
 type StrategyStage = "core" | "validation" | "marketing";
 
-/* ──── Building Steps for Loading Animation ──── */
-const BUILD_STEPS = [
-  "סורק שוק ומתחרים...",
-  "מזהה קהל יעד אידיאלי...",
-  "בונה מיצוב ומסרים...",
-  "מתכנן ערוצי שיווק...",
-  "מרכיב תוכנית ל-90 יום...",
-  "מסיים ומלטש...",
+/* ──── Code Terminal Loading Animation ──── */
+const CODE_LINES = [
+  { text: "$ gtm init --strategy=full", color: "#00FF88", delay: 0 },
+  { text: "  Loading market intelligence...", color: "#6B7FA3", delay: 400 },
+  { text: "  ✓ ICP profile generated", color: "#3B82F6", delay: 1200 },
+  { text: "  ✓ Positioning framework ready", color: "#3B82F6", delay: 2000 },
+  { text: "$ gtm analyze --validation", color: "#00FF88", delay: 3000 },
+  { text: "  Running competitive analysis...", color: "#6B7FA3", delay: 3400 },
+  { text: "  ✓ Market gaps identified", color: "#3B82F6", delay: 4200 },
+  { text: "  ✓ Validation experiments designed", color: "#3B82F6", delay: 5000 },
+  { text: "$ gtm build --funnel --channels", color: "#00FF88", delay: 5800 },
+  { text: "  Mapping acquisition channels...", color: "#6B7FA3", delay: 6200 },
+  { text: "  ✓ Funnel architecture complete", color: "#3B82F6", delay: 7000 },
+  { text: "  ✓ Paid strategy optimized", color: "#3B82F6", delay: 7800 },
+  { text: "$ gtm compile --output=strategy.json", color: "#00FF88", delay: 8600 },
+  { text: "  Building 90-day execution plan...", color: "#6B7FA3", delay: 9000 },
+  { text: "  ⟳ Compiling final strategy document...", color: "#FF6B35", delay: 10000 },
 ];
 
 function GTMLoadingAnimation() {
-  const [buildStep, setBuildStep] = useState(0);
+  const [visibleLines, setVisibleLines] = useState(0);
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setBuildStep((s) => {
-        if (s >= BUILD_STEPS.length - 1) {
-          clearInterval(interval);
-          return s;
-        }
-        return s + 1;
+    // Reveal lines one by one
+    const timers = CODE_LINES.map((line, i) =>
+      setTimeout(() => setVisibleLines(i + 1), line.delay)
+    );
+    // Cursor blink
+    const cursorInterval = setInterval(() => setCursorVisible((v) => !v), 530);
+    // Progress bar
+    const progressInterval = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 95) return 95; // cap at 95 until real completion
+        return p + Math.random() * 3 + 0.5;
       });
-    }, 1500);
-    return () => clearInterval(interval);
+    }, 400);
+
+    return () => {
+      timers.forEach(clearTimeout);
+      clearInterval(cursorInterval);
+      clearInterval(progressInterval);
+    };
   }, []);
 
   return (
-    <div dir="rtl" style={{ textAlign: "center", padding: "80px 0" }}>
-      {/* Animated bars */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 40 }}>
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            style={{
-              width: 40,
-              height: buildStep >= i ? 40 + i * 12 : 8,
-              borderRadius: 6,
-              background: buildStep >= i
-                ? `linear-gradient(135deg, #00FF88 ${20 + i * 15}%, #00CC6A 100%)`
-                : "#1E2D45",
-              transition: "all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
-              opacity: buildStep >= i ? 1 : 0.3,
-              boxShadow: buildStep >= i ? "0 0 12px rgba(0,255,136,0.3)" : "none",
-            }}
-          />
-        ))}
+    <div style={{ padding: "40px 0", direction: "ltr" }}>
+      {/* Terminal window */}
+      <div style={{
+        background: "#0A0E17",
+        border: "1px solid #1E2D45",
+        borderRadius: 16,
+        overflow: "hidden",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+      }}>
+        {/* Terminal header bar */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "12px 16px",
+          background: "#111827",
+          borderBottom: "1px solid #1E2D45",
+        }}>
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#EF4444" }} />
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#F59E0B" }} />
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#22C55E" }} />
+          <span style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 12, marginRight: 12 }}>
+            gtm-strategy-engine v2.0
+          </span>
+        </div>
+
+        {/* Terminal body */}
+        <div style={{ padding: "20px 24px", minHeight: 340, fontFamily: "monospace", fontSize: 13, lineHeight: 2 }}>
+          {CODE_LINES.slice(0, visibleLines).map((line, i) => (
+            <div key={i} style={{
+              color: line.color,
+              opacity: 0,
+              animation: "gtm-line-appear 0.3s ease forwards",
+            }}>
+              {line.text}
+            </div>
+          ))}
+          {/* Blinking cursor */}
+          <span style={{
+            color: "#00FF88",
+            opacity: cursorVisible ? 1 : 0,
+            transition: "opacity 0.1s",
+          }}>
+            ▋
+          </span>
+        </div>
+
+        {/* Progress bar at bottom */}
+        <div style={{ padding: "0 24px 16px" }}>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 6,
+          }}>
+            <span style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11 }}>
+              Generating strategy...
+            </span>
+            <span style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11 }}>
+              {Math.round(progress)}%
+            </span>
+          </div>
+          <div style={{ height: 4, background: "#1E2D45", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{
+              height: "100%",
+              width: `${progress}%`,
+              background: "linear-gradient(90deg, #00FF88, #3B82F6)",
+              borderRadius: 2,
+              transition: "width 0.4s ease",
+            }} />
+          </div>
+        </div>
       </div>
 
-      {/* Step label */}
-      <p style={{ fontSize: 18, fontWeight: 600, color: "#00FF88", fontFamily: "monospace", marginBottom: 8 }}>
-        {BUILD_STEPS[buildStep]}
-      </p>
-      <p style={{ fontSize: 13, color: "#94A3B8" }}>
-        שלב {buildStep + 1} מתוך {BUILD_STEPS.length}
-      </p>
-
-      {/* Progress bar */}
-      <div style={{ maxWidth: 300, margin: "24px auto 0", height: 4, borderRadius: 2, background: "#1E2D45", overflow: "hidden" }}>
-        <div
-          style={{
-            height: "100%",
-            width: `${((buildStep + 1) / BUILD_STEPS.length) * 100}%`,
-            background: "linear-gradient(90deg, #00FF88, #00CC6A)",
-            borderRadius: 2,
-            transition: "width 0.5s ease",
-          }}
-        />
+      {/* Hebrew status below terminal */}
+      <div dir="rtl" style={{ textAlign: "center", marginTop: 24 }}>
+        <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 15, fontWeight: 600 }}>
+          מייצר אסטרטגיית GTM...
+        </p>
+        <p style={{ color: "#6B7FA3", fontSize: 13, marginTop: 6 }}>
+          מנתח את המוצר, השוק והיעדים שלך
+        </p>
       </div>
     </div>
   );
