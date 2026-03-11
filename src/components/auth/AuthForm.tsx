@@ -13,6 +13,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"login" | "signup">(mode);
   const [isGtmTrack, setIsGtmTrack] = useState(false);
+  const [gtmIdeaName, setGtmIdeaName] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -22,6 +23,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
     const prefillEmail = params.get("email");
     if (prefillEmail) {
       setEmail(prefillEmail);
+    }
+    const ideaParam = params.get("idea");
+    if (ideaParam) {
+      setGtmIdeaName(decodeURIComponent(ideaParam));
     }
   }, []);
   const [fullName, setFullName] = useState("");
@@ -78,6 +83,25 @@ export default function AuthForm({ mode }: AuthFormProps) {
             user_id: data.user.id,
             full_name: fullName.trim(),
           });
+        }
+
+        // Fire GHL webhook in background for GTM track signups
+        if (isGtmTrack) {
+          const webhookUrl = process.env.NEXT_PUBLIC_GHL_WEBHOOK_URL;
+          if (webhookUrl) {
+            try {
+              fetch(webhookUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  first_name: fullName.trim().split(" ")[0] || "",
+                  email,
+                  source: "GTM_Ideator_Signup",
+                  idea_name: gtmIdeaName || "",
+                }),
+              }).catch(() => { /* silent — don't block UI */ });
+            } catch { /* silent */ }
+          }
         }
 
         // If session exists, user is immediately logged in (no email confirmation needed)
@@ -270,14 +294,28 @@ export default function AuthForm({ mode }: AuthFormProps) {
         {/* Logo & Branding */}
         {isGtmTrack ? (
           <div className="text-center mb-6">
+            {/* Progress Steps */}
+            <div className="flex items-center justify-center gap-1 mb-4" style={{ fontFamily: "monospace", fontSize: 11 }}>
+              <span className="px-2 py-1 rounded" style={{ background: "rgba(0,255,136,0.15)", color: "#00FF88" }}>[1] רעיון ✓</span>
+              <span style={{ color: "#3D4F6F" }}>→</span>
+              <span className="px-2 py-1 rounded" style={{ background: "rgba(0,255,136,0.15)", color: "#00FF88", border: "1px solid rgba(0,255,136,0.3)" }}>[2] משתמש (אתה כאן)</span>
+              <span style={{ color: "#3D4F6F" }}>→</span>
+              <span className="px-2 py-1 rounded" style={{ background: "rgba(255,255,255,0.03)", color: "#6B7FA3" }}>[3] תוכנית</span>
+            </div>
             <div className="flex justify-center mb-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/gtm-logo.svg" alt="GTM BootCamp" className="h-16 w-16" />
             </div>
-            <h1 className="text-2xl font-bold mb-1 text-[#F0F6FF]" style={{ fontFamily: "monospace" }}>&lt;GTM&gt; BootCamp</h1>
+            <h1 className="text-xl font-bold mb-1 text-[#F0F6FF]" style={{ fontFamily: "monospace" }}>
+              כמעט סיימנו! מתכוננים לייצור האסטרטגיה...
+            </h1>
             <div className="mt-3 mx-auto max-w-sm rounded-xl p-4" style={{ background: "rgba(0,255,136,0.06)", border: "1px solid rgba(0,255,136,0.15)" }}>
               <p className="text-sm text-[#B0BEC5] leading-relaxed">
-                נרשם כדי להתחיל לבנות את <span className="text-[#00FF88] font-semibold">אסטרטגיית ה-Go-To-Market</span> שלך.
+                בוא ניצור משתמש (חינם) כדי שה-AI יוכל להתחיל לרנדר את{" "}
+                <span className="text-[#00FF88] font-semibold">תוכנית ה-GTM</span>
+                {gtmIdeaName ? (
+                  <> עבור <span className="text-[#00D4FF] font-semibold" dir="ltr">{gtmIdeaName}</span></>
+                ) : null}.
               </p>
               <p className="text-xs text-[#6B7FA3] mt-2">
                 אחרי ההרשמה תעבור לשאלון קצר שיעזור ל-AI לייצר לך תוכנית GTM מותאמת אישית — כולל קהל יעד, ולידציה, תסריטי מכירה, וקמפיינים.
@@ -337,7 +375,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           {isLogin
             ? "התחבר לחשבון הקיים שלך"
             : isGtmTrack
-              ? "צור חשבון כדי להתחיל את מסע ה-GTM שלך"
+              ? "צור חשבון חינם כדי שנוכל לשמור את תוכנית ה-GTM שלך"
               : "צור חשבון חדש ב-FBM Studio — בחינם!"}
         </p>
 

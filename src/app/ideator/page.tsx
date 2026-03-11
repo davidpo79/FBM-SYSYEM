@@ -24,19 +24,22 @@ CATEGORIES.forEach((c) => { CATEGORY_LABELS[c.value] = c.label; });
 interface IdeaResult {
   name: string;
   tagline: string;
-  problem: string;
-  solution: string;
-  target_audience: string;
+  pitch?: string;
+  architecture?: string;
   monetization: string;
-  mvp_scope: string[];
-  competitive_edge: string;
-  market_size: string;
-  difficulty: "easy" | "medium" | "hard";
-  apis_used: string[];
-  api_explanation: string;
-  potential_mrr?: string;
-  value_bullets?: string[];
   audience_bullets?: string[];
+  potential_mrr?: string;
+  generated_apis?: string[];
+  difficulty: "easy" | "medium" | "hard";
+  market_size?: string;
+  // Legacy fields for backwards compatibility
+  problem?: string;
+  solution?: string;
+  target_audience?: string;
+  mvp_scope?: string[];
+  apis_used?: string[];
+  api_explanation?: string;
+  value_bullets?: string[];
 }
 
 type Stage = "select" | "building" | "results";
@@ -136,13 +139,23 @@ export default function IdeatorPage() {
       localStorage.setItem("gtm-ideator-selected", JSON.stringify({
         name: idea.name,
         pitch: idea.tagline,
-        niche: idea.target_audience,
-        apisUsed: idea.apis_used,
+        niche: idea.audience_bullets?.join(", ") || idea.target_audience || "",
+        apisUsed: idea.generated_apis || idea.apis_used || [],
       }));
     } catch { /* ignore */ }
     const encodedEmail = encodeURIComponent(formEmail.trim());
     const encodedIdea = encodeURIComponent(idea.name);
     window.location.href = `/signup?track=gtm&email=${encodedEmail}&idea=${encodedIdea}`;
+  };
+
+  // Helpers for backwards-compatible field access
+  const getApis = (idea: IdeaResult) => idea.generated_apis || idea.apis_used || [];
+  const getPitch = (idea: IdeaResult) => idea.pitch || idea.problem || "";
+  const getArchitecture = (idea: IdeaResult) => idea.architecture || idea.api_explanation || idea.solution || "";
+  const getAudienceBullets = (idea: IdeaResult) => {
+    if (idea.audience_bullets && idea.audience_bullets.length > 0) return idea.audience_bullets;
+    if (idea.target_audience) return [idea.target_audience];
+    return [];
   };
 
   return (
@@ -155,7 +168,7 @@ export default function IdeatorPage() {
         paddingBottom: 80,
       }}
     >
-      {/* Header — no bootcamp button */}
+      {/* Header */}
       <header
         style={{
           padding: isMobile ? "14px 16px" : "20px 32px",
@@ -450,6 +463,11 @@ export default function IdeatorPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
               {ideas.map((idea, idx) => {
                 const isFormOpen = openFormIdx === idx;
+                const apis = getApis(idea);
+                const pitch = getPitch(idea);
+                const architecture = getArchitecture(idea);
+                const audienceBullets = getAudienceBullets(idea);
+
                 return (
                   <div
                     key={idx}
@@ -471,158 +489,204 @@ export default function IdeatorPage() {
                     }} />
 
                     <div style={{ padding: isMobile ? "24px 20px" : "32px 32px" }}>
-                      {/* Playbook ID */}
-                      <p style={{
-                        fontSize: 11,
-                        fontFamily: "monospace",
-                        color: "#00FF88",
-                        marginBottom: 6,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                      }}>
-                        Breach Playbook #{idx + 1}
-                      </p>
 
-                      {/* Idea Name */}
-                      <h3 style={{
-                        fontSize: isMobile ? 20 : 26,
-                        fontWeight: 800,
-                        color: "#F1F5F9",
-                        direction: "ltr",
-                        textAlign: "right",
-                        letterSpacing: "-0.01em",
-                        lineHeight: 1.2,
-                        marginBottom: 4,
-                      }}>
-                        {idea.name}
-                      </h3>
-
-                      <p style={{
-                        color: "#94A3B8",
-                        fontSize: 14,
-                        marginBottom: 20,
-                        lineHeight: 1.5,
-                      }}>
-                        {idea.tagline}
-                      </p>
-
-                      {/* ── Compelling Metric — Large MRR ── */}
+                      {/* ── Card Header: Name + MRR ── */}
                       <div style={{
-                        background: "rgba(0,255,136,0.06)",
-                        border: "1px solid rgba(0,255,136,0.15)",
-                        borderRadius: 12,
-                        padding: "16px 20px",
-                        marginBottom: 24,
-                        textAlign: "center",
+                        display: "flex",
+                        alignItems: isMobile ? "flex-start" : "center",
+                        justifyContent: "space-between",
+                        flexDirection: isMobile ? "column" : "row",
+                        gap: 12,
+                        marginBottom: 20,
                       }}>
-                        <p style={{
-                          fontSize: isMobile ? 28 : 36,
-                          fontWeight: 800,
-                          color: "#00FF88",
-                          fontFamily: "monospace",
-                          lineHeight: 1.2,
-                          direction: "ltr",
+                        <div style={{ flex: 1 }}>
+                          <p style={{
+                            fontSize: 11,
+                            fontFamily: "monospace",
+                            color: "#00FF88",
+                            marginBottom: 6,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                          }}>
+                            Breach Playbook #{idx + 1}
+                          </p>
+                          <h3 style={{
+                            fontSize: isMobile ? 22 : 28,
+                            fontWeight: 800,
+                            color: "#F1F5F9",
+                            direction: "ltr",
+                            textAlign: "right",
+                            letterSpacing: "-0.01em",
+                            lineHeight: 1.2,
+                            marginBottom: 4,
+                          }}>
+                            {idea.name}
+                          </h3>
+                          <p style={{ color: "#94A3B8", fontSize: 14, lineHeight: 1.5 }}>
+                            {idea.tagline}
+                          </p>
+                        </div>
+                        {/* Large MRR metric */}
+                        <div style={{
+                          background: "rgba(0,255,136,0.06)",
+                          border: "1px solid rgba(0,255,136,0.15)",
+                          borderRadius: 12,
+                          padding: "14px 20px",
+                          textAlign: "center",
+                          flexShrink: 0,
+                          minWidth: isMobile ? "100%" : 180,
                         }}>
-                          {idea.potential_mrr || idea.monetization}
-                        </p>
-                        <p style={{
-                          fontSize: 12,
-                          color: "#94A3B8",
-                          fontFamily: "monospace",
-                          marginTop: 4,
-                          letterSpacing: "0.05em",
-                        }}>
-                          POTENTIAL MRR
-                        </p>
-                      </div>
-
-                      {/* ── Value Proposition Bullets ── */}
-                      <div style={{ marginBottom: 20 }}>
-                        <p style={{
-                          fontSize: 10,
-                          fontFamily: "monospace",
-                          color: "#00FF88",
-                          marginBottom: 8,
-                          letterSpacing: "0.05em",
-                          textTransform: "uppercase",
-                        }}>
-                          הצעת ערך
-                        </p>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          {(idea.value_bullets && idea.value_bullets.length > 0
-                            ? idea.value_bullets
-                            : idea.mvp_scope?.slice(0, 4) || []
-                          ).map((bullet, i) => (
-                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#E2E8F0" }}>
-                              <span style={{
-                                width: 5, height: 5, borderRadius: "50%",
-                                background: "#00FF88", flexShrink: 0,
-                              }} />
-                              {bullet}
-                            </div>
-                          ))}
+                          <p style={{
+                            fontSize: isMobile ? 26 : 32,
+                            fontWeight: 800,
+                            color: "#00FF88",
+                            fontFamily: "monospace",
+                            lineHeight: 1.2,
+                            direction: "ltr",
+                          }}>
+                            {idea.potential_mrr || idea.monetization}
+                          </p>
+                          <p style={{
+                            fontSize: 10,
+                            color: "#94A3B8",
+                            fontFamily: "monospace",
+                            marginTop: 2,
+                            letterSpacing: "0.05em",
+                          }}>
+                            POTENTIAL MRR
+                          </p>
                         </div>
                       </div>
 
-                      {/* ── Target Audience Bullets ── */}
-                      <div style={{ marginBottom: 20 }}>
-                        <p style={{
-                          fontSize: 10,
-                          fontFamily: "monospace",
-                          color: "#A78BFA",
-                          marginBottom: 8,
-                          letterSpacing: "0.05em",
-                          textTransform: "uppercase",
-                        }}>
-                          קהל יעד
-                        </p>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          {(idea.audience_bullets && idea.audience_bullets.length > 0
-                            ? idea.audience_bullets
-                            : [idea.target_audience]
-                          ).map((bullet, i) => (
-                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#E2E8F0" }}>
-                              <span style={{
-                                width: 5, height: 5, borderRadius: "50%",
-                                background: "#A78BFA", flexShrink: 0,
-                              }} />
-                              {bullet}
-                            </div>
+                      {/* ── API Tags ── */}
+                      {apis.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, direction: "ltr", marginBottom: 20 }}>
+                          {apis.map((api, j) => (
+                            <span key={j} style={{
+                              fontSize: 11,
+                              fontFamily: "monospace",
+                              padding: "4px 10px",
+                              borderRadius: 6,
+                              background: "rgba(0,212,255,0.08)",
+                              border: "1px solid rgba(0,212,255,0.2)",
+                              color: "#00D4FF",
+                              fontWeight: 600,
+                              boxShadow: "0 0 6px rgba(0,212,255,0.1)",
+                            }}>
+                              {api}
+                            </span>
                           ))}
                         </div>
-                      </div>
+                      )}
 
-                      {/* ── Generated Tech Stack Tags ── */}
-                      {idea.apis_used && idea.apis_used.length > 0 && (
-                        <div style={{ marginBottom: 24 }}>
+                      {/* ── Dashboard Grid ── */}
+                      <div style={{
+                        display: "grid",
+                        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                        gap: 12,
+                        marginBottom: 20,
+                      }}>
+                        {/* Pitch Section — full width */}
+                        {pitch && (
+                          <div style={{
+                            gridColumn: isMobile ? "1" : "1 / -1",
+                            background: "rgba(255,255,255,0.03)",
+                            borderRadius: 12,
+                            padding: "16px 18px",
+                            border: "1px solid rgba(255,255,255,0.05)",
+                          }}>
+                            <p style={{
+                              fontSize: 10,
+                              fontFamily: "monospace",
+                              color: "#00FF88",
+                              marginBottom: 8,
+                              letterSpacing: "0.05em",
+                              textTransform: "uppercase",
+                            }}>
+                              הזדמנות
+                            </p>
+                            <p style={{ fontSize: 14, color: "#E2E8F0", lineHeight: 1.7 }}>
+                              {pitch}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Architecture Section — full width */}
+                        {architecture && (
+                          <div style={{
+                            gridColumn: isMobile ? "1" : "1 / -1",
+                            background: "rgba(0,212,255,0.03)",
+                            borderRadius: 12,
+                            padding: "16px 18px",
+                            border: "1px solid rgba(0,212,255,0.08)",
+                          }}>
+                            <p style={{
+                              fontSize: 10,
+                              fontFamily: "monospace",
+                              color: "#00D4FF",
+                              marginBottom: 8,
+                              letterSpacing: "0.05em",
+                              textTransform: "uppercase",
+                            }}>
+                              איך זה עובד?
+                            </p>
+                            <p style={{ fontSize: 14, color: "#E2E8F0", lineHeight: 1.7 }}>
+                              {architecture}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Bottom Split: Monetization (left) | Audience (right) */}
+                        <div style={{
+                          background: "rgba(255,107,53,0.04)",
+                          borderRadius: 12,
+                          padding: "16px 18px",
+                          border: "1px solid rgba(255,107,53,0.1)",
+                        }}>
                           <p style={{
                             fontSize: 10,
                             fontFamily: "monospace",
-                            color: "#00D4FF",
+                            color: "#FF6B35",
                             marginBottom: 8,
                             letterSpacing: "0.05em",
                             textTransform: "uppercase",
                           }}>
-                            GENERATED TECH STACK
+                            מודל עסקי
                           </p>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, direction: "ltr" }}>
-                            {idea.apis_used.map((api, j) => (
-                              <span key={j} style={{
-                                fontSize: 11,
-                                fontFamily: "monospace",
-                                padding: "4px 10px",
-                                borderRadius: 6,
-                                background: "rgba(0,212,255,0.08)",
-                                border: "1px solid rgba(0,212,255,0.2)",
-                                color: "#00D4FF",
-                                fontWeight: 600,
-                              }}>
-                                {api}
-                              </span>
+                          <p style={{ fontSize: 14, color: "#F1F5F9", fontWeight: 500, lineHeight: 1.6 }}>
+                            {idea.monetization}
+                          </p>
+                        </div>
+
+                        <div style={{
+                          background: "rgba(167,139,250,0.04)",
+                          borderRadius: 12,
+                          padding: "16px 18px",
+                          border: "1px solid rgba(167,139,250,0.1)",
+                        }}>
+                          <p style={{
+                            fontSize: 10,
+                            fontFamily: "monospace",
+                            color: "#A78BFA",
+                            marginBottom: 8,
+                            letterSpacing: "0.05em",
+                            textTransform: "uppercase",
+                          }}>
+                            קהל יעד
+                          </p>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {audienceBullets.map((bullet, i) => (
+                              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 14, color: "#E2E8F0" }}>
+                                <span style={{
+                                  width: 5, height: 5, borderRadius: "50%",
+                                  background: "#A78BFA", flexShrink: 0, marginTop: 7,
+                                }} />
+                                {bullet}
+                              </div>
                             ))}
                           </div>
                         </div>
-                      )}
+                      </div>
 
                       {/* ── CTA Button — Inline Lead Capture ── */}
                       <div>
@@ -659,12 +723,14 @@ export default function IdeatorPage() {
                             }
                           }}
                         >
-                          הוצאת סימולציית GTM לפועל
+                          {isFormOpen
+                            ? "סגור"
+                            : "איך מביאים לזה לקוחות משלמים? (בניית אסטרטגיית GTM) 🚀"}
                         </button>
 
                         {/* ── Inline Form (revealed on click) ── */}
                         <div style={{
-                          maxHeight: isFormOpen ? 220 : 0,
+                          maxHeight: isFormOpen ? 320 : 0,
                           overflow: "hidden",
                           transition: "max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                         }}>
@@ -676,12 +742,21 @@ export default function IdeatorPage() {
                             border: "1px solid rgba(0,255,136,0.12)",
                           }}>
                             <p style={{
-                              fontSize: 14,
+                              fontSize: 15,
                               fontWeight: 600,
                               color: "#F1F5F9",
-                              marginBottom: 12,
+                              marginBottom: 4,
+                              lineHeight: 1.6,
                             }}>
-                              לטיוטת סימולציית GTM מפורטת, הזן את האימייל שלך:
+                              רוצה להפוך את הרעיון הזה לעסק חי?
+                            </p>
+                            <p style={{
+                              fontSize: 13,
+                              color: "#94A3B8",
+                              marginBottom: 14,
+                              lineHeight: 1.6,
+                            }}>
+                              בוא נבנה לו אסטרטגיית חדירה לשוק צעד אחר צעד.
                             </p>
                             <div style={{
                               display: "flex",
@@ -695,7 +770,7 @@ export default function IdeatorPage() {
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" && formEmail.trim()) handleInlineSubmit(idea);
                                 }}
-                                placeholder="your@email.com"
+                                placeholder="הכנס אימייל (לשמירת התוכנית שלך)..."
                                 dir="ltr"
                                 style={{
                                   flex: 1,
@@ -716,7 +791,7 @@ export default function IdeatorPage() {
                                   borderRadius: 10,
                                   border: "none",
                                   background: formEmail.trim()
-                                    ? "linear-gradient(135deg, #00FF88, #00CC6A)"
+                                    ? "#00FF88"
                                     : "#1E2D45",
                                   color: formEmail.trim() ? "#080A0F" : "#94A3B8",
                                   fontSize: 14,
@@ -726,16 +801,18 @@ export default function IdeatorPage() {
                                   transition: "all 0.2s",
                                 }}
                               >
-                                Draft Architecture
+                                צור לי תוכנית עסקית ושיווקית
                               </button>
                             </div>
+                            {/* Progress Expectation */}
                             <p style={{
                               fontSize: 11,
                               color: "#6B7FA3",
                               fontFamily: "monospace",
-                              marginTop: 8,
+                              marginTop: 12,
+                              lineHeight: 1.6,
                             }}>
-                              אימייל עסקי מומלץ — ננווט אותך ישירות ליצירת הארכיטקטורה
+                              שלב 1: בחירת רעיון מנצח ✓ | שלב 2: שמירת התוכנית (יצירת משתמש) | שלב 3: הפקת אסטרטגיית GTM מלאה
                             </p>
                           </div>
                         </div>
@@ -774,7 +851,6 @@ export default function IdeatorPage() {
               position: "relative",
               overflow: "hidden",
             }}>
-              {/* Decorative glow */}
               <div style={{
                 position: "absolute",
                 top: "-50%",

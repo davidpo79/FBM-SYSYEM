@@ -158,33 +158,28 @@ Think like an architect — combine APIs from different categories:
 - Tesseract.js + GPT-4o + Airtable = in-browser document scanner with AI data extraction to database
 
 CRITICAL RULES:
+- CRITICAL RULE: Regardless of the chosen market (even 'Global Market'), YOUR ENTIRE JSON OUTPUT MUST BE STRICTLY IN HEBREW. Only API names or tech terms can be in English. All descriptions, explanations, pitches, bullets — everything must be in Hebrew.
 - ${isIsrael
   ? "The user selected the ISRAELI MARKET (שוק ישראלי). You MUST incorporate at least one Local/Israeli API per idea (e.g., Morning for invoicing, Data.gov.il for government data, Tranzila/Meshulam for local payments, WhatsApp API for local communication). Combine them creatively with global APIs to create something uniquely valuable for the Israeli market."
   : "The user selected the GLOBAL MARKET (שוק בינלאומי). Focus on Stripe/Lemon Squeezy for payments and global tools like Apollo.io, Clearbit, or Plaid. Do NOT use Israeli-specific APIs."}
 - Every API you mention MUST be a real, existing API with real endpoints — no fictional APIs.
 - Think about non-obvious cross-category combinations (e.g., voice AI + CRM, scraping + vector DB + messaging).
-- Always respond in Hebrew (except API names and technical terms).
 - Return valid JSON only (no backticks, no markdown).`;
 
     const prompt = `ייצר בדיוק 3 רעיונות ייחודיים למוצר Micro-SaaS בקטגוריית "${catLabel}".
 שוק היעד: ${marketLabel}.
 
-לכל רעיון ספק:
+לכל רעיון ספק (הכל בעברית חוץ משמות APIs ומונחים טכניים):
 1. name - שם מוצר קליט (2-3 מילים באנגלית)
 2. tagline - משפט ערך אחד (עד 12 מילים)
-3. problem - נקודת הכאב הספציפית שהמוצר פותר (2-3 משפטים)
-4. solution - איך המוצר פותר את זה (2-3 משפטים)
-5. target_audience - מי ישלם על זה (ספציפי)
-6. monetization - איך זה מרוויח כסף (מודל תמחור + מחיר מוצע)
-7. mvp_scope - מה כולל ה-MVP (3-5 נקודות)
-8. competitive_edge - למה זה מנצח מול אלטרנטיבות (1-2 משפטים)
-9. market_size - הערכת גודל שוק TAM/SAM מותאמת ל${marketLabel} (${isIsrael ? "מספרים רלוונטיים לישראל בש\"ח" : "מספרים גלובליים בדולר"})
-10. difficulty - "easy" | "medium" | "hard" (רמת קושי לבניית MVP)
-11. apis_used - רשימה של 2-5 APIs ספציפיים מהמאגר שלך שנדרשים לבנייה${isIsrael ? " (חובה לכלול לפחות API ישראלי/מקומי אחד)" : ""}
-12. api_explanation - הסבר של 2-3 משפטים: איך שילובי ה-API מתחברים יחד ליצירת הפתרון
-13. potential_mrr - הערכת MRR פוטנציאלי (Monthly Recurring Revenue) ריאלית עם סימן מטבע (${isIsrael ? "₪" : "$"}) למשל "${isIsrael ? "₪45,000+" : "$12,000+"}" — מבוססת על גודל קהל היעד × מחיר מוצע
-14. value_bullets - 3-4 נקודות ערך קצרות וחדות (כל אחת עד 8 מילים) שמסבירות למה הרעיון שווה, למשל: "MVP תוך 7 ימים", "מאמת כאב קיצוני בשוק"
-15. audience_bullets - 2-3 נקודות קהל יעד קצרות וספציפיות, למשל: "סוכני נדל\"ן", "בעלי עסקים קטנים"
+3. pitch - הסבר של 2-3 משפטים על המוצר, מהי הבעיה שהוא פותר ומה הוא עושה
+4. architecture - פסקה מפורטת שמסבירה בדיוק איך ה-APIs השונים מתחברים לתוך ה-MVP, זרימת הנתונים, ואיך כל חלק עובד ביחד
+5. monetization - המודל העסקי ואסטרטגיית התמחור (מודל + מחיר מוצע + תדירות חיוב)
+6. audience_bullets - 2-3 נקודות קהל יעד מפורטות וספציפיות (כל נקודה כוללת תיאור קצר של הפרופיל)
+7. potential_mrr - הערכת MRR פוטנציאלי ריאלית עם סימן מטבע (${isIsrael ? "₪" : "$"}) למשל "${isIsrael ? "₪45,000+" : "$12,000+"}" — מבוססת על גודל קהל היעד × מחיר מוצע
+8. generated_apis - רשימה של 2-5 שמות APIs ספציפיים מהמאגר שלך שנדרשים לבנייה${isIsrael ? " (חובה לכלול לפחות API ישראלי/מקומי אחד)" : ""}
+9. difficulty - "easy" | "medium" | "hard" (רמת קושי לבניית MVP)
+10. market_size - הערכת גודל שוק TAM/SAM מותאמת ל${marketLabel} (${isIsrael ? "מספרים רלוונטיים לישראל בש\"ח" : "מספרים גלובליים בדולר"})
 
 דרישות:
 - רעיונות שמפתח יחיד יכול לבנות ב-2-4 שבועות
@@ -199,19 +194,14 @@ CRITICAL RULES:
     {
       "name": "...",
       "tagline": "...",
-      "problem": "...",
-      "solution": "...",
-      "target_audience": "...",
+      "pitch": "...",
+      "architecture": "...",
       "monetization": "...",
-      "mvp_scope": ["...", "...", "..."],
-      "competitive_edge": "...",
-      "market_size": "...",
+      "audience_bullets": ["...", "..."],
+      "potential_mrr": "${isIsrael ? "₪45,000+" : "$12,000+"}",
+      "generated_apis": ["Twilio", "Stripe", "OpenAI"],
       "difficulty": "easy",
-      "apis_used": ["Twilio", "Stripe", "OpenAI"],
-      "api_explanation": "...",
-      "potential_mrr": "₪45,000+",
-      "value_bullets": ["MVP תוך 7 ימים", "מאמת כאב קיצוני", "שוק לא רווי"],
-      "audience_bullets": ["סוכני נדל\"ן", "בעלי עסקים קטנים"]
+      "market_size": "..."
     }
   ]
 }`;
