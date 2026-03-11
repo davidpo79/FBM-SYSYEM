@@ -415,10 +415,10 @@ export default function GTMStrategyPage() {
             <div className="gtm-skeleton" style={{ height: 14, width: "75%", borderRadius: 6 }} />
           </div>
         ))}
-        <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 14, fontWeight: 600, textAlign: "center", marginTop: 24 }}>
-          ...GTM מייצר אסטרטגיית
+        <p dir="rtl" style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 14, fontWeight: 600, textAlign: "center", marginTop: 24 }}>
+          מייצר אסטרטגיית GTM...
         </p>
-        <p style={{ color: "#6B7FA3", fontSize: 13, textAlign: "center", marginTop: 8 }}>
+        <p dir="rtl" style={{ color: "#6B7FA3", fontSize: 13, textAlign: "center", marginTop: 8 }}>
           מנתח את המוצר, השוק והיעדים שלך
         </p>
       </div>
