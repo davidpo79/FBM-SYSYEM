@@ -645,7 +645,7 @@ export default function QuestionnairePage() {
                 onClick={() => setFlowStage("projectMode")}
                 className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
               >
-                הקודם ←
+                → הקודם
               </button>
             ) : <div />}
             <button
@@ -672,7 +672,7 @@ export default function QuestionnairePage() {
               }`}
               style={isGtm ? { background: "linear-gradient(135deg, #00FF88, #00CC6A)", boxShadow: "0 2px 12px rgba(0,255,136,0.3)" } : undefined}
             >
-              → הבא
+              הבא ←
             </button>
           </div>
         </div>
@@ -751,7 +751,7 @@ export default function QuestionnairePage() {
               onClick={() => setFlowStage("name")}
               className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
             >
-              הקודם ←
+              → הקודם
             </button>
             <button
               type="button"
@@ -761,7 +761,7 @@ export default function QuestionnairePage() {
               }}
               className="px-6 py-2.5 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer"
             >
-              → הבא
+              הבא ←
             </button>
           </div>
         </div>
@@ -905,7 +905,7 @@ export default function QuestionnairePage() {
                 isGtm ? "text-[#6B7FA3] hover:bg-[#161D2B]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
               }`}
             >
-              הקודם ←
+              → הקודם
             </button>
           </div>
         </div>
@@ -927,7 +927,7 @@ export default function QuestionnairePage() {
                 isGtm ? "text-[#6B7FA3] hover:bg-[#161D2B]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
               }`}
             >
-              הקודם ←
+              → הקודם
             </button>
           </div>
         </div>
@@ -1005,7 +1005,7 @@ export default function QuestionnairePage() {
                   isGtm ? "text-[#6B7FA3] hover:bg-[#161D2B]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                הקודם ←
+                → הקודם
               </button>
               <button
                 type="button"
@@ -1114,7 +1114,7 @@ export default function QuestionnairePage() {
                 isGtm ? "text-[#6B7FA3] hover:bg-[#161D2B]" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
               }`}
             >
-              הקודם ←
+              → הקודם
             </button>
 
             <button
@@ -1137,7 +1137,7 @@ export default function QuestionnairePage() {
                 ? "שומר..."
                 : isLastManualStep
                   ? isGtm ? "סיום ויצירת תוכנית GTM 🚀" : "סיום ושליחה ל-AI 🚀"
-                  : "→ הבא"}
+                  : "הבא ←"}
             </button>
           </div>
         </>

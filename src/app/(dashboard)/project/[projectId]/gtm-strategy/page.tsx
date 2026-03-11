@@ -775,7 +775,7 @@ export default function GTMStrategyPage() {
               <ICPTab strategy={strategy} />
               <div style={{ textAlign: "center", marginTop: 32 }}>
                 <button onClick={() => switchStage("validation")} className="gtm-btn-primary gtm-btn-scale">
-                  הבא: תוכנית ולידציה (אימות הרעיון) &#10132;
+                  הבא: תוכנית ולידציה (אימות הרעיון) &#10094;
                 </button>
               </div>
             </div>
@@ -788,7 +788,7 @@ export default function GTMStrategyPage() {
               <FunnelTab strategy={strategy} />
               <div style={{ textAlign: "center", marginTop: 32 }}>
                 <button onClick={() => switchStage("marketing")} className="gtm-btn-primary gtm-btn-scale">
-                  הבא: אסטרטגיית שיווק ומכירות &#10132;
+                  הבא: אסטרטגיית שיווק ומכירות &#10094;
                 </button>
               </div>
             </div>
@@ -902,7 +902,7 @@ export default function GTMStrategyPage() {
               className="gtm-btn-orange"
               style={{ padding: "8px 20px", fontSize: 13, whiteSpace: "nowrap" }}
             >
-              תיאום שיחת אבחון ללא עלות &#10132;
+              תיאום שיחת אבחון ללא עלות &#10094;
             </button>
           </div>
         </div>
