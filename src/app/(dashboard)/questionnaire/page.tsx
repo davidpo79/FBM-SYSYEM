@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { supabase } from "@/lib/supabase";
 import { getQuestions, getGTMQuestions, type QuestionnaireAnswers } from "@/lib/questions";
+import { captureUTM, getUTMForPayload } from "@/lib/utm";
 import StepIndicator from "@/components/questionnaire/StepIndicator";
 import QuestionCard from "@/components/questionnaire/QuestionCard";
 import QuestionRecordCard from "@/components/questionnaire/QuestionRecordCard";
@@ -134,6 +135,7 @@ export default function QuestionnairePage() {
       setIsTokenUser(true);
     }
 
+    captureUTM(); // Persist UTM params from URL
     const params = new URLSearchParams(window.location.search);
 
     // Detect GTM track from URL
@@ -406,16 +408,19 @@ export default function QuestionnairePage() {
 
       localStorage.removeItem(STORAGE_KEY);
 
-      // EVENT_USER_REGISTERED: fire webhook on project creation
+      // EVENT_USER_REGISTERED: fire webhook on project creation (with UTM)
       fetch("/api/webhooks/gtm-user-registered", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: user.email || "",
           name: userName,
+          user_id: user.id,
+          registration_date: new Date().toISOString(),
           projectId: data.id,
           track,
           ideaName: isGtm ? (ideaName || answersToUse["2"]?.slice(0, 120) || "") : undefined,
+          ...getUTMForPayload(),
         }),
       }).catch(() => { /* fire and forget */ });
 
@@ -1082,6 +1087,7 @@ export default function QuestionnairePage() {
               onChange={handleAnswerChange}
               error={error}
               track={track}
+              ideaName={ideaName}
             />
           )}
 

@@ -365,7 +365,7 @@ export function getGTMQuestions(): Question[] {
       section: 'market',
       sectionTitle: GTM_SECTION_TITLES.market,
       title: 'גודל שוק והזדמנות',
-      text: 'כמה גדול השוק לפתרון שלך? כמה לקוחות פוטנציאליים קיימים? מה ה-TAM/SAM/SOM המשוער? יש טרנדים בשוק שמשחקים לטובתך?',
+      text: 'כמה גדול השוק לפתרון שלך? כמה לקוחות פוטנציאליים קיימים לדעתך? יש טרנדים או שינויים בשוק שמשחקים לטובתך?',
     },
     {
       id: '6',

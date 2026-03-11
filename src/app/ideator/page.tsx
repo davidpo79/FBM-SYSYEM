@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
+import { captureUTM, getUTMForPayload } from "@/lib/utm";
+import { fbLead, fbViewContent } from "@/lib/fbpixel";
 
 /* ── Category tiles with emojis — user picks a niche ── */
 const CATEGORIES = [
@@ -49,11 +51,12 @@ type Market = "israel" | "international";
 export default function IdeatorPage() {
   const [category, setCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
-  const [market, setMarket] = useState<Market>("international");
+  const [market, setMarket] = useState<Market>("israel");
   const [adminKey, setAdminKey] = useState("");
   const [stage, setStage] = useState<Stage>("select");
 
   useEffect(() => {
+    captureUTM();
     const params = new URLSearchParams(window.location.search);
     const key = params.get("admin");
     if (key) setAdminKey(key);
@@ -127,6 +130,7 @@ export default function IdeatorPage() {
 
       setIdeas(data.ideas || []);
       setStage("results");
+      fbViewContent("Ideator Results");
     } catch {
       clearInterval(interval);
       setError("משהו השתבש. נסה שוב.");
@@ -136,6 +140,7 @@ export default function IdeatorPage() {
 
   const handleInlineSubmit = (idea: IdeaResult) => {
     if (!formEmail.trim()) return;
+    fbLead("Ideator Entry");
     try {
       localStorage.setItem("gtm-ideator-selected", JSON.stringify({
         name: idea.name,
@@ -145,7 +150,7 @@ export default function IdeatorPage() {
       }));
     } catch { /* ignore */ }
 
-    // EVENT_LEAD_START: fire abandonment recovery webhook
+    // EVENT_LEAD_START: fire abandonment recovery webhook with UTM
     fetch("/api/webhooks/gtm-lead-start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -153,13 +158,17 @@ export default function IdeatorPage() {
         email: formEmail.trim(),
         ideaName: idea.name,
         category: selectedCategory,
-        source: "ideator-results",
+        source: "gtm_ideator",
+        ...getUTMForPayload(),
       }),
     }).catch(() => { /* fire and forget */ });
 
     const encodedEmail = encodeURIComponent(formEmail.trim());
     const encodedIdea = encodeURIComponent(idea.name);
-    window.location.href = `/signup?track=gtm&email=${encodedEmail}&idea=${encodedIdea}`;
+    // Carry UTM params forward to signup
+    const utmParams = getUTMForPayload();
+    const utmQuery = Object.entries(utmParams).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+    window.location.href = `/signup?track=gtm&email=${encodedEmail}&idea=${encodedIdea}${utmQuery ? "&" + utmQuery : ""}`;
   };
 
   // Helpers for backwards-compatible field access
@@ -792,7 +801,7 @@ export default function IdeatorPage() {
                               </button>
                             </div>
                             {/* Animated Stepper */}
-                            <div className="flex items-center justify-center gap-0 mt-4" dir="ltr">
+                            <div className="flex items-center justify-center gap-0 mt-4" dir="rtl">
                               {/* Step 1 - Completed */}
                               <div className="flex flex-col items-center">
                                 <div className="w-8 h-8 rounded-full bg-[#00FF88]/20 border-2 border-[#00FF88] flex items-center justify-center text-[#00FF88] font-bold text-sm">

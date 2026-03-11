@@ -23,7 +23,7 @@ export default function StepIndicator({ current, total, label, track, ideaName }
     return (
       <div className="w-full mb-8">
         {/* RTL Animated Stepper */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, padding: "12px 0 20px", direction: "ltr" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, padding: "12px 0 20px", direction: "rtl" }}>
           {gtmSteps.map((step, i) => {
             const isCompleted = i < activePhase;
             const isActive = i === activePhase;

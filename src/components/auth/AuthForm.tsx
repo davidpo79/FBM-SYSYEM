@@ -3,10 +3,22 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { captureUTM, getUTMForPayload } from "@/lib/utm";
+import { fbCompleteRegistration } from "@/lib/fbpixel";
 import Image from "next/image";
 
 interface AuthFormProps {
   mode: "login" | "signup";
+}
+
+function translateAuthError(msg: string): string {
+  if (msg.includes("Invalid login credentials")) return "אימייל או סיסמה שגויים";
+  if (msg.includes("Email not confirmed")) return "האימייל לא אומת. בדוק את תיבת הדואר";
+  if (msg.includes("User already registered")) return "משתמש כבר רשום עם אימייל זה";
+  if (msg.includes("Password should be")) return "הסיסמה חייבת להכיל לפחות 6 תווים";
+  if (msg.includes("rate limit")) return "נסיונות התחברות רבים מדי. נסה שוב בעוד דקה";
+  if (msg.includes("Email rate limit")) return "נשלחו יותר מדי מיילים. נסה שוב בעוד דקה";
+  return msg;
 }
 
 export default function AuthForm({ mode }: AuthFormProps) {
@@ -16,8 +28,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [gtmIdeaName, setGtmIdeaName] = useState("");
 
   useEffect(() => {
+    captureUTM(); // Persist UTM params from URL
     const params = new URLSearchParams(window.location.search);
-    if (params.get("track") === "gtm") {
+    const isGtm = params.get("track") === "gtm";
+    if (isGtm) {
       setIsGtmTrack(true);
     }
     const prefillEmail = params.get("email");
@@ -28,7 +42,17 @@ export default function AuthForm({ mode }: AuthFormProps) {
     if (ideaParam) {
       setGtmIdeaName(decodeURIComponent(ideaParam));
     }
-  }, []);
+
+    // Zero friction: if user already has a session on GTM track, skip auth
+    if (isGtm) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          const ideaQ = ideaParam ? "&idea=" + encodeURIComponent(decodeURIComponent(ideaParam)) : "";
+          router.push("/questionnaire?track=gtm" + ideaQ);
+        }
+      });
+    }
+  }, [router]);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -63,7 +87,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           password,
         });
         if (authError) {
-          setError(authError.message);
+          setError(translateAuthError(authError.message));
           return;
         }
         if (isGtmTrack) {
@@ -78,9 +102,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
           password,
         });
         if (authError) {
-          setError(authError.message);
+          setError(translateAuthError(authError.message));
           return;
         }
+
+        // Track registration
+        fbCompleteRegistration();
 
         // Save full name to user_profiles
         if (data.user) {
@@ -90,23 +117,22 @@ export default function AuthForm({ mode }: AuthFormProps) {
           });
         }
 
-        // Fire GHL webhook in background for GTM track signups
-        if (isGtmTrack) {
-          const webhookUrl = process.env.NEXT_PUBLIC_GHL_WEBHOOK_URL;
-          if (webhookUrl) {
-            try {
-              fetch(webhookUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  first_name: fullName.trim().split(" ")[0] || "",
-                  email,
-                  source: "GTM_Ideator_Signup",
-                  idea_name: gtmIdeaName || "",
-                }),
-              }).catch(() => { /* silent — don't block UI */ });
-            } catch { /* silent */ }
-          }
+        // Fire EVENT_USER_REGISTERED webhook for GTM signups (with UTM)
+        if (isGtmTrack && data.user) {
+          const utmData = getUTMForPayload();
+          fetch("/api/webhooks/gtm-user-registered", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              name: fullName.trim(),
+              user_id: data.user.id,
+              registration_date: new Date().toISOString(),
+              track: "gtm",
+              ideaName: gtmIdeaName || "",
+              ...utmData,
+            }),
+          }).catch(() => { /* fire and forget */ });
         }
 
         // If session exists, user is immediately logged in (no email confirmation needed)
@@ -140,7 +166,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         },
       });
       if (authError) {
-        setError(authError.message);
+        setError(translateAuthError(authError.message));
         setGoogleLoading(false);
       }
     } catch {
@@ -305,11 +331,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
         {isGtmTrack ? (
           <div className="text-center mb-6">
             {/* Progress Steps */}
-            <div className="flex items-center justify-center gap-1 mb-4" style={{ fontFamily: "monospace", fontSize: 11 }}>
+            <div className="flex items-center justify-center gap-1 mb-4" dir="rtl" style={{ fontFamily: "monospace", fontSize: 11 }}>
               <span className="px-2 py-1 rounded" style={{ background: "rgba(0,255,136,0.15)", color: "#00FF88" }}>[1] רעיון ✓</span>
-              <span style={{ color: "#3D4F6F" }}>→</span>
+              <span style={{ color: "#3D4F6F" }}>←</span>
               <span className="px-2 py-1 rounded" style={{ background: "rgba(0,255,136,0.15)", color: "#00FF88", border: "1px solid rgba(0,255,136,0.3)" }}>[2] משתמש (אתה כאן)</span>
-              <span style={{ color: "#3D4F6F" }}>→</span>
+              <span style={{ color: "#3D4F6F" }}>←</span>
               <span className="px-2 py-1 rounded" style={{ background: "rgba(255,255,255,0.03)", color: "#6B7FA3" }}>[3] תוכנית</span>
             </div>
             <div className="flex justify-center mb-3">

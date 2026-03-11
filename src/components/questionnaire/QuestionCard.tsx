@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import type { Question } from "@/lib/questions";
 
 interface QuestionCardProps {
@@ -6,6 +7,7 @@ interface QuestionCardProps {
   onChange: (value: string) => void;
   error?: string;
   track?: "fbm" | "gtm";
+  ideaName?: string;
 }
 
 export default function QuestionCard({
@@ -14,8 +16,36 @@ export default function QuestionCard({
   onChange,
   error,
   track,
+  ideaName,
 }: QuestionCardProps) {
   const isGtm = track === "gtm";
+  const [magicFillAvailable, setMagicFillAvailable] = useState(false);
+  const [magicData, setMagicData] = useState<Record<string, string> | null>(null);
+
+  // Check if ideator data is available for magic fill
+  useEffect(() => {
+    if (!isGtm) return;
+    try {
+      const stored = localStorage.getItem("gtm-ideator-selected");
+      if (stored) {
+        const idea = JSON.parse(stored);
+        if (idea.name || idea.pitch || idea.niche) {
+          const fillMap: Record<string, string> = {};
+          if (idea.pitch) fillMap["1"] = `הבעיה שאני פותר: ${idea.pitch}\nקהל יעד: ${idea.niche || ""}`;
+          if (idea.name) fillMap["2"] = `${idea.name}${idea.apisUsed ? ` — פתרון המבוסס על ${idea.apisUsed.join(", ")}` : ""}`;
+          setMagicData(fillMap);
+          setMagicFillAvailable(Object.keys(fillMap).length > 0);
+        }
+      }
+    } catch { /* ignore */ }
+  }, [isGtm]);
+
+  const handleMagicFill = () => {
+    if (!magicData || !magicData[question.id]) return;
+    onChange(magicData[question.id]);
+  };
+
+  const canMagicFill = isGtm && magicFillAvailable && magicData?.[question.id] && (!value || value.length < 5);
 
   return (
     <div
@@ -69,6 +99,26 @@ export default function QuestionCard({
             מולא אוטומטית מהרעיון שלך — ערוך או אשר
           </span>
         </div>
+      )}
+
+      {/* Magic Fill Button */}
+      {canMagicFill && (
+        <button
+          type="button"
+          onClick={handleMagicFill}
+          className="mb-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+          style={{
+            background: "rgba(0,255,136,0.08)",
+            border: "1px solid rgba(0,255,136,0.25)",
+            color: "#00FF88",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span>✨</span>
+          השתמש בניתוח ה-AI מהרעיון שלי
+        </button>
       )}
 
       {/* Textarea */}

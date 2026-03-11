@@ -4,26 +4,36 @@ import { NextRequest, NextResponse } from "next/server";
  * EVENT_LEAD_START — Abandonment recovery webhook
  * Triggered when a user enters their email on the Ideator/Results page.
  * Sends data to GoHighLevel CRM for follow-up sequences.
+ * Includes UTM attribution parameters.
  */
 
-const GHL_WEBHOOK_URL = process.env.GHL_WEBHOOK_LEAD_START || "";
+const GHL_WEBHOOK_URL = process.env.NEXT_PUBLIC_GHL_SMART_WEBHOOK_URL || process.env.GHL_WEBHOOK_LEAD_START || "";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, ideaName, category, source } = await req.json();
+    const body = await req.json();
+    const { email, ideaName, category, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term } = body;
 
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Missing email" }, { status: 400 });
     }
 
-    const payload = {
+    const payload: Record<string, string> = {
+      event_type: "lead_start",
       event: "EVENT_LEAD_START",
       email: email.trim(),
       idea_name: ideaName || "",
       category: category || "",
-      source: source || "ideator",
+      source: source || "gtm_ideator",
       timestamp: new Date().toISOString(),
     };
+
+    // Attach UTM params if present
+    if (utm_source) payload.utm_source = utm_source;
+    if (utm_medium) payload.utm_medium = utm_medium;
+    if (utm_campaign) payload.utm_campaign = utm_campaign;
+    if (utm_content) payload.utm_content = utm_content;
+    if (utm_term) payload.utm_term = utm_term;
 
     // Fire and forget to GHL webhook
     if (GHL_WEBHOOK_URL) {

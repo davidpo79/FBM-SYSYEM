@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useProject } from "../layout";
+import { getUTMForPayload } from "@/lib/utm";
+import PaymentModal from "@/components/PaymentModal";
+import type { CustomerDetails } from "@/components/PaymentModal";
+import { supabase } from "@/lib/supabase";
+import { fbInitiateCheckout, fbPurchase, fbContact } from "@/lib/fbpixel";
 
 interface GTMStrategy {
   icp: {
@@ -114,6 +119,77 @@ export default function GTMStrategyPage() {
   const [showBootcampModal, setShowBootcampModal] = useState(false);
   const generationAttempted = useRef(false);
 
+  // Payment state
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<"diy" | "pro" | null>(null);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+
+  // Check if already purchased
+  useEffect(() => {
+    try {
+      const unlocked = localStorage.getItem("gtm-marketing-unlocked");
+      if (unlocked === "true") setIsUnlocked(true);
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleTierSelect = (tier: "diy" | "pro") => {
+    setSelectedTier(tier);
+    setPaymentUrl(null);
+    setShowPayment(true);
+    fbInitiateCheckout(`GTM ${tier.toUpperCase()}`);
+  };
+
+  const handlePaymentSubmit = async (details: CustomerDetails) => {
+    setPaymentLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const tierPlan = selectedTier === "diy" ? "gtm_diy" : "gtm_pro";
+      const res = await fetch("/api/billing/create-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          plan: tierPlan,
+          customerName: details.customerName,
+          customerIdNumber: details.customerIdNumber,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.paymentUrl) {
+        throw new Error(json.error || "שגיאה ביצירת קישור תשלום");
+      }
+      setPaymentUrl(json.paymentUrl);
+    } catch {
+      setShowPayment(false);
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const handlePaymentComplete = useCallback(() => {
+    setShowPayment(false);
+    setPaymentUrl(null);
+    setIsUnlocked(true);
+    try {
+      localStorage.setItem("gtm-marketing-unlocked", "true");
+    } catch { /* ignore */ }
+    // Track purchase
+    const price = selectedTier === "diy" ? 290 : 99;
+    fbPurchase(price, "ILS");
+  }, [selectedTier]);
+
+  const handlePaymentClose = useCallback(() => {
+    setShowPayment(false);
+    setPaymentUrl(null);
+    setSelectedTier(null);
+    setPaymentLoading(false);
+  }, []);
+
   const generateStrategy = async () => {
     if (!project) return;
     setIsGenerating(true);
@@ -207,7 +283,7 @@ export default function GTMStrategyPage() {
 
   if (!strategy) return null;
 
-  const isLocked = currentStage === "marketing";
+  const isLocked = currentStage === "marketing" && !isUnlocked;
 
   return (
     <div style={{ marginTop: 24, direction: "rtl" }}>
@@ -299,8 +375,8 @@ export default function GTMStrategyPage() {
               קהל יעד וולידציה זמינים בחינם. שדרג כדי לגשת לערוצי צמיחה, פרסום ממומן, אסטרטגיית תוכן ותוכנית השקה ל-90 יום.
             </p>
 
-            {/* 3-Tier Pricing */}
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", maxWidth: 820, direction: "ltr" }}>
+            {/* 2-Tier Pricing: DIY + PRO */}
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", maxWidth: 560, direction: "ltr" }}>
               {/* DIY Tier */}
               <div style={{
                 flex: "1 1 230px",
@@ -322,23 +398,25 @@ export default function GTMStrategyPage() {
                   <li>&#10003; תוכנית השקה ל-90 יום</li>
                   <li style={{ color: "#3D4F6F" }}>&#10007; ללא שיחות ליווי</li>
                 </ul>
-                <a
-                  href="/settings?tab=plan&tier=diy"
+                <button
+                  onClick={() => handleTierSelect("diy")}
                   style={{
                     display: "block",
+                    width: "100%",
                     marginTop: 20,
                     padding: "12px 0",
                     borderRadius: 10,
                     border: "1px solid #1E2D45",
+                    background: "transparent",
                     color: "#F0F6FF",
-                    textDecoration: "none",
                     fontSize: 14,
                     fontWeight: 600,
+                    cursor: "pointer",
                     transition: "all 0.2s",
                   }}
                 >
                   קבל גישת DIY
-                </a>
+                </button>
               </div>
 
               {/* Pro Tier */}
@@ -372,53 +450,62 @@ export default function GTMStrategyPage() {
                   <li style={{ color: "#00FF88" }}>&#10003; עוזר אסטרטגי AI</li>
                   <li style={{ color: "#00FF88" }}>&#10003; שיחת ליווי חודשית</li>
                 </ul>
-                <a
-                  href="/settings?tab=plan&tier=pro"
+                <button
+                  onClick={() => handleTierSelect("pro")}
                   style={{
-                    display: "block", marginTop: 20, padding: "12px 0", borderRadius: 10,
+                    display: "block", width: "100%", marginTop: 20, padding: "12px 0", borderRadius: 10,
                     background: "linear-gradient(135deg, #00FF88, #00CC6A)",
-                    color: "#080A0F", textDecoration: "none", fontSize: 14, fontWeight: 700,
+                    color: "#080A0F", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer",
                     boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
                   }}
                 >
                   התחל Pro
-                </a>
-              </div>
-
-              {/* BootCamp Tier */}
-              <div style={{
-                flex: "1 1 230px",
-                maxWidth: 260,
-                background: "linear-gradient(180deg, rgba(255,107,53,0.06) 0%, #161D2B 100%)",
-                border: "1px solid rgba(255,107,53,0.3)",
-                borderRadius: 14,
-                padding: 24,
-                textAlign: "center",
-              }}>
-                <p style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>BootCamp</p>
-                <p style={{ color: "#F0F6FF", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>
-                  הגש מועמדות
-                </p>
-                <p style={{ color: "#FF6B35", fontSize: 12, marginBottom: 20, fontWeight: 600 }}>מקומות מוגבלים</p>
-                <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 13, lineHeight: 2.2, listStyle: "none", padding: 0, direction: "rtl" }}>
-                  <li style={{ color: "#FF6B35" }}>&#10003; הכל ב-Pro</li>
-                  <li style={{ color: "#FF6B35" }}>&#10003; תוכנית לייב של 8 שבועות</li>
-                  <li style={{ color: "#FF6B35" }}>&#10003; ליווי קבוצתי שבועי</li>
-                  <li style={{ color: "#FF6B35" }}>&#10003; קהילה פרטית</li>
-                </ul>
-                <button
-                  onClick={() => setShowBootcampModal(true)}
-                  style={{
-                    display: "block", width: "100%", marginTop: 20, padding: "12px 0", borderRadius: 10,
-                    border: "1px solid rgba(255,107,53,0.4)",
-                    background: "transparent",
-                    color: "#FF6B35", fontSize: 14, fontWeight: 600, cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  הגש מועמדות
                 </button>
               </div>
+            </div>
+
+            {/* ── Bootcamp Hero Section (Burn Orange) ── */}
+            <div style={{
+              width: "100%",
+              maxWidth: 560,
+              marginTop: 32,
+              background: "linear-gradient(135deg, rgba(255,107,53,0.1) 0%, rgba(255,107,53,0.03) 100%)",
+              border: "1.5px solid rgba(255,107,53,0.35)",
+              borderRadius: 16,
+              padding: "32px 28px",
+              textAlign: "center",
+              position: "relative",
+              overflow: "hidden",
+            }}>
+              {/* Burn Orange accent line */}
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "linear-gradient(90deg, #FF6B35, #E55A2B)" }} />
+
+              <p style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 11, textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.1em" }}>
+                GTM BOOTCAMP
+              </p>
+              <h3 style={{ color: "#F0F6FF", fontSize: 22, fontWeight: 800, lineHeight: 1.4, marginBottom: 12 }}>
+                מהרעיון ללקוח המשלם הראשון ב-90 יום
+              </h3>
+              <p style={{ color: "#9DA3B4", fontSize: 14, lineHeight: 1.7, marginBottom: 20, maxWidth: 460, margin: "0 auto 20px" }}>
+                הליווי האישי של דוד פופוביץ למפתחים ויזמים שלא מוכנים להשאיר את ההצלחה שלהם ליד המקרה.
+              </p>
+              <button
+                onClick={() => setShowBootcampModal(true)}
+                style={{
+                  padding: "14px 28px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: "linear-gradient(135deg, #FF6B35, #E55A2B)",
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 20px rgba(255,107,53,0.35)",
+                  transition: "all 0.2s",
+                }}
+              >
+                תיאום שיחת אבחון אסטרטגית של 15 דקות עם דוד פופוביץ (ללא עלות)
+              </button>
             </div>
           </div>
         )}
@@ -513,6 +600,17 @@ export default function GTMStrategyPage() {
         </button>
       </div>
 
+      {/* Payment Modal (modern checkout) */}
+      {showPayment && (
+        <PaymentModal
+          url={paymentUrl}
+          onSubmitDetails={handlePaymentSubmit}
+          loading={paymentLoading}
+          onComplete={handlePaymentComplete}
+          onClose={handlePaymentClose}
+        />
+      )}
+
       {/* Bootcamp Application Modal */}
       {showBootcampModal && (
         <BootcampModal
@@ -559,9 +657,11 @@ function BootcampModal({ userName, onClose }: { userName: string; onClose: () =>
           email: email.trim(),
           phone: phone.trim(),
           source: "gtm-strategy-page",
+          ...getUTMForPayload(),
         }),
       });
       setSubmitted(true);
+      fbContact("Bootcamp Application");
     } catch {
       setError("שגיאה בשליחת המועמדות. נסה שוב.");
     } finally {

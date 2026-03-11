@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ToastProvider } from "@/components/Toast";
+import FacebookPixel from "@/components/FacebookPixel";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -44,6 +46,9 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
+        <Suspense fallback={null}>
+          <FacebookPixel />
+        </Suspense>
         <ToastProvider>
           {children}
         </ToastProvider>
