@@ -4,6 +4,21 @@ import { NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
 import { logApiCall } from "@/lib/api-log";
 
+const API_CATEGORIES: Record<string, string> = {
+  "ai-automation": "AI ואוטומציה",
+  "fintech": "פינטק",
+  "healthtech": "הלט'טק",
+  "edtech": "חינוך וטכנולוגיה",
+  "ecommerce": "E-Commerce וקמעונאות",
+  "devtools": "כלים למפתחים",
+  "saas-b2b": "SaaS B2B",
+  "creator-economy": "כלכלת יוצרים",
+  "sustainability": "קלינטק וקיימות",
+  "proptech": "נדל\"ן וטכנולוגיה",
+  "legaltech": "משפטי וטכנולוגיה",
+  "hrtech": "HR וגיוס",
+};
+
 let ratelimit: Ratelimit | null = null;
 try {
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
@@ -29,46 +44,54 @@ export async function POST(req: Request) {
         );
       }
     }
-    const { niche } = await req.json();
+    const { category } = await req.json();
 
-    if (!niche || typeof niche !== "string" || niche.trim().length < 2) {
-      return Response.json({ error: "יש להזין קהל יעד או נישה" }, { status: 400 });
-    }
+    const catLabel = API_CATEGORIES[category] || category || "טכנולוגיה כללית";
 
-    const prompt = `אתה יועץ אסטרטגי ויזם טכנולוגי ברמה עולמית. המשתמש מתאר קהל יעד או נישה: "${niche.trim()}".
+    const prompt = `אתה מנוע יצירת רעיונות סטארטאפ ברמה עולמית עבור תוכנית GTM BootCamp.
 
-המשימה שלך: תכנן 3 רעיונות Micro-SaaS רווחיים במיוחד שפותרים בעיה אמיתית עבור הנישה הזו.
+ייצר בדיוק 3 רעיונות ייחודיים למוצר Micro-SaaS בקטגוריית "${catLabel}".
 
-לכל רעיון:
-1. זהה בעיה כואבת של קהל היעד
-2. הצע פתרון SaaS שפותר אותה
-3. בחר את שילובי ה-API הנכונים ליישום (מתוך כלים כמו: Twilio, Stripe, OpenAI, Shopify, Slack, Google Sheets, Notion, Airtable, HubSpot, SendGrid, Firebase, WhatsApp, Google Maps, Calendly, Zoom, Plaid, ועוד)
-4. הסבר למה כל API נחוץ ואיך הם מתחברים יחד
+לכל רעיון ספק:
+1. name - שם מוצר קליט (2-3 מילים באנגלית)
+2. tagline - משפט ערך אחד (עד 12 מילים)
+3. problem - נקודת הכאב הספציפית שהמוצר פותר (2-3 משפטים)
+4. solution - איך המוצר פותר את זה (2-3 משפטים)
+5. target_audience - מי ישלם על זה (ספציפי)
+6. monetization - איך זה מרוויח כסף (מודל תמחור + מחיר מוצע)
+7. mvp_scope - מה כולל ה-MVP (3-5 נקודות)
+8. competitive_edge - למה זה מנצח מול אלטרנטיבות (1-2 משפטים)
+9. market_size - הערכת גודל שוק TAM/SAM
+10. difficulty - "easy" | "medium" | "hard" (רמת קושי לבניית MVP)
+11. apis_used - רשימה של 2-5 APIs ספציפיים שנדרשים לבנייה (לדוגמה: Twilio, Stripe, OpenAI, Shopify, Slack, Google Sheets, Notion, Airtable, HubSpot, SendGrid, Firebase, WhatsApp, Google Maps, Calendly, Zoom, Plaid וכד')
+12. api_explanation - הסבר של 2-3 משפטים: איך שילובי ה-API מתחברים יחד ליצירת הפתרון. לדוגמה: "Twilio לשליחת SMS ללקוחות, Stripe לגביית תשלומים אוטומטית, ו-OpenAI לניתוח טקסט חכם ויצירת תגובות מותאמות."
 
-החזר JSON תקני בלבד בפורמט הבא:
+דרישות:
+- רעיונות שמפתח יחיד יכול לבנות ב-2-4 שבועות
+- התמקד בבעיות נישה עם נכונות לשלם
+- כל רעיון שונה בגישה ובקהל היעד
+- שילובי ה-API חייבים להיות ריאליים ולהתאים לפתרון
+- כל הטקסט בעברית (חוץ משמות APIs ומונחים טכניים)
+
+החזר JSON בלבד (בלי backticks):
 {
   "ideas": [
     {
-      "name": "שם המוצר (2-3 מילים באנגלית)",
-      "pitch": "משפט אחד חד על מה המוצר עושה ולמה הוא שווה כסף",
-      "niche": "קהל היעד הספציפי",
-      "marketSize": "גודל שוק מוערך בשקלים או דולרים עם הסבר קצר",
-      "apisUsed": ["API1", "API2", "API3"],
-      "apiExplanation": "הסבר קצר של 2-3 משפטים: איך שילובי ה-API מתחברים יחד לפתרון. למשל: Twilio לשליחת SMS ללקוחות, Stripe לגביית תשלום אוטומטית, ו-OpenAI לניתוח טקסט חכם.",
-      "monetization": "מי משלם, למה הם משלמים, מודל תמחור, והכנסה צפויה ללקוח"
+      "name": "...",
+      "tagline": "...",
+      "problem": "...",
+      "solution": "...",
+      "target_audience": "...",
+      "monetization": "...",
+      "mvp_scope": ["...", "...", "..."],
+      "competitive_edge": "...",
+      "market_size": "...",
+      "difficulty": "easy",
+      "apis_used": ["Twilio", "Stripe", "OpenAI"],
+      "api_explanation": "..."
     }
   ]
-}
-
-כללים:
-- רעיונות שניתן לבנות על ידי מפתח יחיד ב-2-4 שבועות
-- התמקד ב-B2B או prosumer — אנשים שמשלמים על כלים
-- ה-niche חייב להיות ספציפי ומוגדר היטב
-- ה-apisUsed חייב להכיל לפחות 2-4 APIs רלוונטיים
-- ה-apiExplanation חייב להסביר בבירור למה כל API נחוץ ואיך הם עובדים יחד
-- גודל השוק צריך להיות ריאלי ומוסבר
-- החזר בדיוק 3 רעיונות
-- כל הטקסט בעברית (חוץ משמות APIs ומונחים טכניים)`;
+}`;
 
     const text = await callAI("", prompt, 4000, { jsonMode: true });
     const parsed = JSON.parse(text);

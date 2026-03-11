@@ -3,52 +3,58 @@
 import { useState } from "react";
 import Script from "next/script";
 
-/* ── Suggested niches the user can click to get started quickly ── */
-const NICHE_SUGGESTIONS = [
-  "סוכני נדל\"ן",
-  "מאמני כושר",
-  "עורכי דין",
-  "מעצבי פנים",
-  "חנויות e-commerce",
-  "מורים פרטיים",
-  "קליניקות יופי",
-  "יועצי משכנתאות",
-  "מסעדנים",
-  "פרילנסרים",
-  "רואי חשבון",
-  "סוכני ביטוח",
+/* ── Category tiles with emojis — user picks a niche ── */
+const CATEGORIES = [
+  { value: "ai-automation", label: "AI ואוטומציה", emoji: "🤖" },
+  { value: "fintech", label: "פינטק", emoji: "💰" },
+  { value: "healthtech", label: "הלט'טק", emoji: "🏥" },
+  { value: "edtech", label: "חינוך וטכנולוגיה", emoji: "📚" },
+  { value: "ecommerce", label: "E-Commerce וקמעונאות", emoji: "🛒" },
+  { value: "devtools", label: "כלים למפתחים", emoji: "⚙️" },
+  { value: "saas-b2b", label: "SaaS B2B", emoji: "🏢" },
+  { value: "creator-economy", label: "כלכלת יוצרים", emoji: "🎬" },
+  { value: "sustainability", label: "קלינטק וקיימות", emoji: "🌱" },
+  { value: "proptech", label: "נדל\"ן וטכנולוגיה", emoji: "🏠" },
+  { value: "legaltech", label: "משפטי וטכנולוגיה", emoji: "⚖️" },
+  { value: "hrtech", label: "HR וגיוס", emoji: "👥" },
 ];
 
 interface IdeaResult {
   name: string;
-  pitch: string;
-  niche: string;
-  marketSize: string;
-  apisUsed: string[];
-  apiExplanation: string;
+  tagline: string;
+  problem: string;
+  solution: string;
+  target_audience: string;
   monetization: string;
+  mvp_scope: string[];
+  competitive_edge: string;
+  market_size: string;
+  difficulty: "easy" | "medium" | "hard";
+  apis_used: string[];
+  api_explanation: string;
 }
 
-type Stage = "input" | "building" | "results";
+type Stage = "select" | "building" | "results";
 
 export default function IdeatorPage() {
-  const [niche, setNiche] = useState("");
-  const [stage, setStage] = useState<Stage>("input");
+  const [category, setCategory] = useState("");
+  const [stage, setStage] = useState<Stage>("select");
   const [ideas, setIdeas] = useState<IdeaResult[]>([]);
   const [error, setError] = useState("");
   const [buildStep, setBuildStep] = useState(0);
   const [showModal, setShowModal] = useState(false);
 
   const buildSteps = [
-    "סורק שווקים ונישות...",
-    "מזהה בעיות לפתרון...",
-    "מחבר שילובי API חכמים...",
-    "מחשב פוטנציאל הכנסות...",
-    "מרכיב 3 רעיונות מנצחים...",
+    "סורק מגמות שוק...",
+    "מנתח פערים תחרותיים...",
+    "מזהה נקודות כאב...",
+    "מרכיב קונספטים...",
+    "מאמת מודלים עסקיים...",
+    "מסיים ומלטש...",
   ];
 
   const handleGenerate = async () => {
-    if (!niche.trim()) return;
+    if (!category) return;
     setStage("building");
     setError("");
     setBuildStep(0);
@@ -61,20 +67,20 @@ export default function IdeatorPage() {
         }
         return s + 1;
       });
-    }, 1800);
+    }, 1500);
 
     try {
       const res = await fetch("/api/public/ideator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ niche: niche.trim() }),
+        body: JSON.stringify({ category }),
       });
       const data = await res.json();
       clearInterval(interval);
 
       if (data.error) {
         setError(data.error);
-        setStage("input");
+        setStage("select");
         return;
       }
 
@@ -83,38 +89,82 @@ export default function IdeatorPage() {
     } catch {
       clearInterval(interval);
       setError("משהו השתבש. נסה שוב.");
-      setStage("input");
+      setStage("select");
     }
+  };
+
+  const difficultyLabel = (d: string) => {
+    if (d === "easy") return "קל";
+    if (d === "medium") return "בינוני";
+    return "מאתגר";
+  };
+
+  const difficultyColor = (d: string) => {
+    if (d === "easy") return { bg: "rgba(0,255,136,0.15)", color: "#00FF88" };
+    if (d === "medium") return { bg: "rgba(255,107,53,0.15)", color: "#FF6B35" };
+    return { bg: "rgba(239,68,68,0.15)", color: "#EF4444" };
   };
 
   const handleActivateIdea = (idea: IdeaResult) => {
     try {
       localStorage.setItem("gtm-ideator-selected", JSON.stringify({
         name: idea.name,
-        pitch: idea.pitch,
-        niche: idea.niche,
-        apisUsed: idea.apisUsed,
+        pitch: idea.tagline,
+        niche: idea.target_audience,
+        apisUsed: idea.apis_used,
       }));
     } catch { /* ignore */ }
     setShowModal(true);
   };
 
   return (
-    <div className="theme-gtm min-h-screen bg-[#080A0F] text-[#F0F6FF] pb-20" dir="rtl">
+    <div
+      dir="rtl"
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #080A0F 0%, #0D1117 50%, #080A0F 100%)",
+        color: "#F0F6FF",
+        paddingBottom: 80,
+      }}
+    >
       {/* Header */}
-      <header className="flex items-center justify-between px-6 md:px-8 py-5 border-b border-[#1E2D45]">
-        <div className="flex items-center gap-3">
+      <header
+        style={{
+          padding: "20px 32px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: "1px solid #1E2D45",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/gtm-logo.svg" alt="GTM BootCamp" className="h-10 w-10 object-contain" />
-          <span className="text-lg font-bold tracking-tight" style={{ fontFamily: "monospace" }}>&lt;GTM&gt; BootCamp</span>
-          <span className="text-[10px] px-2 py-0.5 rounded bg-[#00FF88]/15 text-[#00FF88] font-mono font-semibold">BETA</span>
+          <img src="/gtm-logo.svg" alt="GTM" style={{ height: 40, width: 40 }} />
+          <span style={{ fontSize: 20, fontWeight: 700, fontFamily: "monospace" }}>&lt;GTM&gt; BootCamp</span>
+          <span
+            style={{
+              fontSize: 10,
+              padding: "2px 8px",
+              borderRadius: 4,
+              background: "rgba(0,255,136,0.15)",
+              color: "#00FF88",
+              fontFamily: "monospace",
+              fontWeight: 600,
+            }}
+          >
+            BETA
+          </span>
         </div>
         <a
           href="/signup?track=gtm"
-          className="px-5 py-2 rounded-lg text-sm font-bold no-underline transition-all hover:shadow-lg"
           style={{
+            padding: "8px 20px",
+            borderRadius: 8,
             background: "linear-gradient(135deg, #00FF88, #00CC6A)",
             color: "#080A0F",
+            fontSize: 14,
+            fontWeight: 700,
+            textDecoration: "none",
             boxShadow: "0 2px 12px rgba(0,255,136,0.25)",
           }}
         >
@@ -122,266 +172,306 @@ export default function IdeatorPage() {
         </a>
       </header>
 
-      <main className="max-w-[960px] mx-auto px-5 pt-12 pb-6">
-        {/* ── INPUT STAGE ── */}
-        {stage === "input" && (
+      <main style={{ maxWidth: 960, margin: "0 auto", padding: "48px 24px" }}>
+        {/* ── SELECT STAGE ── */}
+        {stage === "select" && (
           <>
             {/* Hero */}
-            <div className="text-center mb-10">
-              <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-4">
+            <div style={{ textAlign: "center", marginBottom: 48 }}>
+              <h1
+                style={{
+                  fontSize: "clamp(32px, 5vw, 56px)",
+                  fontWeight: 800,
+                  lineHeight: 1.1,
+                  marginBottom: 16,
+                }}
+              >
                 מנוע רעיונות{" "}
-                <span className="text-[#00FF88]">Micro-SaaS</span>
+                <span style={{ color: "#00FF88" }}>Micro-SaaS</span>
               </h1>
-              <p className="text-lg text-[#6B7FA3] max-w-2xl mx-auto mb-2">
-                ספר לנו מי קהל היעד שלך — ואנחנו נייצר לך 3 רעיונות לעסק דיגיטלי רווחי,
-                כולל גודל שוק, מודל הכנסות, ושילובי API מוכנים לבנייה.
+              <p style={{ fontSize: 18, color: "#6B7FA3", maxWidth: 600, margin: "0 auto 8px" }}>
+                בחר קטגוריה וקבל 3 רעיונות מאומתים למיקרו-SaaS שאפשר לבנות ולהשיק תוך שבועות.
               </p>
-              <p className="text-xs text-[#3D4F6F] font-mono">
+              <p style={{ fontSize: 13, color: "#3D4F6F", fontFamily: "monospace" }}>
                 Powered by GTM BootCamp AI Engine
               </p>
             </div>
 
-            {/* Niche Input */}
-            <div className="max-w-xl mx-auto mb-6">
-              <label className="block mb-2 text-sm font-semibold text-[#F0F6FF]">
-                מי הלקוח שלך? מה הנישה?
-              </label>
-              <input
-                type="text"
-                value={niche}
-                onChange={(e) => setNiche(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && niche.trim()) handleGenerate(); }}
-                placeholder='לדוגמה: "סוכני נדל״ן שצריכים לנהל לידים" או "מאמני כושר"'
-                className="w-full px-5 py-4 rounded-2xl text-base outline-none transition-all"
-                style={{
-                  border: "2px solid #1E2D45",
-                  background: "#0D1117",
-                  color: "#F0F6FF",
-                  fontSize: 16,
-                }}
-              />
-              <p className="text-[11px] text-[#3D4F6F] font-mono mt-2">
-                תאר את קהל היעד, הבעיה, או התחום — המנוע יעשה את השאר
-              </p>
+            {/* Category Grid */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                gap: 12,
+                marginBottom: 32,
+              }}
+            >
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => setCategory(cat.value)}
+                  style={{
+                    padding: 16,
+                    borderRadius: 12,
+                    border: `1.5px solid ${category === cat.value ? "#00FF88" : "#1E2D45"}`,
+                    background: category === cat.value ? "rgba(0,255,136,0.08)" : "#161D2B",
+                    color: category === cat.value ? "#00FF88" : "#F0F6FF",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    textAlign: "right",
+                    fontSize: 14,
+                    fontWeight: 500,
+                  }}
+                >
+                  <span style={{ fontSize: 24, display: "block", marginBottom: 6 }}>
+                    {cat.emoji}
+                  </span>
+                  {cat.label}
+                </button>
+              ))}
             </div>
 
-            {/* Quick Niche Suggestions */}
-            <div className="max-w-xl mx-auto mb-10">
-              <p className="text-[11px] font-mono text-[#6B7FA3] mb-3 text-center">או בחר נישה מוכנה:</p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {NICHE_SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setNiche(s)}
-                    className="px-4 py-2 rounded-xl text-sm transition-all cursor-pointer"
-                    style={{
-                      border: `1.5px solid ${niche === s ? "#00FF88" : "#1E2D45"}`,
-                      background: niche === s ? "rgba(0,255,136,0.12)" : "#161D2B",
-                      color: niche === s ? "#00FF88" : "#6B7FA3",
-                      fontWeight: niche === s ? 600 : 400,
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {error && (
+              <p style={{ color: "#EF4444", textAlign: "center", marginBottom: 16 }}>{error}</p>
+            )}
 
-            {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-
-            {/* Generate Button */}
-            <div className="text-center">
+            <div style={{ textAlign: "center" }}>
               <button
                 onClick={handleGenerate}
-                disabled={!niche.trim()}
-                className="px-12 py-4 rounded-2xl text-lg font-bold transition-all cursor-pointer"
+                disabled={!category}
                 style={{
+                  padding: "14px 48px",
+                  borderRadius: 12,
                   border: "none",
-                  background: niche.trim()
+                  background: category
                     ? "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)"
                     : "#1E2D45",
-                  color: niche.trim() ? "#080A0F" : "#3D4F6F",
-                  cursor: niche.trim() ? "pointer" : "not-allowed",
-                  boxShadow: niche.trim() ? "0 4px 24px rgba(0,255,136,0.35)" : "none",
+                  color: category ? "#080A0F" : "#3D4F6F",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: category ? "pointer" : "not-allowed",
+                  transition: "all 0.3s",
+                  boxShadow: category ? "0 4px 16px rgba(0,255,136,0.3)" : "none",
                 }}
               >
                 ייצר לי רעיונות
               </button>
             </div>
-
-            {/* How it works */}
-            <div className="max-w-2xl mx-auto mt-16">
-              <p className="text-center text-xs font-mono text-[#3D4F6F] mb-6 uppercase tracking-widest">איך זה עובד?</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[
-                  { step: "01", title: "ספר לנו מי הלקוח", desc: "הגדר נישה או קהל יעד" },
-                  { step: "02", title: "המנוע בונה רעיונות", desc: "AI מנתח שוק ומזהה שילובי API רווחיים" },
-                  { step: "03", title: "קבל 3 שרטוטי SaaS", desc: "כולל גודל שוק, טכנולוגיה, ומודל הכנסות" },
-                ].map((item) => (
-                  <div
-                    key={item.step}
-                    className="rounded-xl p-5 text-center"
-                    style={{ background: "#161D2B", border: "1px solid #1E2D45" }}
-                  >
-                    <span className="text-2xl font-extrabold text-[#00FF88] font-mono block mb-2">{item.step}</span>
-                    <p className="text-sm font-bold text-[#F0F6FF] mb-1">{item.title}</p>
-                    <p className="text-xs text-[#6B7FA3]">{item.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
           </>
         )}
 
-        {/* ── BUILDING STAGE ── */}
+        {/* ── BUILDING ANIMATION ── */}
         {stage === "building" && (
-          <div className="text-center py-20">
-            <div className="flex flex-col-reverse items-center gap-1.5 mb-10 min-h-[180px]">
-              {[0, 1, 2, 3, 4].map((i) => {
-                const visible = buildStep >= i;
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      width: 60 + (4 - i) * 12,
-                      height: visible ? 28 : 0,
-                      borderRadius: 8,
-                      background: visible
-                        ? `linear-gradient(135deg, #00FF88 ${10 + i * 20}%, #00CC6A 100%)`
-                        : "transparent",
-                      transition: "all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                      opacity: visible ? 1 : 0,
-                      boxShadow: visible ? `0 0 ${14 + i * 5}px rgba(0,255,136,${0.2 + i * 0.06})` : "none",
-                      transform: visible ? "translateY(0)" : "translateY(-40px)",
-                    }}
-                  />
-                );
-              })}
+          <div style={{ textAlign: "center", padding: "80px 0" }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 40 }}>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: 40,
+                    height: buildStep >= i ? 40 + i * 12 : 8,
+                    borderRadius: 6,
+                    background: buildStep >= i
+                      ? `linear-gradient(135deg, #00FF88 ${20 + i * 15}%, #00CC6A 100%)`
+                      : "#1E2D45",
+                    transition: "all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                    opacity: buildStep >= i ? 1 : 0.3,
+                    boxShadow: buildStep >= i ? "0 0 12px rgba(0,255,136,0.3)" : "none",
+                  }}
+                />
+              ))}
             </div>
 
-            <p className="text-lg font-semibold text-[#00FF88] font-mono mb-2">
+            <p style={{ fontSize: 18, fontWeight: 600, color: "#00FF88", fontFamily: "monospace", marginBottom: 8 }}>
               {buildSteps[buildStep]}
             </p>
-            <p className="text-sm text-[#6B7FA3]">
-              מחפש רעיונות עבור: <span className="text-[#F0F6FF] font-semibold">{niche}</span>
+            <p style={{ fontSize: 13, color: "#3D4F6F" }}>
+              שלב {buildStep + 1} מתוך {buildSteps.length}
             </p>
 
-            <div className="max-w-xs mx-auto mt-6 h-1 rounded bg-[#1E2D45] overflow-hidden">
+            <div style={{ maxWidth: 300, margin: "24px auto 0", height: 4, borderRadius: 2, background: "#1E2D45", overflow: "hidden" }}>
               <div
-                className="h-full rounded transition-all duration-500"
                 style={{
+                  height: "100%",
                   width: `${((buildStep + 1) / buildSteps.length) * 100}%`,
                   background: "linear-gradient(90deg, #00FF88, #00CC6A)",
+                  borderRadius: 2,
+                  transition: "width 0.5s ease",
                 }}
               />
             </div>
           </div>
         )}
 
-        {/* ── RESULTS STAGE ── */}
+        {/* ── RESULTS ── */}
         {stage === "results" && (
           <>
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold mb-2">
-                <span className="text-[#00FF88]">3 רעיונות SaaS</span> מוכנים עבורך
+            <div style={{ textAlign: "center", marginBottom: 40 }}>
+              <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
+                <span style={{ color: "#00FF88" }}>3 הרעיונות שלך</span> מוכנים
               </h2>
-              <p className="text-sm text-[#6B7FA3]">
-                נישה: <span className="text-[#F0F6FF] font-semibold">{niche}</span>
+              <p style={{ color: "#6B7FA3", fontSize: 14 }}>
+                כל רעיון אומת עבור התאמה לשוק, יכולת בנייה, ופוטנציאל הכנסות.
               </p>
             </div>
 
-            <div className="flex flex-col gap-6">
-              {ideas.map((idea, idx) => (
-                <div
-                  key={idx}
-                  className="bg-[#161D2B] border border-[#1E2D45] rounded-2xl p-7 relative overflow-hidden"
-                  style={{ animation: `fadeInUp 0.5s ${idx * 0.15}s both` }}
-                >
-                  {/* Glow accent */}
-                  <div className="absolute top-0 right-0 w-40 h-40 pointer-events-none" style={{ background: "radial-gradient(circle at top right, rgba(0,255,136,0.06), transparent 70%)" }} />
-
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div>
-                      <span className="text-[10px] font-mono text-[#3D4F6F] block mb-1">רעיון #{idx + 1}</span>
-                      <h3 className="text-xl font-bold text-[#F0F6FF]" style={{ direction: "ltr", textAlign: "right" }}>{idea.name}</h3>
-                    </div>
-                    <span className="shrink-0 text-xs font-mono px-3 py-1 rounded-full bg-[#00FF88]/10 text-[#00FF88] border border-[#00FF88]/20">
-                      Micro-SaaS
-                    </span>
-                  </div>
-
-                  {/* Pitch */}
-                  <p className="text-[#FF6B35] text-[15px] font-semibold leading-relaxed mb-5">
-                    {idea.pitch}
-                  </p>
-
-                  {/* Info Row: Niche + Market Size */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-                    <div className="bg-[#0D1117] rounded-xl p-4 border border-[#1E2D45]">
-                      <p className="text-[10px] font-mono text-[#6B7FA3] mb-1">קהל יעד</p>
-                      <p className="text-sm text-[#F0F6FF] font-semibold">{idea.niche}</p>
-                    </div>
-                    <div className="bg-[#0D1117] rounded-xl p-4 border border-[#1E2D45]">
-                      <p className="text-[10px] font-mono text-[#6B7FA3] mb-1">גודל שוק משוער</p>
-                      <p className="text-sm text-[#F0F6FF] font-semibold">{idea.marketSize}</p>
-                    </div>
-                  </div>
-
-                  {/* API Combinations — NEW RUBRIC */}
-                  <div className="mb-5 p-4 rounded-xl border border-[#00FF88]/20" style={{ background: "rgba(0,255,136,0.04)" }}>
-                    <p className="text-[10px] font-mono text-[#00FF88] mb-2 uppercase tracking-wider">שילובי API מומלצים ליישום</p>
-                    <div className="flex flex-wrap gap-1.5 mb-3" style={{ direction: "ltr" }}>
-                      {(idea.apisUsed || []).map((api, j) => (
-                        <span
-                          key={j}
-                          className="text-[11px] font-mono px-2.5 py-1 rounded-md"
-                          style={{
-                            background: "rgba(0,255,136,0.1)",
-                            border: "1px solid rgba(0,255,136,0.3)",
-                            color: "#00FF88",
-                            boxShadow: "0 0 6px rgba(0,255,136,0.1)",
-                          }}
-                        >
-                          {api}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="text-[13px] text-[#B0BEC5] leading-relaxed">
-                      {idea.apiExplanation}
-                    </p>
-                  </div>
-
-                  {/* Monetization */}
-                  <div className="bg-[#080A0F]/60 rounded-xl p-4 border border-[#1E2D45]/50 mb-5">
-                    <p className="text-[10px] font-mono text-[#6B7FA3] mb-1">מודל הכנסות</p>
-                    <p className="text-[13px] text-[#F0F6FF] leading-relaxed">{idea.monetization}</p>
-                  </div>
-
-                  {/* CTA Button */}
-                  <button
-                    onClick={() => handleActivateIdea(idea)}
-                    className="w-full py-3 rounded-xl text-sm font-bold transition-all cursor-pointer hover:shadow-lg"
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              {ideas.map((idea, idx) => {
+                const dc = difficultyColor(idea.difficulty);
+                return (
+                  <div
+                    key={idx}
                     style={{
-                      background: "linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05))",
-                      border: "1.5px solid rgba(0,255,136,0.3)",
-                      color: "#00FF88",
+                      background: "#161D2B",
+                      border: "1px solid #1E2D45",
+                      borderRadius: 16,
+                      padding: 28,
+                      animation: `fadeInUp 0.5s ${idx * 0.15}s both`,
                     }}
                   >
-                    הוצא את הרעיון לפועל
-                  </button>
-                </div>
-              ))}
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+                      <div>
+                        <span style={{ fontSize: 11, fontFamily: "monospace", color: "#3D4F6F", display: "block", marginBottom: 4 }}>
+                          רעיון #{idx + 1}
+                        </span>
+                        <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4, direction: "ltr", textAlign: "right" }}>
+                          {idea.name}
+                        </h3>
+                        <p style={{ color: "#00FF88", fontSize: 14, fontWeight: 500 }}>
+                          {idea.tagline}
+                        </p>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontFamily: "monospace",
+                          fontWeight: 600,
+                          padding: "4px 10px",
+                          borderRadius: 6,
+                          background: dc.bg,
+                          color: dc.color,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {difficultyLabel(idea.difficulty)}
+                      </span>
+                    </div>
+
+                    {/* Info Sections Grid */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginBottom: 16 }}>
+                      <Section title="הבעיה" text={idea.problem} />
+                      <Section title="הפתרון" text={idea.solution} />
+                      <Section title="קהל יעד" text={idea.target_audience} />
+                      <Section title="מודל הכנסות" text={idea.monetization} />
+                      <Section title="יתרון תחרותי" text={idea.competitive_edge} />
+                      <Section title="גודל שוק" text={idea.market_size} highlight />
+                    </div>
+
+                    {/* API Combinations — NEW RUBRIC */}
+                    {idea.apis_used && idea.apis_used.length > 0 && (
+                      <div
+                        style={{
+                          marginBottom: 16,
+                          padding: 16,
+                          borderRadius: 10,
+                          background: "rgba(0,255,136,0.04)",
+                          border: "1px solid rgba(0,255,136,0.2)",
+                          borderRight: "3px solid #00FF88",
+                        }}
+                      >
+                        <p style={{ fontSize: 11, fontFamily: "monospace", color: "#00FF88", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
+                          שילובי API מומלצים ליישום
+                        </p>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10, direction: "ltr" }}>
+                          {idea.apis_used.map((api, j) => (
+                            <span
+                              key={j}
+                              style={{
+                                fontSize: 11,
+                                fontFamily: "monospace",
+                                padding: "3px 10px",
+                                borderRadius: 6,
+                                background: "rgba(0,255,136,0.1)",
+                                border: "1px solid rgba(0,255,136,0.3)",
+                                color: "#00FF88",
+                                boxShadow: "0 0 6px rgba(0,255,136,0.1)",
+                              }}
+                            >
+                              {api}
+                            </span>
+                          ))}
+                        </div>
+                        <p style={{ fontSize: 13, color: "#B0BEC5", lineHeight: 1.6 }}>
+                          {idea.api_explanation}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* MVP Scope */}
+                    {idea.mvp_scope && idea.mvp_scope.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <p style={{ fontSize: 11, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 8, textTransform: "uppercase" }}>
+                          היקף MVP
+                        </p>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {idea.mvp_scope.map((item, i) => (
+                            <span
+                              key={i}
+                              style={{
+                                fontSize: 12,
+                                padding: "4px 10px",
+                                borderRadius: 6,
+                                background: "rgba(0,255,136,0.08)",
+                                border: "1px solid rgba(0,255,136,0.2)",
+                                color: "#00FF88",
+                              }}
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Activate Idea CTA */}
+                    <button
+                      onClick={() => handleActivateIdea(idea)}
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: 10,
+                        border: "1.5px solid rgba(0,255,136,0.3)",
+                        background: "linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,255,136,0.04))",
+                        color: "#00FF88",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      הוצא את הרעיון הזה לפועל
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Try again */}
-            <div className="text-center mt-8">
+            <div style={{ textAlign: "center", marginTop: 24 }}>
               <button
-                onClick={() => { setStage("input"); setIdeas([]); }}
-                className="px-6 py-2.5 rounded-lg text-sm font-mono cursor-pointer transition-all"
-                style={{ background: "transparent", border: "1px solid #1E2D45", color: "#6B7FA3" }}
+                onClick={() => { setStage("select"); setIdeas([]); }}
+                style={{
+                  background: "transparent",
+                  border: "1px solid #1E2D45",
+                  color: "#6B7FA3",
+                  padding: "10px 24px",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  fontSize: 14,
+                }}
               >
-                נסה נישה אחרת
+                נסה קטגוריה אחרת
               </button>
             </div>
           </>
@@ -391,12 +481,25 @@ export default function IdeatorPage() {
       {/* ── LEAD CAPTURE MODAL ── */}
       {showModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)" }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            background: "rgba(0,0,0,0.8)",
+            backdropFilter: "blur(8px)",
+          }}
         >
           <div
-            className="relative w-full max-w-lg rounded-2xl overflow-hidden"
             style={{
+              position: "relative",
+              width: "100%",
+              maxWidth: 520,
+              borderRadius: 16,
+              overflow: "hidden",
               background: "#0D1117",
               border: "1.5px solid #1E2D45",
               boxShadow: "0 0 60px rgba(0,255,136,0.1), 0 25px 50px rgba(0,0,0,0.5)",
@@ -405,32 +508,47 @@ export default function IdeatorPage() {
             {/* Close button */}
             <button
               onClick={() => setShowModal(false)}
-              className="absolute top-4 left-4 z-10 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #1E2D45", color: "#6B7FA3" }}
+              style={{
+                position: "absolute",
+                top: 12,
+                left: 12,
+                zIndex: 10,
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid #1E2D45",
+                color: "#6B7FA3",
+                cursor: "pointer",
+                fontSize: 14,
+              }}
             >
               X
             </button>
 
             {/* Modal Header */}
-            <div className="p-6 pb-4 text-center" style={{ borderBottom: "1px solid #1E2D45" }}>
-              <div className="flex justify-center mb-3">
+            <div style={{ padding: "24px 24px 16px", textAlign: "center", borderBottom: "1px solid #1E2D45" }} dir="rtl">
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/gtm-logo.svg" alt="GTM" className="h-12 w-12" />
+                <img src="/gtm-logo.svg" alt="GTM" style={{ height: 48, width: 48 }} />
               </div>
-              <h3 className="text-xl font-bold mb-2" dir="rtl">
+              <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
                 מוכן להפוך את הרעיון{" "}
-                <span className="text-[#00FF88]">לעסק רווחי?</span>
+                <span style={{ color: "#00FF88" }}>לעסק רווחי?</span>
               </h3>
-              <p className="text-sm text-[#6B7FA3]" dir="rtl">
+              <p style={{ fontSize: 14, color: "#6B7FA3" }}>
                 הצטרף ל-GTM BootCamp — קבל אסטרטגיית Go-To-Market מלאה, מסגרת ולידציה, ותוכנית השקה ל-90 יום.
               </p>
             </div>
 
             {/* GoHighLevel Form */}
-            <div className="p-4" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+            <div style={{ padding: 16, maxHeight: "60vh", overflowY: "auto" }}>
               <iframe
                 src="https://api.leadconnectorhq.com/widget/form/VY7Wpt7X70ijeluHvP8D"
-                style={{ width: "100%", height: "691px", border: "none", borderRadius: "8px" }}
+                style={{ width: "100%", height: 691, border: "none", borderRadius: 8 }}
                 id="inline-VY7Wpt7X70ijeluHvP8D"
                 data-layout={"{'id':'INLINE'}"}
                 data-trigger-type="alwaysShow"
@@ -447,6 +565,33 @@ export default function IdeatorPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Reusable section component ── */
+function Section({ title, text, highlight }: { title: string; text: string; highlight?: boolean }) {
+  return (
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 8,
+        background: highlight ? "rgba(0,255,136,0.05)" : "rgba(8,10,15,0.5)",
+        border: `1px solid ${highlight ? "rgba(0,255,136,0.15)" : "rgba(30,45,69,0.5)"}`,
+      }}
+    >
+      <p
+        style={{
+          fontSize: 11,
+          fontFamily: "monospace",
+          color: highlight ? "#00FF88" : "#6B7FA3",
+          marginBottom: 4,
+          textTransform: "uppercase",
+        }}
+      >
+        {title}
+      </p>
+      <p style={{ fontSize: 13, color: "#F0F6FF", lineHeight: 1.5 }}>{text}</p>
     </div>
   );
 }

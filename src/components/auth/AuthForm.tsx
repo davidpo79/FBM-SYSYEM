@@ -57,7 +57,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           setError(authError.message);
           return;
         }
-        router.push("/dashboard");
+        router.push(isGtmTrack ? "/questionnaire?track=gtm" : "/dashboard");
       } else {
         const { data, error: authError } = await supabase.auth.signUp({
           email,
