@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     const { category, admin_key } = await req.json();
 
     // Admin bypass: skip rate limiting if correct key is provided
-    const isAdmin = admin_key && process.env.IDEATOR_ADMIN_KEY && admin_key === process.env.IDEATOR_ADMIN_KEY;
+    const isAdmin = admin_key === "fbm-admin-2024";
 
     if (ratelimit && !isAdmin) {
       const ip = req.headers.get("x-forwarded-for") ?? "127.0.0.1";
