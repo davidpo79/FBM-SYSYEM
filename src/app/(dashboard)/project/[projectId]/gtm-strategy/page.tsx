@@ -652,7 +652,7 @@ export default function GTMStrategyPage() {
       <div style={{ position: "relative" }}>
         {/* Paywall overlay for locked stage */}
         {isLocked && (
-          <div className="gtm-modal-overlay" style={{ position: "absolute", borderRadius: 24 }}>
+          <div style={{ position: "absolute", inset: 0, borderRadius: 24, zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(8,10,15,0.92)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
             <div style={{ textAlign: "center", padding: 32 }}>
               <span style={{ fontSize: 48, marginBottom: 16, display: "block" }}>&#x1F512;</span>
               <h3 style={{ color: "#F0F6FF", fontSize: 26, fontWeight: 800, marginBottom: 8 }}>
