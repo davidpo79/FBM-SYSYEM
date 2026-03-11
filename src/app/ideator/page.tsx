@@ -3,12 +3,20 @@
 import { useState } from "react";
 import Script from "next/script";
 
-const API_BADGES = [
-  "Twilio", "Stripe", "OpenAI", "Shopify", "Slack",
-  "Google Sheets", "Notion", "Airtable", "Zapier", "HubSpot",
-  "SendGrid", "Firebase", "AWS S3", "Vercel", "GitHub",
-  "Discord", "Telegram", "WhatsApp", "Google Maps", "Calendly",
-  "Zoom", "LinkedIn", "Twitter/X", "YouTube", "Plaid",
+/* ── Suggested niches the user can click to get started quickly ── */
+const NICHE_SUGGESTIONS = [
+  "סוכני נדל\"ן",
+  "מאמני כושר",
+  "עורכי דין",
+  "מעצבי פנים",
+  "חנויות e-commerce",
+  "מורים פרטיים",
+  "קליניקות יופי",
+  "יועצי משכנתאות",
+  "מסעדנים",
+  "פרילנסרים",
+  "רואי חשבון",
+  "סוכני ביטוח",
 ];
 
 interface IdeaResult {
@@ -17,47 +25,30 @@ interface IdeaResult {
   niche: string;
   marketSize: string;
   apisUsed: string[];
+  apiExplanation: string;
   monetization: string;
 }
 
-type Stage = "select" | "building" | "results";
-type Market = "israel" | "international";
+type Stage = "input" | "building" | "results";
 
 export default function IdeatorPage() {
-  const [selectedApis, setSelectedApis] = useState<string[]>([]);
-  const [customApi, setCustomApi] = useState("");
   const [niche, setNiche] = useState("");
-  const [market, setMarket] = useState<Market>("international");
-  const [stage, setStage] = useState<Stage>("select");
+  const [stage, setStage] = useState<Stage>("input");
   const [ideas, setIdeas] = useState<IdeaResult[]>([]);
   const [error, setError] = useState("");
   const [buildStep, setBuildStep] = useState(0);
   const [showModal, setShowModal] = useState(false);
 
   const buildSteps = [
-    "מחבר צמתים...",
-    "מסנתז ארכיטקטורה...",
-    "מקמפל מודלי SaaS...",
-    "מאמת זרמי הכנסות...",
-    "מרכיב את השרטוטים הסופיים...",
+    "סורק שווקים ונישות...",
+    "מזהה בעיות לפתרון...",
+    "מחבר שילובי API חכמים...",
+    "מחשב פוטנציאל הכנסות...",
+    "מרכיב 3 רעיונות מנצחים...",
   ];
 
-  const toggleApi = (api: string) => {
-    setSelectedApis((prev) =>
-      prev.includes(api) ? prev.filter((a) => a !== api) : [...prev, api]
-    );
-  };
-
-  const addCustomApi = () => {
-    const trimmed = customApi.trim();
-    if (trimmed && !selectedApis.includes(trimmed)) {
-      setSelectedApis((prev) => [...prev, trimmed]);
-      setCustomApi("");
-    }
-  };
-
   const handleGenerate = async () => {
-    if (selectedApis.length === 0) return;
+    if (!niche.trim()) return;
     setStage("building");
     setError("");
     setBuildStep(0);
@@ -76,18 +67,14 @@ export default function IdeatorPage() {
       const res = await fetch("/api/public/ideator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          apis: selectedApis,
-          market,
-          niche: niche.trim() || undefined,
-        }),
+        body: JSON.stringify({ niche: niche.trim() }),
       });
       const data = await res.json();
       clearInterval(interval);
 
       if (data.error) {
         setError(data.error);
-        setStage("select");
+        setStage("input");
         return;
       }
 
@@ -96,7 +83,7 @@ export default function IdeatorPage() {
     } catch {
       clearInterval(interval);
       setError("משהו השתבש. נסה שוב.");
-      setStage("select");
+      setStage("input");
     }
   };
 
@@ -111,8 +98,6 @@ export default function IdeatorPage() {
     } catch { /* ignore */ }
     setShowModal(true);
   };
-
-  const canGenerate = selectedApis.length > 0;
 
   return (
     <div className="theme-gtm min-h-screen bg-[#080A0F] text-[#F0F6FF] pb-20" dir="rtl">
@@ -138,8 +123,8 @@ export default function IdeatorPage() {
       </header>
 
       <main className="max-w-[960px] mx-auto px-5 pt-12 pb-6">
-        {/* ── SELECT STAGE ── */}
-        {stage === "select" && (
+        {/* ── INPUT STAGE ── */}
+        {stage === "input" && (
           <>
             {/* Hero */}
             <div className="text-center mb-10">
@@ -147,111 +132,59 @@ export default function IdeatorPage() {
                 מנוע רעיונות{" "}
                 <span className="text-[#00FF88]">Micro-SaaS</span>
               </h1>
-              <p className="text-base text-[#6B7FA3] max-w-xl mx-auto">
-                בחר APIs, הגדר קהל יעד — ונייצר לך 3 רעיונות SaaS רווחיים שאפשר לבנות תוך שבועות.
+              <p className="text-lg text-[#6B7FA3] max-w-2xl mx-auto mb-2">
+                ספר לנו מי קהל היעד שלך — ואנחנו נייצר לך 3 רעיונות לעסק דיגיטלי רווחי,
+                כולל גודל שוק, מודל הכנסות, ושילובי API מוכנים לבנייה.
+              </p>
+              <p className="text-xs text-[#3D4F6F] font-mono">
+                Powered by GTM BootCamp AI Engine
               </p>
             </div>
 
-            {/* Market Selection */}
-            <div className="flex justify-center gap-3 mb-8">
-              {(["israel", "international"] as Market[]).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMarket(m)}
-                  className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
-                  style={{
-                    border: `1.5px solid ${market === m ? "#00FF88" : "#1E2D45"}`,
-                    background: market === m ? "rgba(0,255,136,0.1)" : "#161D2B",
-                    color: market === m ? "#00FF88" : "#6B7FA3",
-                  }}
-                >
-                  {m === "israel" ? "🇮🇱 שוק ישראלי" : "🌍 שוק בינלאומי"}
-                </button>
-              ))}
-            </div>
-
-            {/* Niche / Target Audience input */}
-            <div className="max-w-lg mx-auto mb-8">
+            {/* Niche Input */}
+            <div className="max-w-xl mx-auto mb-6">
               <label className="block mb-2 text-sm font-semibold text-[#F0F6FF]">
-                קהל יעד או בעיה לפתרון
+                מי הלקוח שלך? מה הנישה?
               </label>
               <input
                 type="text"
                 value={niche}
                 onChange={(e) => setNiche(e.target.value)}
-                placeholder='לדוגמה: "סוכני נדל״ן שצריכים לנהל לידים" או "מאמני כושר שרוצים לאסוף תשלומים"'
-                className="w-full px-4 py-3 rounded-xl text-sm font-mono outline-none transition-all"
+                onKeyDown={(e) => { if (e.key === "Enter" && niche.trim()) handleGenerate(); }}
+                placeholder='לדוגמה: "סוכני נדל״ן שצריכים לנהל לידים" או "מאמני כושר"'
+                className="w-full px-5 py-4 rounded-2xl text-base outline-none transition-all"
                 style={{
-                  border: "1.5px solid #1E2D45",
+                  border: "2px solid #1E2D45",
                   background: "#0D1117",
                   color: "#F0F6FF",
+                  fontSize: 16,
                 }}
               />
-              <p className="text-[11px] text-[#3D4F6F] font-mono mt-1.5">
-                אופציונלי — אם תגדיר נישה, הרעיונות יותאמו ספציפית אליה
+              <p className="text-[11px] text-[#3D4F6F] font-mono mt-2">
+                תאר את קהל היעד, הבעיה, או התחום — המנוע יעשה את השאר
               </p>
             </div>
 
-            {/* Section title */}
-            <div className="text-center mb-4">
-              <p className="text-xs font-mono text-[#6B7FA3] uppercase tracking-widest">בחר APIs לשילוב</p>
-              {selectedApis.length > 0 && (
-                <p className="text-xs font-mono text-[#00FF88] mt-1">{selectedApis.length} נבחרו</p>
-              )}
-            </div>
-
-            {/* API Badge Grid — Lego blocks */}
-            <div className="flex flex-wrap gap-2 justify-center mb-5 max-w-3xl mx-auto">
-              {API_BADGES.map((api) => {
-                const sel = selectedApis.includes(api);
-                return (
+            {/* Quick Niche Suggestions */}
+            <div className="max-w-xl mx-auto mb-10">
+              <p className="text-[11px] font-mono text-[#6B7FA3] mb-3 text-center">או בחר נישה מוכנה:</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {NICHE_SUGGESTIONS.map((s) => (
                   <button
-                    key={api}
-                    onClick={() => toggleApi(api)}
-                    className="transition-all cursor-pointer"
+                    key={s}
+                    onClick={() => setNiche(s)}
+                    className="px-4 py-2 rounded-xl text-sm transition-all cursor-pointer"
                     style={{
-                      padding: "8px 16px",
-                      borderRadius: 10,
-                      border: `1.5px solid ${sel ? "#00FF88" : "#1E2D45"}`,
-                      background: sel ? "rgba(0,255,136,0.12)" : "#161D2B",
-                      color: sel ? "#00FF88" : "#F0F6FF",
-                      fontSize: 13,
-                      fontWeight: sel ? 600 : 400,
-                      fontFamily: "monospace",
-                      direction: "ltr" as const,
-                      boxShadow: sel ? "0 0 12px rgba(0,255,136,0.15)" : "none",
+                      border: `1.5px solid ${niche === s ? "#00FF88" : "#1E2D45"}`,
+                      background: niche === s ? "rgba(0,255,136,0.12)" : "#161D2B",
+                      color: niche === s ? "#00FF88" : "#6B7FA3",
+                      fontWeight: niche === s ? 600 : 400,
                     }}
                   >
-                    {sel ? "✓ " : ""}{api}
+                    {s}
                   </button>
-                );
-              })}
-            </div>
-
-            {/* Custom API input */}
-            <div className="flex gap-2 max-w-sm mx-auto mb-10" style={{ direction: "ltr" }}>
-              <input
-                type="text"
-                value={customApi}
-                onChange={(e) => setCustomApi(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") addCustomApi(); }}
-                placeholder="+ הוסף API מותאם..."
-                className="flex-1 px-3 py-2.5 rounded-lg text-sm font-mono outline-none"
-                style={{ border: "1px solid #1E2D45", background: "#0D1117", color: "#F0F6FF", direction: "rtl" }}
-              />
-              <button
-                onClick={addCustomApi}
-                disabled={!customApi.trim()}
-                className="px-4 py-2.5 rounded-lg text-sm font-mono font-semibold transition-all"
-                style={{
-                  border: "1px solid #1E2D45",
-                  background: customApi.trim() ? "rgba(0,255,136,0.15)" : "#161D2B",
-                  color: customApi.trim() ? "#00FF88" : "#3D4F6F",
-                  cursor: customApi.trim() ? "pointer" : "not-allowed",
-                }}
-              >
-                הוסף
-              </button>
+                ))}
+              </div>
             </div>
 
             {error && <p className="text-red-500 text-center mb-4">{error}</p>}
@@ -260,20 +193,42 @@ export default function IdeatorPage() {
             <div className="text-center">
               <button
                 onClick={handleGenerate}
-                disabled={!canGenerate}
-                className="px-12 py-4 rounded-2xl text-base font-bold transition-all cursor-pointer"
+                disabled={!niche.trim()}
+                className="px-12 py-4 rounded-2xl text-lg font-bold transition-all cursor-pointer"
                 style={{
                   border: "none",
-                  background: canGenerate
+                  background: niche.trim()
                     ? "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)"
                     : "#1E2D45",
-                  color: canGenerate ? "#080A0F" : "#3D4F6F",
-                  cursor: canGenerate ? "pointer" : "not-allowed",
-                  boxShadow: canGenerate ? "0 4px 24px rgba(0,255,136,0.35)" : "none",
+                  color: niche.trim() ? "#080A0F" : "#3D4F6F",
+                  cursor: niche.trim() ? "pointer" : "not-allowed",
+                  boxShadow: niche.trim() ? "0 4px 24px rgba(0,255,136,0.35)" : "none",
                 }}
               >
-                🚀 הרכב רעיונות
+                ייצר לי רעיונות
               </button>
+            </div>
+
+            {/* How it works */}
+            <div className="max-w-2xl mx-auto mt-16">
+              <p className="text-center text-xs font-mono text-[#3D4F6F] mb-6 uppercase tracking-widest">איך זה עובד?</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { step: "01", title: "ספר לנו מי הלקוח", desc: "הגדר נישה או קהל יעד" },
+                  { step: "02", title: "המנוע בונה רעיונות", desc: "AI מנתח שוק ומזהה שילובי API רווחיים" },
+                  { step: "03", title: "קבל 3 שרטוטי SaaS", desc: "כולל גודל שוק, טכנולוגיה, ומודל הכנסות" },
+                ].map((item) => (
+                  <div
+                    key={item.step}
+                    className="rounded-xl p-5 text-center"
+                    style={{ background: "#161D2B", border: "1px solid #1E2D45" }}
+                  >
+                    <span className="text-2xl font-extrabold text-[#00FF88] font-mono block mb-2">{item.step}</span>
+                    <p className="text-sm font-bold text-[#F0F6FF] mb-1">{item.title}</p>
+                    <p className="text-xs text-[#6B7FA3]">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </>
         )}
@@ -281,7 +236,6 @@ export default function IdeatorPage() {
         {/* ── BUILDING STAGE ── */}
         {stage === "building" && (
           <div className="text-center py-20">
-            {/* Stacking blocks */}
             <div className="flex flex-col-reverse items-center gap-1.5 mb-10 min-h-[180px]">
               {[0, 1, 2, 3, 4].map((i) => {
                 const visible = buildStep >= i;
@@ -308,11 +262,10 @@ export default function IdeatorPage() {
             <p className="text-lg font-semibold text-[#00FF88] font-mono mb-2">
               {buildSteps[buildStep]}
             </p>
-            <p className="text-sm text-[#3D4F6F] font-mono" style={{ direction: "ltr" }}>
-              [{selectedApis.join(" + ")}]
+            <p className="text-sm text-[#6B7FA3]">
+              מחפש רעיונות עבור: <span className="text-[#F0F6FF] font-semibold">{niche}</span>
             </p>
 
-            {/* Progress bar */}
             <div className="max-w-xs mx-auto mt-6 h-1 rounded bg-[#1E2D45] overflow-hidden">
               <div
                 className="h-full rounded transition-all duration-500"
@@ -330,14 +283,10 @@ export default function IdeatorPage() {
           <>
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold mb-2">
-                <span className="text-[#00FF88]">3 שרטוטי SaaS</span> מוכנים
+                <span className="text-[#00FF88]">3 רעיונות SaaS</span> מוכנים עבורך
               </h2>
-              <p className="text-sm text-[#6B7FA3] font-mono" style={{ direction: "ltr" }}>
-                {selectedApis.join(" + ")}
-              </p>
-              <p className="text-xs text-[#3D4F6F] font-mono mt-1">
-                {market === "israel" ? "🇮🇱 שוק ישראלי" : "🌍 שוק בינלאומי"}
-                {niche ? ` · ${niche}` : ""}
+              <p className="text-sm text-[#6B7FA3]">
+                נישה: <span className="text-[#F0F6FF] font-semibold">{niche}</span>
               </p>
             </div>
 
@@ -354,7 +303,7 @@ export default function IdeatorPage() {
                   {/* Header */}
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div>
-                      <span className="text-[10px] font-mono text-[#3D4F6F] block mb-1">שרטוט #{idx + 1}</span>
+                      <span className="text-[10px] font-mono text-[#3D4F6F] block mb-1">רעיון #{idx + 1}</span>
                       <h3 className="text-xl font-bold text-[#F0F6FF]" style={{ direction: "ltr", textAlign: "right" }}>{idea.name}</h3>
                     </div>
                     <span className="shrink-0 text-xs font-mono px-3 py-1 rounded-full bg-[#00FF88]/10 text-[#00FF88] border border-[#00FF88]/20">
@@ -374,22 +323,22 @@ export default function IdeatorPage() {
                       <p className="text-sm text-[#F0F6FF] font-semibold">{idea.niche}</p>
                     </div>
                     <div className="bg-[#0D1117] rounded-xl p-4 border border-[#1E2D45]">
-                      <p className="text-[10px] font-mono text-[#6B7FA3] mb-1">גודל שוק</p>
+                      <p className="text-[10px] font-mono text-[#6B7FA3] mb-1">גודל שוק משוער</p>
                       <p className="text-sm text-[#F0F6FF] font-semibold">{idea.marketSize}</p>
                     </div>
                   </div>
 
-                  {/* APIs Used — Neon Tags */}
-                  <div className="mb-5">
-                    <p className="text-[10px] font-mono text-[#6B7FA3] mb-2">טכנולוגיות API בשימוש</p>
-                    <div className="flex flex-wrap gap-1.5" style={{ direction: "ltr" }}>
+                  {/* API Combinations — NEW RUBRIC */}
+                  <div className="mb-5 p-4 rounded-xl border border-[#00FF88]/20" style={{ background: "rgba(0,255,136,0.04)" }}>
+                    <p className="text-[10px] font-mono text-[#00FF88] mb-2 uppercase tracking-wider">שילובי API מומלצים ליישום</p>
+                    <div className="flex flex-wrap gap-1.5 mb-3" style={{ direction: "ltr" }}>
                       {(idea.apisUsed || []).map((api, j) => (
                         <span
                           key={j}
                           className="text-[11px] font-mono px-2.5 py-1 rounded-md"
                           style={{
-                            background: "rgba(0,255,136,0.08)",
-                            border: "1px solid rgba(0,255,136,0.25)",
+                            background: "rgba(0,255,136,0.1)",
+                            border: "1px solid rgba(0,255,136,0.3)",
                             color: "#00FF88",
                             boxShadow: "0 0 6px rgba(0,255,136,0.1)",
                           }}
@@ -398,25 +347,28 @@ export default function IdeatorPage() {
                         </span>
                       ))}
                     </div>
+                    <p className="text-[13px] text-[#B0BEC5] leading-relaxed">
+                      {idea.apiExplanation}
+                    </p>
                   </div>
 
                   {/* Monetization */}
                   <div className="bg-[#080A0F]/60 rounded-xl p-4 border border-[#1E2D45]/50 mb-5">
-                    <p className="text-[10px] font-mono text-[#6B7FA3] mb-1">מונטיזציה</p>
+                    <p className="text-[10px] font-mono text-[#6B7FA3] mb-1">מודל הכנסות</p>
                     <p className="text-[13px] text-[#F0F6FF] leading-relaxed">{idea.monetization}</p>
                   </div>
 
                   {/* CTA Button */}
                   <button
                     onClick={() => handleActivateIdea(idea)}
-                    className="w-full py-3 rounded-xl text-sm font-bold transition-all cursor-pointer"
+                    className="w-full py-3 rounded-xl text-sm font-bold transition-all cursor-pointer hover:shadow-lg"
                     style={{
-                      background: "linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,255,136,0.05))",
+                      background: "linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05))",
                       border: "1.5px solid rgba(0,255,136,0.3)",
                       color: "#00FF88",
                     }}
                   >
-                    🚀 הוצא את הרעיון לפועל
+                    הוצא את הרעיון לפועל
                   </button>
                 </div>
               ))}
@@ -425,11 +377,11 @@ export default function IdeatorPage() {
             {/* Try again */}
             <div className="text-center mt-8">
               <button
-                onClick={() => { setStage("select"); setIdeas([]); }}
+                onClick={() => { setStage("input"); setIdeas([]); }}
                 className="px-6 py-2.5 rounded-lg text-sm font-mono cursor-pointer transition-all"
                 style={{ background: "transparent", border: "1px solid #1E2D45", color: "#6B7FA3" }}
               >
-                נסה שילוב אחר
+                נסה נישה אחרת
               </button>
             </div>
           </>
@@ -456,7 +408,7 @@ export default function IdeatorPage() {
               className="absolute top-4 left-4 z-10 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid #1E2D45", color: "#6B7FA3" }}
             >
-              ✕
+              X
             </button>
 
             {/* Modal Header */}

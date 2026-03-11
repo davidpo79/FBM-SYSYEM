@@ -30,6 +30,10 @@ export async function GET(request: Request) {
         );
       }
 
+      const track = searchParams.get("track");
+      if (track === "gtm") {
+        return NextResponse.redirect(`${origin}/questionnaire?track=gtm`);
+      }
       return NextResponse.redirect(`${origin}/dashboard`);
     }
   }
