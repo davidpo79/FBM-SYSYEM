@@ -108,9 +108,9 @@ export default function IdeatorPage() {
   };
 
   const difficultyLabel = (d: string) => {
-    if (d === "easy") return "קל";
-    if (d === "medium") return "בינוני";
-    return "מאתגר";
+    if (d === "easy") return "Easy";
+    if (d === "medium") return "Medium";
+    return "Hard";
   };
 
   const difficultyColor = (d: string) => {
@@ -418,13 +418,13 @@ export default function IdeatorPage() {
           <>
             <div style={{ textAlign: "center", marginBottom: 40 }}>
               <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-                <span style={{ color: "#00FF88" }}>3 הרעיונות שלך</span> מוכנים
+                Your <span style={{ color: "#00FF88" }}>3 Ideas</span> Are Ready
               </h2>
               <p style={{ color: "#6B7FA3", fontSize: 14 }}>
-                כל רעיון אומת עבור התאמה לשוק, יכולת בנייה, ופוטנציאל הכנסות.
+                Each idea is validated for market-fit, buildability, and revenue potential.
               </p>
               <p style={{ fontSize: 12, color: "#3D4F6F", fontFamily: "monospace", marginTop: 6 }}>
-                {market === "israel" ? "🇮🇱 שוק ישראלי" : "🌍 שוק בינלאומי"}
+                {market === "israel" ? "🇮🇱 Israeli Market" : "🌍 Global Market"}
               </p>
             </div>
 
@@ -451,7 +451,7 @@ export default function IdeatorPage() {
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
                       <div>
                         <span style={{ fontSize: 11, fontFamily: "monospace", color: "#3D4F6F", display: "block", marginBottom: 4 }}>
-                          רעיון #{idx + 1}
+                          Idea #{idx + 1}
                         </span>
                         <h3 style={{ fontSize: 22, fontWeight: 700, color: "#F0F6FF", marginBottom: 4, direction: "ltr", textAlign: "right" }}>
                           {idea.name}
@@ -479,11 +479,11 @@ export default function IdeatorPage() {
 
                     {/* Info Sections Grid */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginBottom: 16 }}>
-                      <Section title="הבעיה" text={idea.problem} />
-                      <Section title="הפתרון" text={idea.solution} />
-                      <Section title="קהל יעד" text={idea.target_audience} />
-                      <Section title="מודל הכנסות" text={idea.monetization} />
-                      <Section title="יתרון תחרותי" text={idea.competitive_edge} />
+                      <Section title="Problem" text={idea.problem} />
+                      <Section title="Solution" text={idea.solution} />
+                      <Section title="Target Audience" text={idea.target_audience} />
+                      <Section title="Revenue Model" text={idea.monetization} />
+                      <Section title="Competitive Edge" text={idea.competitive_edge} />
                     </div>
 
                     {/* Market Size — highlighted based on market selection */}
@@ -498,7 +498,7 @@ export default function IdeatorPage() {
                       }}
                     >
                       <p style={{ fontSize: 11, fontFamily: "monospace", color: "#00FF88", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                        {market === "israel" ? "🇮🇱 גודל שוק — ישראל" : "🌍 גודל שוק — בינלאומי"}
+                        {market === "israel" ? "🇮🇱 Market Size — Israel" : "🌍 Market Size — Global"}
                       </p>
                       <p style={{ fontSize: 14, color: "#F0F6FF", lineHeight: 1.6, fontWeight: 600 }}>
                         {idea.market_size}
@@ -518,7 +518,7 @@ export default function IdeatorPage() {
                         }}
                       >
                         <p style={{ fontSize: 11, fontFamily: "monospace", color: "#00FF88", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
-                          שילובי API מומלצים ליישום
+                          Recommended API Stack
                         </p>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10, direction: "ltr" }}>
                           {idea.apis_used.map((api, j) => (
@@ -557,7 +557,7 @@ export default function IdeatorPage() {
                         }}
                       >
                         <p style={{ fontSize: 11, fontFamily: "monospace", color: "#00FF88", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>
-                          היקף MVP
+                          MVP Scope
                         </p>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                           {idea.mvp_scope.map((item, i) => (
@@ -596,7 +596,7 @@ export default function IdeatorPage() {
                         boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
                       }}
                     >
-                      🚀 בוא נבנה אסטרטגיית חדירה לשוק לרעיון הזה
+                      🚀 Build a Go-To-Market Strategy for This Idea
                     </button>
                   </div>
                 );
@@ -617,7 +617,7 @@ export default function IdeatorPage() {
                   fontSize: 14,
                 }}
               >
-                נסה קטגוריה אחרת
+                Try Another Category
               </button>
             </div>
           </>

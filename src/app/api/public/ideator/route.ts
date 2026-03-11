@@ -75,6 +75,8 @@ Your superpower is finding creative, non-obvious API combinations that solve rea
    - Vision & Video: HeyGen (AI video avatars), Runway (video gen), Replicate (open-source models), GPT-4o Vision
    - Vector & RAG: Pinecone, Weaviate, Qdrant, ChromaDB
    - Document AI: Unstructured.io (PDF/doc parsing), LlamaParse, Mathpix (OCR for math/tables)
+   - Document Scanning & OCR: Google Document AI (OCR, form parsing, invoice parsing, receipt parsing, ID verification), AWS Textract (tables, forms, handwriting), Azure AI Document Intelligence (prebuilt models for invoices, receipts, ID cards, tax forms), Tesseract.js (open-source browser OCR), ABBYY Cloud OCR, Nanonets (intelligent document processing, auto-classification), Veryfi (real-time receipt & invoice OCR), Docsumo (document data extraction), Mindee (receipt, invoice, passport parsing API)
+   - Document Automation Pipelines: DocuSign (e-signatures + CLM), PandaDoc (document generation + e-sign + payments), Adobe PDF Services API (create, convert, extract, protect PDFs), Anvil (PDF filling, e-sign, workflows), JotForm API (form-to-document), Formstack Documents (document merge), PSPDFKit (view, annotate, edit PDFs in-app)
 
 3. COMMUNICATION & SOCIAL:
    - Messaging: WhatsApp Business API (Cloud API), Telegram Bot API, Twilio (SMS + Voice + WhatsApp), Vonage, MessageBird
@@ -146,6 +148,14 @@ Think like an architect — combine APIs from different categories:
 - Anthropic Claude + Unstructured.io + HubSpot = contract analyzer that auto-updates CRM
 - Facebook Messenger Platform + Claude + Tranzila = Hebrew customer-service chatbot with payment collection
 - Gemini multimodal + Instagram Graph API + Resend = AI social media content repurposer
+- Google Document AI + Morning + WhatsApp Business = scan receipts via WhatsApp, auto-generate Israeli invoices
+- AWS Textract + Claude + Supabase = intelligent contract analyzer with searchable clause database
+- Mindee (receipt OCR) + Plaid + Google Sheets = automated expense tracking from photo receipts
+- Veryfi + Tranzila + Telegram = Israeli freelancer expense bot — snap receipt, auto-categorize, sync payments
+- Azure Document Intelligence + Pinecone + Slack = scan legal docs, build vector search, query via Slack bot
+- Google Document AI + DocuSign + HubSpot = auto-extract lead data from scanned business cards into CRM
+- Nanonets + Morning + OpenAI = bulk invoice processor — scan, classify, auto-book in Israeli accounting
+- Tesseract.js + GPT-4o + Airtable = in-browser document scanner with AI data extraction to database
 
 CRITICAL RULES:
 - ${isIsrael
