@@ -139,6 +139,23 @@ export default function QuestionnairePage() {
       setTrack("gtm");
       setProjectMode("owner"); // GTM is always the entrepreneur themselves
       setFlowStage("name"); // Skip projectMode selection for GTM
+
+      // Pre-fill from Ideator lead magnet if available
+      try {
+        const ideatorData = localStorage.getItem("gtm-ideator-selected");
+        if (ideatorData) {
+          const idea = JSON.parse(ideatorData);
+          setAnswers((prev) => ({
+            ...prev,
+            // Question 1: "הבעיה" — pre-fill with the idea's niche/pitch
+            ...(idea.niche ? { "1": `הבעיה שאני פותר: ${idea.pitch}\nקהל יעד: ${idea.niche}` } : {}),
+            // Question 2: "הפתרון שלך" — pre-fill with the idea name and APIs
+            ...(idea.name ? { "2": `${idea.name}${idea.apisUsed ? ` — פתרון המבוסס על ${idea.apisUsed.join(", ")}` : ""}` } : {}),
+          }));
+          // Clean up so it doesn't pre-fill again on next visit
+          localStorage.removeItem("gtm-ideator-selected");
+        }
+      } catch { /* ignore */ }
     }
 
     if (params.get("new") === "true") {
