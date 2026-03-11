@@ -180,9 +180,19 @@ export default function QuestionnairePage() {
           else setOwnerName("יזם");
         } catch { setOwnerName("יזם"); }
       }
+      // Restore saved answers for GTM (but NOT flowStage — always start at manual Q1)
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.answers) setAnswers((prev) => ({ ...prev, ...data.answers }));
+        } catch { /* ignore */ }
+      }
+
       setMode("manual");
       setManualStep(0);
       setFlowStage("manual");
+      return; // Don't let saved progress override GTM skip
     }
 
     if (params.get("new") === "true") {
