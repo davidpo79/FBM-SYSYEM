@@ -103,22 +103,15 @@ interface GTMStrategy {
   summary: string;
 }
 
-const TABS = [
-  { key: "icp", label: "קהל יעד ומיצוב", icon: "\u{1F3AF}", locked: false },
-  { key: "validation", label: "\u05D5\u05DC\u05D9\u05D3\u05E6\u05D9\u05D4", icon: "\u{1F9EA}", locked: false },
-  { key: "funnel", label: "\u05DE\u05E9\u05E4\u05DA \u05D5\u05DE\u05DB\u05D9\u05E8\u05D5\u05EA", icon: "\u{1F4CA}", locked: false },
-  { key: "channels", label: "\u05E2\u05E8\u05D5\u05E6\u05D9\u05DD", icon: "\u{1F4E1}", locked: true },
-  { key: "paid", label: "\u05E4\u05E8\u05E1\u05D5\u05DD \u05DE\u05DE\u05D5\u05DE\u05DF", icon: "\u{1F4B0}", locked: true },
-  { key: "creatives", label: "\u05EA\u05D5\u05DB\u05DF", icon: "\u{1F3A8}", locked: true },
-  { key: "weekly_routine", label: "\u05EA\u05D5\u05DB\u05E0\u05D9\u05EA 90 \u05D9\u05D5\u05DD", icon: "\u{1F4C5}", locked: true },
-] as const;
+type StrategyStage = "core" | "validation" | "marketing";
 
 export default function GTMStrategyPage() {
   const { project } = useProject();
   const [strategy, setStrategy] = useState<GTMStrategy | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("icp");
+  const [currentStage, setCurrentStage] = useState<StrategyStage>("core");
+  const [showBootcampModal, setShowBootcampModal] = useState(false);
   const generationAttempted = useRef(false);
 
   const generateStrategy = async () => {
@@ -138,26 +131,19 @@ export default function GTMStrategyPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setStrategy(json.strategy);
-
-      // Save to localStorage
       try {
-        localStorage.setItem(
-          `gtm-strategy-${project.id}`,
-          JSON.stringify(json.strategy)
-        );
+        localStorage.setItem(`gtm-strategy-${project.id}`, JSON.stringify(json.strategy));
       } catch { /* ignore */ }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "\u05E0\u05DB\u05E9\u05DC \u05D1\u05D9\u05E6\u05D9\u05E8\u05EA \u05D4\u05D0\u05E1\u05D8\u05E8\u05D8\u05D2\u05D9\u05D4");
+      setError(e instanceof Error ? e.message : "נכשל ביצירת האסטרטגיה");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // Load from localStorage or generate
   useEffect(() => {
     if (!project || generationAttempted.current) return;
     generationAttempted.current = true;
-
     try {
       const saved = localStorage.getItem(`gtm-strategy-${project.id}`);
       if (saved) {
@@ -165,7 +151,6 @@ export default function GTMStrategyPage() {
         return;
       }
     } catch { /* ignore */ }
-
     generateStrategy();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project]);
@@ -222,8 +207,7 @@ export default function GTMStrategyPage() {
 
   if (!strategy) return null;
 
-  const currentTabInfo = TABS.find((t) => t.key === activeTab);
-  const isLocked = currentTabInfo?.locked ?? false;
+  const isLocked = currentStage === "marketing";
 
   return (
     <div style={{ marginTop: 24, direction: "rtl" }}>
@@ -240,15 +224,14 @@ export default function GTMStrategyPage() {
         <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11, marginBottom: 8, textTransform: "uppercase" }}>
           תקציר מנהלים
         </p>
-        <p style={{ color: "#F0F6FF", fontSize: 15, lineHeight: 1.6 }}>{strategy.summary}</p>
+        <p style={{ color: "#F0F6FF", fontSize: 17, lineHeight: 1.7, fontWeight: 500 }}>{strategy.summary}</p>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Interactive Stage Navigation */}
       <div
         style={{
           display: "flex",
-          gap: 4,
-          flexWrap: "wrap",
+          gap: 8,
           marginBottom: 24,
           padding: 4,
           background: "#0D1117",
@@ -256,41 +239,41 @@ export default function GTMStrategyPage() {
           border: "1px solid #1E2D45",
         }}
       >
-        {TABS.map((tab) => (
+        {[
+          { key: "core" as const, label: "קהל יעד ומיצוב", icon: "🎯" },
+          { key: "validation" as const, label: "ולידציה ומשפך", icon: "🧪" },
+          { key: "marketing" as const, label: "שיווק ומכירות", icon: "📈", locked: true },
+        ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => setCurrentStage(tab.key)}
             style={{
-              flex: "1 1 auto",
-              minWidth: 100,
-              padding: "10px 14px",
+              flex: 1,
+              padding: "12px 16px",
               borderRadius: 8,
               border: "none",
-              background: activeTab === tab.key ? "#161D2B" : "transparent",
-              color: activeTab === tab.key ? "#00FF88" : "#6B7FA3",
-              fontSize: 12,
-              fontWeight: activeTab === tab.key ? 600 : 400,
-              fontFamily: "monospace",
+              background: currentStage === tab.key ? "#161D2B" : "transparent",
+              color: currentStage === tab.key ? "#00FF88" : "#6B7FA3",
+              fontSize: 14,
+              fontWeight: currentStage === tab.key ? 700 : 400,
               cursor: "pointer",
               transition: "all 0.2s",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: 6,
-              position: "relative",
+              gap: 8,
             }}
           >
-            <span>{tab.icon}</span>
+            <span style={{ fontSize: 16 }}>{tab.icon}</span>
             <span>{tab.label}</span>
-            {tab.locked && (
-              <span style={{ fontSize: 10 }}>🔒</span>
-            )}
+            {tab.locked && <span style={{ fontSize: 12, opacity: 0.6 }}>🔒</span>}
           </button>
         ))}
       </div>
 
-      {/* Tab Content */}
+      {/* Stage Content */}
       <div style={{ position: "relative" }}>
+        {/* Paywall overlay for locked stage */}
         {isLocked && (
           <div
             style={{
@@ -301,40 +284,39 @@ export default function GTMStrategyPage() {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              background: "rgba(8,10,15,0.9)",
+              background: "rgba(8,10,15,0.92)",
               backdropFilter: "blur(10px)",
               borderRadius: 16,
               padding: 32,
+              minHeight: 400,
             }}
           >
-            <span style={{ fontSize: 40, marginBottom: 12 }}>🔒</span>
-            <h3 style={{ color: "#F0F6FF", fontSize: 22, fontWeight: 800, marginBottom: 6 }}>
+            <span style={{ fontSize: 48, marginBottom: 16 }}>🔒</span>
+            <h3 style={{ color: "#F0F6FF", fontSize: 26, fontWeight: 800, marginBottom: 8 }}>
               פתח את האסטרטגיה המלאה
             </h3>
-            <p style={{ color: "#6B7FA3", fontSize: 13, marginBottom: 28, textAlign: "center", maxWidth: 480 }}>
-              קהל יעד וולידציה זמינים בחינם. שדרג כדי לגשת ל{currentTabInfo?.label}, ערוצי צמיחה, פרסום ממומן, אסטרטגיית תוכן ותוכנית השקה ל-90 יום.
+            <p style={{ color: "#6B7FA3", fontSize: 15, marginBottom: 32, textAlign: "center", maxWidth: 520, lineHeight: 1.7 }}>
+              קהל יעד וולידציה זמינים בחינם. שדרג כדי לגשת לערוצי צמיחה, פרסום ממומן, אסטרטגיית תוכן ותוכנית השקה ל-90 יום.
             </p>
 
             {/* 3-Tier Pricing */}
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", maxWidth: 780, direction: "ltr" }}>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", maxWidth: 820, direction: "ltr" }}>
               {/* DIY Tier */}
-              <div
-                style={{
-                  flex: "1 1 220px",
-                  maxWidth: 250,
-                  background: "#161D2B",
-                  border: "1px solid #1E2D45",
-                  borderRadius: 14,
-                  padding: 20,
-                  textAlign: "center",
-                }}
-              >
+              <div style={{
+                flex: "1 1 230px",
+                maxWidth: 260,
+                background: "#161D2B",
+                border: "1px solid #1E2D45",
+                borderRadius: 14,
+                padding: 24,
+                textAlign: "center",
+              }}>
                 <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>DIY</p>
-                <p style={{ color: "#F0F6FF", fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
+                <p style={{ color: "#F0F6FF", fontSize: 32, fontWeight: 800, marginBottom: 4 }}>
                   290<span style={{ fontSize: 14, color: "#6B7FA3" }}>&#8362;</span>
                 </p>
-                <p style={{ color: "#6B7FA3", fontSize: 11, marginBottom: 16 }}>תשלום חד פעמי</p>
-                <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 12, lineHeight: 2, listStyle: "none", padding: 0, direction: "rtl" }}>
+                <p style={{ color: "#6B7FA3", fontSize: 12, marginBottom: 20 }}>תשלום חד פעמי</p>
+                <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 13, lineHeight: 2.2, listStyle: "none", padding: 0, direction: "rtl" }}>
                   <li>&#10003; מסמך אסטרטגיה מלא</li>
                   <li>&#10003; כל 7 הסעיפים פתוחים</li>
                   <li>&#10003; תוכנית השקה ל-90 יום</li>
@@ -344,58 +326,47 @@ export default function GTMStrategyPage() {
                   href="/settings?tab=plan&tier=diy"
                   style={{
                     display: "block",
-                    marginTop: 16,
-                    padding: "10px 0",
-                    borderRadius: 8,
+                    marginTop: 20,
+                    padding: "12px 0",
+                    borderRadius: 10,
                     border: "1px solid #1E2D45",
                     color: "#F0F6FF",
                     textDecoration: "none",
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: 600,
+                    transition: "all 0.2s",
                   }}
                 >
                   קבל גישת DIY
                 </a>
               </div>
 
-              {/* Pro Tier - Highlighted */}
-              <div
-                style={{
-                  flex: "1 1 220px",
-                  maxWidth: 250,
-                  background: "linear-gradient(180deg, rgba(0,255,136,0.08) 0%, #161D2B 100%)",
-                  border: "1.5px solid #00FF88",
-                  borderRadius: 14,
-                  padding: 20,
-                  textAlign: "center",
-                  position: "relative",
-                  boxShadow: "0 0 24px rgba(0,255,136,0.12)",
-                }}
-              >
-                <span
-                  style={{
-                    position: "absolute",
-                    top: -10,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    background: "linear-gradient(135deg, #00FF88, #00CC6A)",
-                    color: "#080A0F",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    padding: "3px 12px",
-                    borderRadius: 20,
-                    fontFamily: "monospace",
-                    textTransform: "uppercase",
-                  }}
-                >
+              {/* Pro Tier */}
+              <div style={{
+                flex: "1 1 230px",
+                maxWidth: 260,
+                background: "linear-gradient(180deg, rgba(0,255,136,0.08) 0%, #161D2B 100%)",
+                border: "1.5px solid #00FF88",
+                borderRadius: 14,
+                padding: 24,
+                textAlign: "center",
+                position: "relative",
+                boxShadow: "0 0 24px rgba(0,255,136,0.12)",
+              }}>
+                <span style={{
+                  position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
+                  background: "linear-gradient(135deg, #00FF88, #00CC6A)",
+                  color: "#080A0F", fontSize: 10, fontWeight: 800,
+                  padding: "3px 14px", borderRadius: 20, fontFamily: "monospace", textTransform: "uppercase",
+                }}>
                   הכי פופולרי
                 </span>
                 <p style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>Pro</p>
-                <p style={{ color: "#F0F6FF", fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
+                <p style={{ color: "#F0F6FF", fontSize: 32, fontWeight: 800, marginBottom: 4 }}>
                   99<span style={{ fontSize: 14, color: "#6B7FA3" }}>&#8362;/חודש</span>
                 </p>
-                <p style={{ color: "#6B7FA3", fontSize: 11, marginBottom: 16 }}>ביטול בכל עת</p>
-                <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 12, lineHeight: 2, listStyle: "none", padding: 0, direction: "rtl" }}>
+                <p style={{ color: "#6B7FA3", fontSize: 12, marginBottom: 20 }}>ביטול בכל עת</p>
+                <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 13, lineHeight: 2.2, listStyle: "none", padding: 0, direction: "rtl" }}>
                   <li style={{ color: "#00FF88" }}>&#10003; הכל ב-DIY</li>
                   <li style={{ color: "#00FF88" }}>&#10003; יצירות ללא הגבלה</li>
                   <li style={{ color: "#00FF88" }}>&#10003; עוזר אסטרטגי AI</li>
@@ -404,15 +375,9 @@ export default function GTMStrategyPage() {
                 <a
                   href="/settings?tab=plan&tier=pro"
                   style={{
-                    display: "block",
-                    marginTop: 16,
-                    padding: "10px 0",
-                    borderRadius: 8,
+                    display: "block", marginTop: 20, padding: "12px 0", borderRadius: 10,
                     background: "linear-gradient(135deg, #00FF88, #00CC6A)",
-                    color: "#080A0F",
-                    textDecoration: "none",
-                    fontSize: 13,
-                    fontWeight: 700,
+                    color: "#080A0F", textDecoration: "none", fontSize: 14, fontWeight: 700,
                     boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
                   }}
                 >
@@ -421,57 +386,108 @@ export default function GTMStrategyPage() {
               </div>
 
               {/* BootCamp Tier */}
-              <div
-                style={{
-                  flex: "1 1 220px",
-                  maxWidth: 250,
-                  background: "linear-gradient(180deg, rgba(255,107,53,0.06) 0%, #161D2B 100%)",
-                  border: "1px solid rgba(255,107,53,0.3)",
-                  borderRadius: 14,
-                  padding: 20,
-                  textAlign: "center",
-                }}
-              >
+              <div style={{
+                flex: "1 1 230px",
+                maxWidth: 260,
+                background: "linear-gradient(180deg, rgba(255,107,53,0.06) 0%, #161D2B 100%)",
+                border: "1px solid rgba(255,107,53,0.3)",
+                borderRadius: 14,
+                padding: 24,
+                textAlign: "center",
+              }}>
                 <p style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 11, marginBottom: 4, textTransform: "uppercase" }}>BootCamp</p>
-                <p style={{ color: "#F0F6FF", fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
+                <p style={{ color: "#F0F6FF", fontSize: 24, fontWeight: 800, marginBottom: 4 }}>
                   הגש מועמדות
                 </p>
-                <p style={{ color: "#FF6B35", fontSize: 11, marginBottom: 16, fontWeight: 600 }}>מקומות מוגבלים</p>
-                <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 12, lineHeight: 2, listStyle: "none", padding: 0, direction: "rtl" }}>
+                <p style={{ color: "#FF6B35", fontSize: 12, marginBottom: 20, fontWeight: 600 }}>מקומות מוגבלים</p>
+                <ul style={{ textAlign: "right", color: "#9DA3B4", fontSize: 13, lineHeight: 2.2, listStyle: "none", padding: 0, direction: "rtl" }}>
                   <li style={{ color: "#FF6B35" }}>&#10003; הכל ב-Pro</li>
                   <li style={{ color: "#FF6B35" }}>&#10003; תוכנית לייב של 8 שבועות</li>
                   <li style={{ color: "#FF6B35" }}>&#10003; ליווי קבוצתי שבועי</li>
                   <li style={{ color: "#FF6B35" }}>&#10003; קהילה פרטית</li>
                 </ul>
-                <a
-                  href="/settings?tab=plan&tier=bootcamp"
+                <button
+                  onClick={() => setShowBootcampModal(true)}
                   style={{
-                    display: "block",
-                    marginTop: 16,
-                    padding: "10px 0",
-                    borderRadius: 8,
+                    display: "block", width: "100%", marginTop: 20, padding: "12px 0", borderRadius: 10,
                     border: "1px solid rgba(255,107,53,0.4)",
-                    color: "#FF6B35",
-                    textDecoration: "none",
-                    fontSize: 13,
-                    fontWeight: 600,
+                    background: "transparent",
+                    color: "#FF6B35", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                    transition: "all 0.2s",
                   }}
                 >
                   הגש מועמדות
-                </a>
+                </button>
               </div>
             </div>
           </div>
         )}
 
         <div style={{ filter: isLocked ? "blur(6px)" : "none", pointerEvents: isLocked ? "none" : "auto" }}>
-          {activeTab === "icp" && <ICPTab strategy={strategy} />}
-          {activeTab === "validation" && <ValidationTab strategy={strategy} />}
-          {activeTab === "funnel" && <FunnelTab strategy={strategy} />}
-          {activeTab === "channels" && <ChannelsTab strategy={strategy} />}
-          {activeTab === "paid" && <PaidTab strategy={strategy} />}
-          {activeTab === "creatives" && <CreativesTab strategy={strategy} />}
-          {activeTab === "weekly_routine" && <WeeklyTab strategy={strategy} />}
+          {/* Stage 1: Core Strategy (ICP + Positioning) */}
+          {currentStage === "core" && (
+            <div>
+              <ICPTab strategy={strategy} />
+              {/* Navigation to next stage */}
+              <div style={{ textAlign: "center", marginTop: 32 }}>
+                <button
+                  onClick={() => setCurrentStage("validation")}
+                  style={{
+                    padding: "14px 32px",
+                    borderRadius: 12,
+                    border: "none",
+                    background: "linear-gradient(135deg, #00FF88, #00CC6A)",
+                    color: "#080A0F",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  הבא: תוכנית ולידציה (אימות הרעיון) &#10132;
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Stage 2: Validation + Funnel */}
+          {currentStage === "validation" && (
+            <div>
+              <ValidationTab strategy={strategy} />
+              <FunnelTab strategy={strategy} />
+              {/* Navigation to next stage */}
+              <div style={{ textAlign: "center", marginTop: 32 }}>
+                <button
+                  onClick={() => setCurrentStage("marketing")}
+                  style={{
+                    padding: "14px 32px",
+                    borderRadius: 12,
+                    border: "none",
+                    background: "linear-gradient(135deg, #00FF88, #00CC6A)",
+                    color: "#080A0F",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  הבא: אסטרטגיית שיווק ומכירות &#10132;
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Stage 3: Marketing (Channels, Paid, Creatives, Weekly) */}
+          {currentStage === "marketing" && (
+            <div>
+              <ChannelsTab strategy={strategy} />
+              <PaidTab strategy={strategy} />
+              <CreativesTab strategy={strategy} />
+              <WeeklyTab strategy={strategy} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -496,6 +512,212 @@ export default function GTMStrategyPage() {
           צור אסטרטגיה מחדש
         </button>
       </div>
+
+      {/* Bootcamp Application Modal */}
+      {showBootcampModal && (
+        <BootcampModal
+          userName={project?.user_name || ""}
+          onClose={() => setShowBootcampModal(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ──── Bootcamp Application Modal ──── */
+
+function BootcampModal({ userName, onClose }: { userName: string; onClose: () => void }) {
+  const [name, setName] = useState(userName);
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+
+  // Pre-fill email from auth
+  useEffect(() => {
+    import("@/lib/supabase").then(({ supabase }) => {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user?.email) setEmail(user.email);
+      });
+    });
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!phone.trim() || phone.trim().length < 9) {
+      setError("נא להזין מספר טלפון תקין");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      await fetch("/api/webhooks/bootcamp-apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          source: "gtm-strategy-page",
+        }),
+      });
+      setSubmitted(true);
+    } catch {
+      setError("שגיאה בשליחת המועמדות. נסה שוב.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 10000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.7)",
+        backdropFilter: "blur(8px)",
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        dir="rtl"
+        style={{
+          width: "100%",
+          maxWidth: 440,
+          margin: "0 16px",
+          borderRadius: 20,
+          overflow: "hidden",
+          background: "#0D1117",
+          border: "1px solid rgba(255,107,53,0.3)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          animation: "modalIn 0.3s ease-out",
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: "24px 24px 16px",
+          background: "linear-gradient(135deg, rgba(255,107,53,0.12), rgba(255,107,53,0.04))",
+          borderBottom: "1px solid rgba(255,107,53,0.15)",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <p style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 11, textTransform: "uppercase", marginBottom: 4 }}>
+                GTM BOOTCAMP
+              </p>
+              <h3 style={{ color: "#F0F6FF", fontSize: 22, fontWeight: 800 }}>
+                הגש מועמדות
+              </h3>
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                width: 32, height: 32, borderRadius: "50%",
+                background: "rgba(255,255,255,0.05)", border: "none",
+                color: "#6B7FA3", fontSize: 18, cursor: "pointer",
+              }}
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+
+        <div style={{ padding: 24 }}>
+          {submitted ? (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+              <h4 style={{ color: "#F0F6FF", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+                המועמדות נשלחה!
+              </h4>
+              <p style={{ color: "#6B7FA3", fontSize: 14, marginBottom: 20 }}>
+                ניצור איתך קשר בקרוב מאוד
+              </p>
+              <button
+                onClick={onClose}
+                style={{
+                  padding: "12px 32px", borderRadius: 10,
+                  background: "linear-gradient(135deg, #FF6B35, #E55A2B)",
+                  color: "#fff", fontWeight: 700, border: "none", cursor: "pointer",
+                }}
+              >
+                סגור
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ color: "#6B7FA3", fontSize: 12, fontFamily: "monospace", display: "block", marginBottom: 6 }}>שם מלא</label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  style={{
+                    width: "100%", padding: "12px 14px", borderRadius: 10,
+                    background: "#161D2B", border: "1px solid #1E2D45",
+                    color: "#F0F6FF", fontSize: 15, outline: "none",
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ color: "#6B7FA3", fontSize: 12, fontFamily: "monospace", display: "block", marginBottom: 6 }}>אימייל</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  dir="ltr"
+                  style={{
+                    width: "100%", padding: "12px 14px", borderRadius: 10,
+                    background: "#161D2B", border: "1px solid #1E2D45",
+                    color: "#F0F6FF", fontSize: 15, outline: "none",
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ color: "#FF6B35", fontSize: 12, fontFamily: "monospace", display: "block", marginBottom: 6 }}>
+                  מספר טלפון *
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => { setPhone(e.target.value); if (error) setError(""); }}
+                  placeholder="050-1234567"
+                  dir="ltr"
+                  style={{
+                    width: "100%", padding: "12px 14px", borderRadius: 10,
+                    background: "#161D2B", border: `1px solid ${error ? "#EF4444" : "#1E2D45"}`,
+                    color: "#F0F6FF", fontSize: 15, outline: "none",
+                  }}
+                />
+                {error && <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>{error}</p>}
+              </div>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                style={{
+                  width: "100%", padding: "14px 0", borderRadius: 10,
+                  background: submitting ? "#1E2D45" : "linear-gradient(135deg, #FF6B35, #E55A2B)",
+                  color: submitting ? "#6B7FA3" : "#fff",
+                  fontSize: 16, fontWeight: 700, border: "none",
+                  cursor: submitting ? "not-allowed" : "pointer",
+                  boxShadow: submitting ? "none" : "0 4px 16px rgba(255,107,53,0.3)",
+                  transition: "all 0.2s",
+                }}
+              >
+                {submitting ? "שולח..." : "שלח מועמדות"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes modalIn {
+          from { transform: scale(0.9) translateY(20px); opacity: 0; }
+          to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -541,7 +763,7 @@ function ICPTab({ strategy }: { strategy: GTMStrategy }) {
   return (
     <div>
       <Card title="פרופיל לקוח אידיאלי">
-        <h3 style={{ color: "#F0F6FF", fontSize: 18, fontWeight: 700, marginBottom: 12 }}>{icp.persona_name}</h3>
+        <h3 style={{ color: "#F0F6FF", fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{icp.persona_name}</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
           <InfoBlock label="דמוגרפיה" text={icp.demographics} />
           <InfoBlock label="פסיכוגרפיה" text={icp.psychographics} />
@@ -559,7 +781,7 @@ function ICPTab({ strategy }: { strategy: GTMStrategy }) {
 
       <Card title="מיצוב">
         <div style={{ background: "rgba(0,255,136,0.05)", borderRadius: 10, padding: 16, marginBottom: 16, borderRight: "3px solid #00FF88" }}>
-          <p style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 600, lineHeight: 1.5 }}>{positioning.oneliner}</p>
+          <p style={{ color: "#F0F6FF", fontSize: 18, fontWeight: 600, lineHeight: 1.5 }}>{positioning.oneliner}</p>
         </div>
         <InfoBlock label="הצעת ערך" text={positioning.value_proposition} />
         <InfoBlock label="קטגוריה" text={positioning.category} />
@@ -584,23 +806,23 @@ function ValidationTab({ strategy }: { strategy: GTMStrategy }) {
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 20 }}>
           <div>
             <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11 }}>שלב</p>
-            <p style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 600 }}>{validation.current_stage}</p>
+            <p style={{ color: "#F0F6FF", fontSize: 18, fontWeight: 600 }}>{validation.current_stage}</p>
           </div>
           <div>
             <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11 }}>ציון</p>
-            <p style={{ color: "#00FF88", fontSize: 24, fontWeight: 800, fontFamily: "monospace" }}>{validation.validation_score}/10</p>
+            <p style={{ color: "#00FF88", fontSize: 28, fontWeight: 800, fontFamily: "monospace" }}>{validation.validation_score}/10</p>
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div>
             <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11, marginBottom: 8 }}>ראיות</p>
-            <ul style={{ color: "#F0F6FF", fontSize: 13, lineHeight: 1.8, listStyle: "disc", paddingInlineStart: 16 }}>
+            <ul style={{ color: "#F0F6FF", fontSize: 15, lineHeight: 1.9, listStyle: "disc", paddingInlineStart: 16 }}>
               {validation.evidence.map((e, i) => <li key={i}>{e}</li>)}
             </ul>
           </div>
           <div>
             <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11, marginBottom: 8 }}>פערים</p>
-            <ul style={{ color: "#FF6B35", fontSize: 13, lineHeight: 1.8, listStyle: "disc", paddingInlineStart: 16 }}>
+            <ul style={{ color: "#FF6B35", fontSize: 15, lineHeight: 1.9, listStyle: "disc", paddingInlineStart: 16 }}>
               {validation.gaps.map((g, i) => <li key={i}>{g}</li>)}
             </ul>
           </div>
@@ -611,7 +833,7 @@ function ValidationTab({ strategy }: { strategy: GTMStrategy }) {
       <Card title="ניסויי ולידציה">
         {validation.experiments.map((exp, i) => (
           <div key={i} style={{ background: "rgba(8,10,15,0.5)", border: "1px solid rgba(30,45,69,0.5)", borderRadius: 10, padding: 16, marginBottom: 12 }}>
-            <h4 style={{ color: "#00FF88", fontSize: 14, fontWeight: 600, marginBottom: 8, fontFamily: "monospace" }}>{exp.name}</h4>
+            <h4 style={{ color: "#00FF88", fontSize: 16, fontWeight: 600, marginBottom: 8, fontFamily: "monospace" }}>{exp.name}</h4>
             <InfoBlock label="השערה" text={exp.hypothesis} />
             <InfoBlock label="שיטה" text={exp.method} />
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -632,14 +854,14 @@ function FunnelTab({ strategy }: { strategy: GTMStrategy }) {
       <Card title={`מודל משפך: ${funnel.model}`}>
         {funnel.stages.map((stage, i) => (
           <div key={i} style={{ display: "flex", gap: 16, marginBottom: 16, alignItems: "flex-start" }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(0,255,136,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#00FF88", fontWeight: 800, fontFamily: "monospace", fontSize: 14, flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(0,255,136,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#00FF88", fontWeight: 800, fontFamily: "monospace", fontSize: 16, flexShrink: 0 }}>
               {i + 1}
             </div>
             <div style={{ flex: 1 }}>
-              <h4 style={{ color: "#F0F6FF", fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{stage.stage}</h4>
-              <p style={{ color: "#6B7FA3", fontSize: 13, marginBottom: 6 }}>{stage.goal}</p>
+              <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{stage.stage}</h4>
+              <p style={{ color: "#6B7FA3", fontSize: 15, marginBottom: 6, lineHeight: 1.6 }}>{stage.goal}</p>
               <div>{stage.tactics.map((t, j) => <Chip key={j}>{t}</Chip>)}</div>
-              <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11, marginTop: 6 }}>מדד: {stage.metrics}</p>
+              <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 12, marginTop: 6 }}>מדד: {stage.metrics}</p>
             </div>
           </div>
         ))}
@@ -652,7 +874,7 @@ function FunnelTab({ strategy }: { strategy: GTMStrategy }) {
       </Card>
 
       <Card title="תהליך מכירות">
-        <p style={{ color: "#F0F6FF", fontSize: 14, lineHeight: 1.7 }}>{funnel.sales_motion}</p>
+        <p style={{ color: "#F0F6FF", fontSize: 16, lineHeight: 1.8 }}>{funnel.sales_motion}</p>
       </Card>
     </div>
   );
@@ -665,7 +887,7 @@ function ChannelsTab({ strategy }: { strategy: GTMStrategy }) {
       <Card title="ערוצים ראשיים">
         {channels.primary.map((ch, i) => (
           <div key={i} style={{ background: "rgba(8,10,15,0.5)", border: "1px solid rgba(30,45,69,0.5)", borderRadius: 10, padding: 16, marginBottom: 12 }}>
-            <h4 style={{ color: "#00FF88", fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{ch.channel}</h4>
+            <h4 style={{ color: "#00FF88", fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{ch.channel}</h4>
             <InfoBlock label="למה" text={ch.why} />
             <div>{ch.tactics.map((t, j) => <Chip key={j}>{t}</Chip>)}</div>
             <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
@@ -678,7 +900,7 @@ function ChannelsTab({ strategy }: { strategy: GTMStrategy }) {
       <Card title="ערוצים משניים">
         {channels.secondary.map((ch, i) => (
           <div key={i} style={{ marginBottom: 12 }}>
-            <h4 style={{ color: "#F0F6FF", fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{ch.channel}</h4>
+            <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{ch.channel}</h4>
             <InfoBlock label="למה" text={ch.why} />
             <InfoBlock label="מתי להתחיל" text={ch.when_to_start} />
           </div>
@@ -696,8 +918,8 @@ function PaidTab({ strategy }: { strategy: GTMStrategy }) {
         {paid.platforms.map((p, i) => (
           <div key={i} style={{ background: "rgba(8,10,15,0.5)", border: "1px solid rgba(30,45,69,0.5)", borderRadius: 10, padding: 16, marginBottom: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <h4 style={{ color: "#00FF88", fontSize: 14, fontWeight: 600 }}>{p.platform}</h4>
-              <span style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 13, fontWeight: 600 }}>{p.budget_split}</span>
+              <h4 style={{ color: "#00FF88", fontSize: 16, fontWeight: 600 }}>{p.platform}</h4>
+              <span style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 15, fontWeight: 600 }}>{p.budget_split}</span>
             </div>
             <InfoBlock label="טרגוט" text={p.targeting} />
             <div>{p.creative_angles.map((a, j) => <Chip key={j}>{a}</Chip>)}</div>
@@ -706,7 +928,7 @@ function PaidTab({ strategy }: { strategy: GTMStrategy }) {
         ))}
       </Card>
       <Card title="תוכנית סקיילינג">
-        <p style={{ color: "#F0F6FF", fontSize: 14, lineHeight: 1.7 }}>{paid.scaling_plan}</p>
+        <p style={{ color: "#F0F6FF", fontSize: 16, lineHeight: 1.8 }}>{paid.scaling_plan}</p>
       </Card>
     </div>
   );
@@ -723,11 +945,11 @@ function CreativesTab({ strategy }: { strategy: GTMStrategy }) {
         {creatives.content_calendar.map((c, i) => (
           <div key={i} style={{ marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h4 style={{ color: "#F0F6FF", fontSize: 14, fontWeight: 600 }}>{c.type}</h4>
-              <span style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 12 }}>{c.frequency}</span>
+              <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 600 }}>{c.type}</h4>
+              <span style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 13 }}>{c.frequency}</span>
             </div>
             <div style={{ marginTop: 4 }}>{c.topics.map((t, j) => <Chip key={j}>{t}</Chip>)}</div>
-            <p style={{ color: "#6B7FA3", fontSize: 12, marginTop: 4 }}>הפצה: {c.distribution}</p>
+            <p style={{ color: "#6B7FA3", fontSize: 13, marginTop: 4 }}>הפצה: {c.distribution}</p>
           </div>
         ))}
       </Card>
@@ -756,15 +978,15 @@ function WeeklyTab({ strategy }: { strategy: GTMStrategy }) {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <h4 style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 14, fontWeight: 600 }}>{w.week}</h4>
-              <span style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 12 }}>{w.theme}</span>
+              <h4 style={{ color: "#00FF88", fontFamily: "monospace", fontSize: 16, fontWeight: 600 }}>{w.week}</h4>
+              <span style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 13 }}>{w.theme}</span>
             </div>
-            <ul style={{ color: "#F0F6FF", fontSize: 13, lineHeight: 1.8, listStyle: "disc", paddingInlineStart: 16 }}>
+            <ul style={{ color: "#F0F6FF", fontSize: 15, lineHeight: 1.9, listStyle: "disc", paddingInlineStart: 16 }}>
               {w.tasks.map((t, j) => <li key={j}>{t}</li>)}
             </ul>
             <div style={{ marginTop: 8, padding: "6px 12px", borderRadius: 6, background: "rgba(255,107,53,0.1)", display: "inline-block" }}>
-              <span style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 11 }}>אבן דרך: </span>
-              <span style={{ color: "#F0F6FF", fontSize: 12 }}>{w.milestone}</span>
+              <span style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 12 }}>אבן דרך: </span>
+              <span style={{ color: "#F0F6FF", fontSize: 13 }}>{w.milestone}</span>
             </div>
           </div>
         ))}
@@ -777,7 +999,7 @@ function InfoBlock({ label, text }: { label: string; text: string }) {
   return (
     <div style={{ marginBottom: 8 }}>
       <p style={{ color: "#6B7FA3", fontFamily: "monospace", fontSize: 11, marginBottom: 2 }}>{label}</p>
-      <p style={{ color: "#F0F6FF", fontSize: 13, lineHeight: 1.6 }}>{text}</p>
+      <p style={{ color: "#F0F6FF", fontSize: 15, lineHeight: 1.7 }}>{text}</p>
     </div>
   );
 }

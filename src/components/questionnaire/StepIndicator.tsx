@@ -11,21 +11,90 @@ export default function StepIndicator({ current, total, label, track, ideaName }
   const isGtm = track === "gtm";
 
   if (isGtm) {
+    // Determine which GTM phase we're in
+    const gtmSteps = [
+      { key: "idea", label: "רעיון", icon: "💡" },
+      { key: "user", label: "משתמש", icon: "👤" },
+      { key: "strategy", label: "אסטרטגיה", icon: "🚀" },
+    ];
+    // Phase 1 (idea) is done (they came from ideator), phase 2 (user) is done (they signed up), phase 3 is in progress
+    const activePhase = 2; // Strategy phase (0-indexed)
+
     return (
       <div className="w-full mb-8">
-        {/* GTM 3-phase stepper */}
-        <div className="flex items-center justify-center gap-1 mb-5" style={{ fontFamily: "monospace", fontSize: 12 }}>
-          <span className="px-3 py-1.5 rounded" style={{ background: "rgba(0,255,136,0.15)", color: "#00FF88" }}>
-            [1] רעיון ✓
-          </span>
-          <span style={{ color: "#3D4F6F" }}>→</span>
-          <span className="px-3 py-1.5 rounded" style={{ background: "rgba(0,255,136,0.15)", color: "#00FF88" }}>
-            [2] משתמש ✓
-          </span>
-          <span style={{ color: "#3D4F6F" }}>→</span>
-          <span className="px-3 py-1.5 rounded" style={{ background: "rgba(0,255,136,0.15)", color: "#00FF88", border: "1px solid rgba(0,255,136,0.3)" }}>
-            [3] אסטרטגיה (בביצוע)
-          </span>
+        {/* RTL Animated Stepper */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, padding: "12px 0 20px", direction: "ltr" }}>
+          {gtmSteps.map((step, i) => {
+            const isCompleted = i < activePhase;
+            const isActive = i === activePhase;
+
+            return (
+              <div key={step.key} style={{ display: "flex", alignItems: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                      ...(isCompleted
+                        ? {
+                            background: "linear-gradient(135deg, #00FF88, #00CC6A)",
+                            color: "#080A0F",
+                            boxShadow: "0 0 12px rgba(0,255,136,0.4)",
+                          }
+                        : isActive
+                          ? {
+                              background: "rgba(0,255,136,0.12)",
+                              border: "2px solid #00FF88",
+                              color: "#00FF88",
+                              animation: "gtmStepPulse 2s ease-in-out infinite",
+                            }
+                          : {
+                              background: "#1E2D45",
+                              border: "2px solid #2A3A55",
+                              color: "#6B7FA3",
+                            }),
+                    }}
+                  >
+                    {isCompleted ? "✓" : step.icon}
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      marginTop: 4,
+                      fontFamily: "monospace",
+                      color: isCompleted || isActive ? "#00FF88" : "#6B7FA3",
+                    }}
+                  >
+                    {step.label}
+                  </span>
+                </div>
+
+                {i < gtmSteps.length - 1 && (
+                  <div
+                    style={{
+                      width: 48,
+                      height: 2,
+                      margin: "0 6px",
+                      marginBottom: 20,
+                      borderRadius: 1,
+                      background: isCompleted
+                        ? "linear-gradient(90deg, #00FF88, #00CC6A)"
+                        : "#1E2D45",
+                      boxShadow: isCompleted ? "0 0 6px rgba(0,255,136,0.3)" : "none",
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* GTM Logo + Title */}
@@ -55,6 +124,13 @@ export default function StepIndicator({ current, total, label, track, ideaName }
             style={{ width: `${progress}%`, background: "linear-gradient(90deg, #00FF88, #00CC6A)" }}
           />
         </div>
+
+        <style>{`
+          @keyframes gtmStepPulse {
+            0%, 100% { box-shadow: 0 0 8px rgba(0,255,136,0.2); }
+            50% { box-shadow: 0 0 20px rgba(0,255,136,0.5); }
+          }
+        `}</style>
       </div>
     );
   }

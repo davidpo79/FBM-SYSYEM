@@ -140,18 +140,20 @@ export default function QuestionnairePage() {
     if (params.get("track") === "gtm") {
       setTrack("gtm");
       setProjectMode("owner"); // GTM is always the entrepreneur themselves
-      setFlowStage("name"); // Skip projectMode selection for GTM
 
-      // Read idea name from URL param
+      // Read idea name and pre-fill user name from URL params
       const ideaParam = params.get("idea");
+      const nameParam = params.get("name");
+      if (nameParam) {
+        setOwnerName(decodeURIComponent(nameParam));
+      }
       if (ideaParam) {
         const decoded = decodeURIComponent(ideaParam);
         setIdeaName(decoded);
-        // Pre-fill question 2 (Product/Solution) with the idea name from URL
         setAnswers((prev) => ({ ...prev, "2": prev["2"] || decoded }));
       }
 
-      // Pre-fill from Ideator lead magnet if available
+      // Smart Pre-fill from Ideator session (localStorage)
       try {
         const ideatorData = localStorage.getItem("gtm-ideator-selected");
         if (ideatorData) {
@@ -159,15 +161,22 @@ export default function QuestionnairePage() {
           if (idea.name && !ideaParam) setIdeaName(idea.name);
           setAnswers((prev) => ({
             ...prev,
-            // Question 1: "הבעיה" — pre-fill with the idea's niche/pitch
             ...(idea.niche ? { "1": prev["1"] || `הבעיה שאני פותר: ${idea.pitch}\nקהל יעד: ${idea.niche}` } : {}),
-            // Question 2: "הפתרון שלך" — pre-fill with the idea name and APIs
             ...(idea.name ? { "2": prev["2"] || `${idea.name}${idea.apisUsed ? ` — פתרון המבוסס על ${idea.apisUsed.join(", ")}` : ""}` } : {}),
           }));
-          // Clean up so it doesn't pre-fill again on next visit
           localStorage.removeItem("gtm-ideator-selected");
         }
       } catch { /* ignore */ }
+
+      // GTM Magic: bypass mode selection, go directly to manual Question 1
+      // If user has a name from URL/localStorage, skip name step too
+      if (nameParam) {
+        setMode("manual");
+        setManualStep(0);
+        setFlowStage("manual");
+      } else {
+        setFlowStage("name"); // Only ask for name, then skip to manual
+      }
     }
 
     if (params.get("new") === "true") {
@@ -397,6 +406,19 @@ export default function QuestionnairePage() {
 
       localStorage.removeItem(STORAGE_KEY);
 
+      // EVENT_USER_REGISTERED: fire webhook on project creation
+      fetch("/api/webhooks/gtm-user-registered", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email || "",
+          name: userName,
+          projectId: data.id,
+          track,
+          ideaName: isGtm ? (ideaName || answersToUse["2"]?.slice(0, 120) || "") : undefined,
+        }),
+      }).catch(() => { /* fire and forget */ });
+
       // Token users see booking after questionnaire
       if (isTokenUser) {
         setSavedProjectId(data.id);
@@ -442,7 +464,8 @@ export default function QuestionnairePage() {
   const handleManualPrev = () => {
     setError("");
     if (manualStep === 0) {
-      setFlowStage("modeSelect");
+      // GTM: go back to name step (skip modeSelect)
+      setFlowStage(isGtm ? "name" : "modeSelect");
     } else {
       setManualStep((s) => s - 1);
     }
@@ -615,7 +638,10 @@ export default function QuestionnairePage() {
                 }
                 setError("");
                 if (isGtm) {
-                  setFlowStage("modeSelect");
+                  // GTM: bypass mode selection, go directly to manual Q1
+                  setMode("manual");
+                  setManualStep(0);
+                  setFlowStage("manual");
                 } else {
                   setFlowStage(projectMode === "self" ? "modeSelect" : "niche");
                 }

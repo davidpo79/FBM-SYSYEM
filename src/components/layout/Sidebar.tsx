@@ -112,12 +112,16 @@ export default function Sidebar({
 
   const pipelineNav = isGTM ? gtmNav : fbmNav;
 
-  const toolsNav: NavItem[] = [
-    { href: "#expert", label: "מומחה FBM", icon: BotMessageSquare, badge: "●", isExpert: true },
-    { href: "#suggest", label: "הצעה לייעול", icon: Lightbulb, isSuggest: true },
-    { href: "/guides/facebook-campaign", label: "מדריך קמפיין", icon: BookOpen },
-    { href: "/settings", label: "הגדרות", icon: Settings },
-  ];
+  const toolsNav: NavItem[] = isGTM
+    ? [
+        { href: "/settings", label: "הגדרות", icon: Settings },
+      ]
+    : [
+        { href: "#expert", label: "מומחה FBM", icon: BotMessageSquare, badge: "●", isExpert: true },
+        { href: "#suggest", label: "הצעה לייעול", icon: Lightbulb, isSuggest: true },
+        { href: "/guides/facebook-campaign", label: "מדריך קמפיין", icon: BookOpen },
+        { href: "/settings", label: "הגדרות", icon: Settings },
+      ];
 
   const adminNav: NavItem[] = isAdmin
     ? [
@@ -217,7 +221,7 @@ export default function Sidebar({
       <div className="px-5 pt-5 pb-4 flex flex-col items-center gap-2 mb-1">
         {isGTM ? (
           <>
-            <span style={{ fontSize: 36, fontWeight: 800, color: "#00FF88", fontFamily: "monospace" }}>GTM</span>
+            <Image src="/gtm-logo.svg" alt="GTM BootCamp" width={48} height={48} className="rounded" />
             <div className="flex items-center gap-2">
               <span className="text-white font-bold text-lg">BootCamp</span>
               <span

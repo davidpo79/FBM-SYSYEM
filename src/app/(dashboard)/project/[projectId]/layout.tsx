@@ -19,6 +19,7 @@ export interface ProjectRow {
   answers_map: Record<string, string>;
   owner_niche?: string;
   status: string;
+  track?: "fbm" | "gtm";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pipeline_data?: Record<string, any> | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -161,7 +162,7 @@ export default function ProjectLayout({
     async function load() {
       const { data, error: dbErr } = await supabase
         .from("projects")
-        .select("id, user_name, answers_map, owner_niche, status, pipeline_data, gtm_onboarding_data")
+        .select("id, user_name, answers_map, owner_niche, status, pipeline_data, gtm_onboarding_data, track")
         .eq("id", projectId)
         .single();
 
@@ -306,17 +307,23 @@ export default function ProjectLayout({
     }
   }, [strategy, painAnalysis, scripts, generatedImages, selectedNiche, project]);
 
+  const isGtmProject = project?.track === "gtm";
+
   // Determine pipeline steps
-  const steps = [
-    { key: "strategy", label: "אסטרטגיה", href: `/project/${projectId}/strategy` },
-    { key: "niches", label: "נישות", href: `/project/${projectId}/niches` },
-    { key: "pains", label: "ניתוח כאבים", href: `/project/${projectId}/pains` },
-    { key: "scripts", label: "תסריטים", href: `/project/${projectId}/scripts` },
-    { key: "creative", label: "קריאייטיב", href: `/project/${projectId}/creative` },
-    { key: "video-creator", label: "וידאו", href: `/project/${projectId}/video-creator` },
-    { key: "copy", label: "קופי", href: `/project/${projectId}/copy` },
-    { key: "album", label: "אלבום", href: `/project/${projectId}/album` },
-  ];
+  const steps = isGtmProject
+    ? [
+        { key: "gtm-strategy", label: "אסטרטגיית GTM", href: `/project/${projectId}/gtm-strategy` },
+      ]
+    : [
+        { key: "strategy", label: "אסטרטגיה", href: `/project/${projectId}/strategy` },
+        { key: "niches", label: "נישות", href: `/project/${projectId}/niches` },
+        { key: "pains", label: "ניתוח כאבים", href: `/project/${projectId}/pains` },
+        { key: "scripts", label: "תסריטים", href: `/project/${projectId}/scripts` },
+        { key: "creative", label: "קריאייטיב", href: `/project/${projectId}/creative` },
+        { key: "video-creator", label: "וידאו", href: `/project/${projectId}/video-creator` },
+        { key: "copy", label: "קופי", href: `/project/${projectId}/copy` },
+        { key: "album", label: "אלבום", href: `/project/${projectId}/album` },
+      ];
 
   const completedSteps: string[] = [];
   if (strategyApproved) completedSteps.push("strategy");
@@ -332,6 +339,7 @@ export default function ProjectLayout({
   // Page labels for breadcrumb
   const pageLabels: Record<string, string> = {
     strategy: "אסטרטגיית FBM",
+    "gtm-strategy": "אסטרטגיית GTM",
     niches: "מחקר נישות",
     pains: "ניתוח כאבים",
     scripts: "תסריטים",
@@ -393,29 +401,143 @@ export default function ProjectLayout({
       }}
     >
       <div>
-        <TopBar
-          breadcrumbs={[
-            { label: project?.user_name ?? "פרויקט" },
-            { label: pageLabels[currentStepKey] ?? "" },
-          ]}
-          actions={
-            <div className="flex items-center gap-3">
-              <AutoSaveIndicator trigger={saveTrigger} saving={isSaving} />
-              <FbmExpertButton />
+        {isGtmProject ? (
+          <>
+            {/* GTM: Animated RTL Stepper header */}
+            <div style={{ padding: "24px 0 0", maxWidth: 900, margin: "0 auto" }}>
+              <GTMAnimatedStepper currentStage="strategy" />
             </div>
-          }
-        />
-
-        <div className="max-w-5xl mx-auto mt-6">
-          <PipelineStepper
-            steps={steps}
-            currentStep={currentStepKey}
-            completedSteps={completedSteps}
-          />
-          {children}
-        </div>
+            <div className="max-w-5xl mx-auto mt-6">
+              {children}
+            </div>
+          </>
+        ) : (
+          <>
+            <TopBar
+              breadcrumbs={[
+                { label: project?.user_name ?? "פרויקט" },
+                { label: pageLabels[currentStepKey] ?? "" },
+              ]}
+              actions={
+                <div className="flex items-center gap-3">
+                  <AutoSaveIndicator trigger={saveTrigger} saving={isSaving} />
+                  <FbmExpertButton />
+                </div>
+              }
+            />
+            <div className="max-w-5xl mx-auto mt-6">
+              <PipelineStepper
+                steps={steps}
+                currentStep={currentStepKey}
+                completedSteps={completedSteps}
+              />
+              {children}
+            </div>
+          </>
+        )}
       </div>
     </ProjectContext.Provider>
+  );
+}
+
+/* ─── GTM Animated RTL Stepper (3 steps: רעיון -> משתמש -> אסטרטגיה) ─── */
+
+function GTMAnimatedStepper({ currentStage }: { currentStage: "idea" | "user" | "strategy" }) {
+  const stages = [
+    { key: "idea", label: "רעיון", icon: "💡" },
+    { key: "user", label: "משתמש", icon: "👤" },
+    { key: "strategy", label: "אסטרטגיה", icon: "🚀" },
+  ] as const;
+
+  const currentIdx = stages.findIndex((s) => s.key === currentStage);
+
+  return (
+    <div dir="rtl" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, padding: "16px 0" }}>
+      {stages.map((stage, i) => {
+        const isCompleted = i < currentIdx;
+        const isActive = i === currentIdx;
+        const isPending = i > currentIdx;
+
+        return (
+          <div key={stage.key} style={{ display: "flex", alignItems: "center" }}>
+            {/* Step circle */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 18,
+                  fontWeight: 700,
+                  transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                  ...(isCompleted
+                    ? {
+                        background: "linear-gradient(135deg, #00FF88, #00CC6A)",
+                        color: "#080A0F",
+                        boxShadow: "0 0 16px rgba(0,255,136,0.4)",
+                      }
+                    : isActive
+                      ? {
+                          background: "rgba(0,255,136,0.15)",
+                          border: "2px solid #00FF88",
+                          color: "#00FF88",
+                          boxShadow: "0 0 20px rgba(0,255,136,0.3)",
+                          animation: "gtmStepPulse 2s ease-in-out infinite",
+                        }
+                      : {
+                          background: "#1E2D45",
+                          border: "2px solid #2A3A55",
+                          color: "#6B7FA3",
+                        }),
+                }}
+              >
+                {isCompleted ? "✓" : stage.icon}
+              </div>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  marginTop: 6,
+                  fontFamily: "monospace",
+                  color: isCompleted ? "#00FF88" : isActive ? "#00FF88" : "#6B7FA3",
+                  textShadow: isActive ? "0 0 8px rgba(0,255,136,0.4)" : "none",
+                }}
+              >
+                {stage.label}
+              </span>
+            </div>
+
+            {/* Connector line */}
+            {i < stages.length - 1 && (
+              <div
+                style={{
+                  width: 64,
+                  height: 2,
+                  margin: "0 8px",
+                  marginBottom: 22,
+                  borderRadius: 1,
+                  background: isCompleted
+                    ? "linear-gradient(90deg, #00FF88, #00CC6A)"
+                    : "#1E2D45",
+                  transition: "all 0.5s ease",
+                  boxShadow: isCompleted ? "0 0 8px rgba(0,255,136,0.3)" : "none",
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
+
+      <style>{`
+        @keyframes gtmStepPulse {
+          0%, 100% { box-shadow: 0 0 12px rgba(0,255,136,0.3); }
+          50% { box-shadow: 0 0 24px rgba(0,255,136,0.5); }
+        }
+      `}</style>
+    </div>
   );
 }
 

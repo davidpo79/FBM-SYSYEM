@@ -144,6 +144,19 @@ export default function IdeatorPage() {
         apisUsed: idea.generated_apis || idea.apis_used || [],
       }));
     } catch { /* ignore */ }
+
+    // EVENT_LEAD_START: fire abandonment recovery webhook
+    fetch("/api/webhooks/gtm-lead-start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: formEmail.trim(),
+        ideaName: idea.name,
+        category: selectedCategory,
+        source: "ideator-results",
+      }),
+    }).catch(() => { /* fire and forget */ });
+
     const encodedEmail = encodeURIComponent(formEmail.trim());
     const encodedIdea = encodeURIComponent(idea.name);
     window.location.href = `/signup?track=gtm&email=${encodedEmail}&idea=${encodedIdea}`;
