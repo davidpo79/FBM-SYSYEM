@@ -34,7 +34,8 @@ try {
 export async function POST(req: Request) {
   const startTime = Date.now();
   try {
-    const { category, admin_key } = await req.json();
+    const { category, market, admin_key } = await req.json();
+    const marketLabel = market === "israel" ? "שוק ישראלי" : "שוק בינלאומי";
 
     // Admin bypass: skip rate limiting if correct key is provided
     const isAdmin = admin_key === "fbm-admin-2024";
@@ -55,6 +56,7 @@ export async function POST(req: Request) {
     const prompt = `אתה מנוע יצירת רעיונות סטארטאפ ברמה עולמית עבור תוכנית GTM BootCamp.
 
 ייצר בדיוק 3 רעיונות ייחודיים למוצר Micro-SaaS בקטגוריית "${catLabel}".
+שוק היעד: ${marketLabel}.
 
 לכל רעיון ספק:
 1. name - שם מוצר קליט (2-3 מילים באנגלית)
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
 6. monetization - איך זה מרוויח כסף (מודל תמחור + מחיר מוצע)
 7. mvp_scope - מה כולל ה-MVP (3-5 נקודות)
 8. competitive_edge - למה זה מנצח מול אלטרנטיבות (1-2 משפטים)
-9. market_size - הערכת גודל שוק TAM/SAM
+9. market_size - הערכת גודל שוק TAM/SAM מותאמת ל${marketLabel} (אם שוק ישראלי - מספרים רלוונטיים לישראל בש"ח, אם בינלאומי - מספרים גלובליים בדולר)
 10. difficulty - "easy" | "medium" | "hard" (רמת קושי לבניית MVP)
 11. apis_used - רשימה של 2-5 APIs ספציפיים שנדרשים לבנייה (לדוגמה: Twilio, Stripe, OpenAI, Shopify, Slack, Google Sheets, Notion, Airtable, HubSpot, SendGrid, Firebase, WhatsApp, Google Maps, Calendly, Zoom, Plaid וכד')
 12. api_explanation - הסבר של 2-3 משפטים: איך שילובי ה-API מתחברים יחד ליצירת הפתרון. לדוגמה: "Twilio לשליחת SMS ללקוחות, Stripe לגביית תשלומים אוטומטית, ו-OpenAI לניתוח טקסט חכם ויצירת תגובות מותאמות."
