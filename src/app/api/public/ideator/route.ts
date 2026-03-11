@@ -1,9 +1,34 @@
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+import { NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
 import { logApiCall } from "@/lib/api-log";
+
+let ratelimit: Ratelimit | null = null;
+try {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    ratelimit = new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(3, "24 h"),
+    });
+  }
+} catch (e) {
+  console.warn("Upstash Redis not configured. Rate limiting disabled.");
+}
 
 export async function POST(req: Request) {
   const startTime = Date.now();
   try {
+    if (ratelimit) {
+      const ip = req.headers.get("x-forwarded-for") ?? "127.0.0.1";
+      const { success } = await ratelimit.limit(ip);
+      if (!success) {
+        return NextResponse.json(
+          { error: "הגעת למגבלת הרעיונות היומית. נסה שוב מחר או הירשם לבוטקאמפ!" },
+          { status: 429 }
+        );
+      }
+    }
     const { apis } = await req.json();
 
     if (!apis || !Array.isArray(apis) || apis.length === 0) {
