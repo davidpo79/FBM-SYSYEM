@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
       email, name, user_id, registration_date,
       projectId, track, ideaName,
       utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+      utm_placement, utm_adset, utm_ad,
     } = body;
 
     if (!email || typeof email !== "string") {
@@ -40,6 +41,9 @@ export async function POST(req: NextRequest) {
     if (utm_campaign) payload.utm_campaign = utm_campaign;
     if (utm_content) payload.utm_content = utm_content;
     if (utm_term) payload.utm_term = utm_term;
+    if (utm_placement) payload.utm_placement = utm_placement;
+    if (utm_adset) payload.utm_adset = utm_adset;
+    if (utm_ad) payload.utm_ad = utm_ad;
 
     // Fire and forget to GHL webhook
     if (GHL_WEBHOOK_URL) {

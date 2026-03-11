@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
       idea_context, mrr_potential, tech_stack,
       payment_level,
       utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+      utm_placement, utm_adset, utm_ad,
     } = body;
 
     if (!phone || typeof phone !== "string" || phone.trim().length < 9) {
@@ -41,6 +42,9 @@ export async function POST(req: NextRequest) {
     if (utm_campaign) payload.utm_campaign = utm_campaign;
     if (utm_content) payload.utm_content = utm_content;
     if (utm_term) payload.utm_term = utm_term;
+    if (utm_placement) payload.utm_placement = utm_placement;
+    if (utm_adset) payload.utm_adset = utm_adset;
+    if (utm_ad) payload.utm_ad = utm_ad;
 
     // Fire and forget to GHL webhook
     if (GHL_WEBHOOK_URL) {

@@ -12,6 +12,9 @@ export interface UTMParams {
   utm_campaign?: string;
   utm_content?: string;
   utm_term?: string;
+  utm_placement?: string;
+  utm_adset?: string;
+  utm_ad?: string;
 }
 
 const UTM_KEYS: (keyof UTMParams)[] = [
@@ -20,6 +23,9 @@ const UTM_KEYS: (keyof UTMParams)[] = [
   "utm_campaign",
   "utm_content",
   "utm_term",
+  "utm_placement",
+  "utm_adset",
+  "utm_ad",
 ];
 
 /**
