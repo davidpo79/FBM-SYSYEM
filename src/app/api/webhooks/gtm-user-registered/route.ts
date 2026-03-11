@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
  * Includes UTM attribution parameters.
  */
 
-const GHL_WEBHOOK_URL = process.env.NEXT_PUBLIC_GHL_SMART_WEBHOOK_URL || process.env.GHL_WEBHOOK_USER_REGISTERED || "";
+const GHL_WEBHOOK_URL = process.env.NEXT_PUBLIC_GHL_WEBHOOK_URL || process.env.NEXT_PUBLIC_GHL_SMART_WEBHOOK_URL || process.env.GHL_WEBHOOK_USER_REGISTERED || "";
 
 export async function POST(req: NextRequest) {
   try {
