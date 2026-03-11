@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { RefreshCw } from "lucide-react";
 
 /* ── Category tiles with emojis — user picks a niche ── */
 const CATEGORIES = [
@@ -595,14 +596,7 @@ export default function IdeatorPage() {
                             padding: "16px 18px",
                             border: "1px solid rgba(255,255,255,0.05)",
                           }}>
-                            <p style={{
-                              fontSize: 10,
-                              fontFamily: "monospace",
-                              color: "#00FF88",
-                              marginBottom: 8,
-                              letterSpacing: "0.05em",
-                              textTransform: "uppercase",
-                            }}>
+                            <p className="text-lg font-bold text-[#00FF88] border-b border-[#00FF88]/30 pb-1 mb-2">
                               הזדמנות
                             </p>
                             <p style={{ fontSize: 14, color: "#E2E8F0", lineHeight: 1.7 }}>
@@ -620,14 +614,7 @@ export default function IdeatorPage() {
                             padding: "16px 18px",
                             border: "1px solid rgba(0,212,255,0.08)",
                           }}>
-                            <p style={{
-                              fontSize: 10,
-                              fontFamily: "monospace",
-                              color: "#00D4FF",
-                              marginBottom: 8,
-                              letterSpacing: "0.05em",
-                              textTransform: "uppercase",
-                            }}>
+                            <p className="text-lg font-bold text-[#00FF88] border-b border-[#00FF88]/30 pb-1 mb-2">
                               איך זה עובד?
                             </p>
                             <p style={{ fontSize: 14, color: "#E2E8F0", lineHeight: 1.7 }}>
@@ -643,14 +630,7 @@ export default function IdeatorPage() {
                           padding: "16px 18px",
                           border: "1px solid rgba(255,107,53,0.1)",
                         }}>
-                          <p style={{
-                            fontSize: 10,
-                            fontFamily: "monospace",
-                            color: "#FF6B35",
-                            marginBottom: 8,
-                            letterSpacing: "0.05em",
-                            textTransform: "uppercase",
-                          }}>
+                          <p className="text-lg font-bold text-[#00FF88] border-b border-[#00FF88]/30 pb-1 mb-2">
                             מודל עסקי
                           </p>
                           <p style={{ fontSize: 14, color: "#F1F5F9", fontWeight: 500, lineHeight: 1.6 }}>
@@ -664,14 +644,7 @@ export default function IdeatorPage() {
                           padding: "16px 18px",
                           border: "1px solid rgba(167,139,250,0.1)",
                         }}>
-                          <p style={{
-                            fontSize: 10,
-                            fontFamily: "monospace",
-                            color: "#A78BFA",
-                            marginBottom: 8,
-                            letterSpacing: "0.05em",
-                            textTransform: "uppercase",
-                          }}>
+                          <p className="text-lg font-bold text-[#00FF88] border-b border-[#00FF88]/30 pb-1 mb-2">
                             קהל יעד
                           </p>
                           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -786,16 +759,17 @@ export default function IdeatorPage() {
                               <button
                                 onClick={() => handleInlineSubmit(idea)}
                                 disabled={!formEmail.trim()}
+                                className={formEmail.trim() ? "bg-[#00FF88] text-black font-bold text-lg hover:bg-[#00cc6a] transition-all shadow-[0_0_15px_rgba(0,255,136,0.4)]" : ""}
                                 style={{
                                   padding: "12px 20px",
                                   borderRadius: 10,
                                   border: "none",
-                                  background: formEmail.trim()
-                                    ? "#00FF88"
-                                    : "#1E2D45",
-                                  color: formEmail.trim() ? "#080A0F" : "#94A3B8",
-                                  fontSize: 14,
-                                  fontWeight: 700,
+                                  ...(!formEmail.trim() ? {
+                                    background: "#1E2D45",
+                                    color: "#94A3B8",
+                                    fontSize: 14,
+                                    fontWeight: 700,
+                                  } : {}),
                                   cursor: formEmail.trim() ? "pointer" : "not-allowed",
                                   whiteSpace: "nowrap",
                                   transition: "all 0.2s",
@@ -804,16 +778,34 @@ export default function IdeatorPage() {
                                 צור לי תוכנית עסקית ושיווקית
                               </button>
                             </div>
-                            {/* Progress Expectation */}
-                            <p style={{
-                              fontSize: 11,
-                              color: "#6B7FA3",
-                              fontFamily: "monospace",
-                              marginTop: 12,
-                              lineHeight: 1.6,
-                            }}>
-                              שלב 1: בחירת רעיון מנצח ✓ | שלב 2: שמירת התוכנית (יצירת משתמש) | שלב 3: הפקת אסטרטגיית GTM מלאה
-                            </p>
+                            {/* Animated Stepper */}
+                            <div className="flex items-center justify-center gap-0 mt-4" dir="ltr">
+                              {/* Step 1 - Completed */}
+                              <div className="flex flex-col items-center">
+                                <div className="w-8 h-8 rounded-full bg-[#00FF88]/20 border-2 border-[#00FF88] flex items-center justify-center text-[#00FF88] font-bold text-sm">
+                                  ✓
+                                </div>
+                                <span className="text-[#00FF88] text-xs font-semibold mt-1 font-mono">רעיון</span>
+                              </div>
+                              {/* Line 1-2 */}
+                              <div className="w-12 h-0.5 bg-[#00FF88]/40 mx-1" />
+                              {/* Step 2 - Active */}
+                              <div className="flex flex-col items-center">
+                                <div className="w-8 h-8 rounded-full bg-[#00FF88]/10 border-2 border-[#00FF88] flex items-center justify-center animate-pulse" style={{ textShadow: "0 0 8px #00FF88" }}>
+                                  <div className="w-2.5 h-2.5 rounded-full bg-[#00FF88]" />
+                                </div>
+                                <span className="text-[#00FF88] text-xs font-semibold mt-1 font-mono animate-pulse" style={{ textShadow: "0 0 6px rgba(0,255,136,0.5)" }}>משתמש</span>
+                              </div>
+                              {/* Line 2-3 */}
+                              <div className="w-12 h-0.5 bg-gray-600 mx-1" />
+                              {/* Step 3 - Future */}
+                              <div className="flex flex-col items-center">
+                                <div className="w-8 h-8 rounded-full border-2 border-gray-600 flex items-center justify-center text-gray-500 text-sm">
+                                  3
+                                </div>
+                                <span className="text-gray-500 text-xs font-semibold mt-1 font-mono">GTM</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -827,82 +819,14 @@ export default function IdeatorPage() {
             <div style={{ textAlign: "center", marginTop: 40 }}>
               <button
                 onClick={() => { setStage("select"); setIdeas([]); setOpenFormIdx(null); }}
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  color: "#D1D5DB", padding: "10px 28px",
-                  borderRadius: 10, cursor: "pointer",
-                  fontSize: 13, fontFamily: "monospace",
-                  transition: "all 0.2s",
-                }}
+                className="border-2 border-[#00FF88] text-[#00FF88] hover:bg-[#00FF88]/10 px-8 py-3 rounded-lg font-bold transition-all inline-flex items-center gap-2"
+                style={{ cursor: "pointer", fontSize: 15 }}
               >
+                <RefreshCw size={18} />
                 נסה שילוב אחר
               </button>
             </div>
 
-            {/* ── FINAL BOTTOM CTA BLOCK ── */}
-            <div style={{
-              marginTop: 64,
-              padding: isMobile ? "40px 20px" : "56px 40px",
-              borderRadius: 20,
-              background: "linear-gradient(135deg, rgba(0,255,136,0.06) 0%, rgba(0,204,106,0.03) 100%)",
-              border: "1px solid rgba(0,255,136,0.15)",
-              textAlign: "center",
-              position: "relative",
-              overflow: "hidden",
-            }}>
-              <div style={{
-                position: "absolute",
-                top: "-50%",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: 400,
-                height: 400,
-                borderRadius: "50%",
-                background: "radial-gradient(circle, rgba(0,255,136,0.08) 0%, transparent 70%)",
-                pointerEvents: "none",
-              }} />
-
-              <h3 style={{
-                fontSize: isMobile ? 24 : 32,
-                fontWeight: 800,
-                marginBottom: 12,
-                lineHeight: 1.3,
-                position: "relative",
-              }}>
-                מצאת את פריצת ה-<span style={{ color: "#00FF88" }}>Micro-SaaS</span> שלך?
-              </h3>
-              <p style={{
-                fontSize: 16,
-                color: "#CBD5E1",
-                marginBottom: 28,
-                maxWidth: 480,
-                margin: "0 auto 28px",
-                lineHeight: 1.7,
-                position: "relative",
-              }}>
-                תעשה לה סקייל. המקומות מוגבלים לקוהורטה הבאה.
-              </p>
-              <a
-                href="/signup?track=gtm"
-                style={{
-                  display: "inline-block",
-                  padding: isMobile ? "16px 36px" : "18px 52px",
-                  borderRadius: 14,
-                  background: "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)",
-                  color: "#080A0F",
-                  fontSize: isMobile ? 16 : 18,
-                  fontWeight: 800,
-                  textDecoration: "none",
-                  boxShadow: "0 6px 32px rgba(0,255,136,0.3)",
-                  transition: "all 0.3s ease",
-                  position: "relative",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                הגש מועמדות לקוהורטת GTM Bootcamp
-              </a>
-            </div>
           </>
         )}
       </main>
