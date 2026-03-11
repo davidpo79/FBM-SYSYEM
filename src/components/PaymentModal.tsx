@@ -80,15 +80,6 @@ export default function PaymentModal({
       className="fixed inset-0 z-[9999] flex items-center justify-center"
       style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
     >
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 left-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/90 text-gray-700 hover:bg-white cursor-pointer transition-all shadow-lg"
-        style={{ fontSize: "20px" }}
-      >
-        ✕
-      </button>
-
       {!url ? (
         /* Step 1: Customer details form */
         <div
@@ -96,6 +87,14 @@ export default function PaymentModal({
           dir="rtl"
           style={{ background: "#fff" }}
         >
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 cursor-pointer transition-all"
+            style={{ fontSize: "16px" }}
+          >
+            ✕
+          </button>
           <h3 className="text-lg font-bold text-gray-900 mb-1">פרטים לחשבונית</h3>
           <p className="text-sm text-gray-500 mb-6">
             הפרטים יופיעו בחשבונית המס שתונפק
@@ -111,7 +110,7 @@ export default function PaymentModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="לדוגמה: ישראל ישראלי / חברת אקמה בע״מ"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-right text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-right text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                 autoFocus
               />
             </div>
@@ -126,7 +125,7 @@ export default function PaymentModal({
                 onChange={(e) => setIdNumber(e.target.value)}
                 placeholder="מספר תעודת זהות או מספר עוסק"
                 dir="ltr"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-left text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-left text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
               />
             </div>
 
@@ -139,9 +138,9 @@ export default function PaymentModal({
               disabled={loading}
               className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                background: "linear-gradient(135deg, #D4A843 0%, #C49A38 100%)",
-                color: "#0F1117",
-                boxShadow: "0 4px 16px rgba(212,168,67,0.3)",
+                background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
+                color: "#fff",
+                boxShadow: "0 4px 16px rgba(16,185,129,0.3)",
               }}
             >
               {loading ? "טוען..." : "המשך לתשלום"}
@@ -157,6 +156,14 @@ export default function PaymentModal({
             background: "#fff",
           }}
         >
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white text-gray-500 hover:bg-gray-200 cursor-pointer transition-all shadow-md"
+            style={{ fontSize: "16px" }}
+          >
+            ✕
+          </button>
           <iframe
             ref={iframeRef}
             src={url}

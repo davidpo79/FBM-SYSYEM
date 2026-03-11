@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         customerName,
         customerEmail,
         companyNumber,
-        description: "GTM BOOTCAMP / מנוי חודשי למערכת — חודש ראשון",
+        description: "GTM BOOTCAMP / מנוי חודשי למערכת — מתחדש כל חודש",
         price,
         redirectUrl,
         webhookUrl,

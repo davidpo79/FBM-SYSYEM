@@ -285,12 +285,18 @@ export default function GTMStrategyPage() {
   const [ganttConfirmed, setGanttConfirmed] = useState(false);
 
   const stageNavRef = useRef<HTMLDivElement>(null);
+  const paywallRef = useRef<HTMLDivElement>(null);
 
   const switchStage = (stage: StrategyStage) => {
     setCurrentStage(stage);
-    // Scroll to top of stage navigation
+    // For locked marketing stage, scroll directly to paywall overlay
+    const isLockedStage = stage === "marketing" && !isUnlocked;
     setTimeout(() => {
-      stageNavRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (isLockedStage && paywallRef.current) {
+        paywallRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        stageNavRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     }, 50);
   };
 
@@ -649,18 +655,35 @@ export default function GTMStrategyPage() {
       </div>
 
       {/* Stage Content */}
-      <div style={{ position: "relative" }}>
+      <div style={{ position: "relative" }} ref={paywallRef}>
         {/* Paywall overlay for locked stage */}
         {isLocked && (
-          <div style={{ position: "absolute", inset: 0, borderRadius: 24, zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(8,10,15,0.92)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
-            <div style={{ textAlign: "center", padding: 32 }}>
-              <span style={{ fontSize: 48, marginBottom: 16, display: "block" }}>&#x1F512;</span>
-              <h3 style={{ color: "#F0F6FF", fontSize: 26, fontWeight: 800, marginBottom: 8 }}>
-                פתח את האסטרטגיה המלאה
-              </h3>
-              <p style={{ color: "#6B7FA3", fontSize: 15, marginBottom: 32, textAlign: "center", maxWidth: 520, lineHeight: 1.7 }}>
-                קהל יעד וולידציה זמינים בחינם. שדרג כדי לגשת לערוצי צמיחה, פרסום ממומן, אסטרטגיית תוכן ותוכנית השקה ל-90 יום.
-              </p>
+          <div style={{ position: "absolute", inset: 0, borderRadius: 24, zIndex: 10, display: "flex", alignItems: "flex-start", justifyContent: "center", background: "rgba(8,10,15,0.65)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", paddingTop: 40, overflowY: "auto" }}>
+            <div style={{ textAlign: "center", padding: 32, maxWidth: 700, width: "100%" }}>
+
+              {/* FOMO Section — What you're missing */}
+              <div style={{ marginBottom: 36 }}>
+                <p style={{ color: "#FF6B35", fontFamily: "monospace", fontSize: 12, textTransform: "uppercase", marginBottom: 12, letterSpacing: 1 }}>
+                  &#x1F525; האסטרטגיה שלך כמעט מוכנה — חסרים רק 4 חלקים קריטיים
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, direction: "rtl", marginBottom: 20 }}>
+                  {[
+                    { icon: "\uD83D\uDE80", title: "ערוצי צמיחה", desc: "באילו ערוצים הלקוחות שלך נמצאים ואיך להגיע אליהם ראשון" },
+                    { icon: "\uD83C\uDFAF", title: "פרסום ממומן", desc: "תקציב, פלטפורמות, טרגוט וקריאייטיב שעובד — מוכן להרצה" },
+                    { icon: "\u270D\uFE0F", title: "אסטרטגיית תוכן", desc: "לוח שנה, פילרים ותבניות — כדי שתדע בדיוק מה לפרסם ומתי" },
+                    { icon: "\uD83D\uDCC5", title: "תוכנית 90 יום", desc: "גאנט שבועי עם משימות, אבני דרך ו-KPIs — מהיום הראשון" },
+                  ].map((item, i) => (
+                    <div key={i} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "16px 14px", textAlign: "right" }}>
+                      <div style={{ fontSize: 24, marginBottom: 6 }}>{item.icon}</div>
+                      <p style={{ color: "#F0F6FF", fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{item.title}</p>
+                      <p style={{ color: "#6B7FA3", fontSize: 12, lineHeight: 1.5 }}>{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ color: "#9DA3B4", fontSize: 13, lineHeight: 1.6, maxWidth: 480, margin: "0 auto" }}>
+                  &#x26A0;&#xFE0F; בלי החלקים האלה, האסטרטגיה שלך חסרה את הכלים להפוך רעיון ללקוחות משלמים.
+                </p>
+              </div>
 
               {/* 2-Tier Pricing: DIY + PRO */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, maxWidth: 640, direction: "rtl", margin: "0 auto" }}>

@@ -313,7 +313,7 @@ export default function DashboardLayout({
         {!isGtmQuestionnaire && (
           <div className="flex items-center justify-between px-6 lg:px-8 pt-4 pb-0">
             <div />
-            <NotificationBell />
+            {billingPlan !== "trial" && billingPlan !== "expired" && <NotificationBell />}
           </div>
         )}
         <main className={isGtmQuestionnaire ? "p-6 lg:p-8 min-h-screen" : "p-6 lg:p-8 min-h-screen pb-20 lg:pb-8"}>
