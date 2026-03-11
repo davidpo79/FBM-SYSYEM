@@ -108,9 +108,9 @@ export default function IdeatorPage() {
   };
 
   const difficultyLabel = (d: string) => {
-    if (d === "easy") return "Easy";
-    if (d === "medium") return "Medium";
-    return "Hard";
+    if (d === "easy") return "קל";
+    if (d === "medium") return "בינוני";
+    return "מאתגר";
   };
 
   const difficultyColor = (d: string) => {
@@ -418,17 +418,17 @@ export default function IdeatorPage() {
           <>
             <div style={{ textAlign: "center", marginBottom: 40 }}>
               <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-                Your <span style={{ color: "#00FF88" }}>3 Ideas</span> Are Ready
+                <span style={{ color: "#00FF88" }}>3 הרעיונות שלך</span> מוכנים
               </h2>
               <p style={{ color: "#6B7FA3", fontSize: 14 }}>
-                Each idea is validated for market-fit, buildability, and revenue potential.
+                כל רעיון אומת עבור התאמה לשוק, יכולת בנייה, ופוטנציאל הכנסות.
               </p>
               <p style={{ fontSize: 12, color: "#3D4F6F", fontFamily: "monospace", marginTop: 6 }}>
-                {market === "israel" ? "🇮🇱 Israeli Market" : "🌍 Global Market"}
+                {market === "israel" ? "🇮🇱 שוק ישראלי" : "🌍 שוק בינלאומי"}
               </p>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               {ideas.map((idea, idx) => {
                 const dc = difficultyColor(idea.difficulty);
                 return (
@@ -439,23 +439,21 @@ export default function IdeatorPage() {
                       border: "1px solid #1E2D45",
                       borderRadius: 16,
                       padding: 28,
-                      position: "relative",
-                      overflow: "hidden",
                       animation: `fadeInUp 0.5s ${idx * 0.15}s both`,
                     }}
                   >
-                    {/* Glow accent */}
-                    <div style={{ position: "absolute", top: 0, right: 0, width: 160, height: 160, pointerEvents: "none", background: "radial-gradient(circle at top right, rgba(0,255,136,0.06), transparent 70%)" }} />
-
                     {/* Header */}
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
                       <div>
                         <span style={{ fontSize: 11, fontFamily: "monospace", color: "#3D4F6F", display: "block", marginBottom: 4 }}>
-                          Idea #{idx + 1}
+                          רעיון #{idx + 1}
                         </span>
-                        <h3 style={{ fontSize: 22, fontWeight: 700, color: "#F0F6FF", marginBottom: 4, direction: "ltr", textAlign: "right" }}>
+                        <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4, direction: "ltr", textAlign: "right" }}>
                           {idea.name}
                         </h3>
+                        <p style={{ color: "#00FF88", fontSize: 14, fontWeight: 500 }}>
+                          {idea.tagline}
+                        </p>
                       </div>
                       <span
                         style={{
@@ -466,43 +464,21 @@ export default function IdeatorPage() {
                           borderRadius: 6,
                           background: dc.bg,
                           color: dc.color,
+                          textTransform: "uppercase",
                         }}
                       >
                         {difficultyLabel(idea.difficulty)}
                       </span>
                     </div>
 
-                    {/* Tagline */}
-                    <p style={{ color: "#FF6B35", fontSize: 15, fontWeight: 600, lineHeight: 1.6, marginBottom: 20 }}>
-                      {idea.tagline}
-                    </p>
-
                     {/* Info Sections Grid */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginBottom: 16 }}>
-                      <Section title="Problem" text={idea.problem} />
-                      <Section title="Solution" text={idea.solution} />
-                      <Section title="Target Audience" text={idea.target_audience} />
-                      <Section title="Revenue Model" text={idea.monetization} />
-                      <Section title="Competitive Edge" text={idea.competitive_edge} />
-                    </div>
-
-                    {/* Market Size — highlighted based on market selection */}
-                    <div
-                      style={{
-                        marginBottom: 16,
-                        padding: 16,
-                        borderRadius: 10,
-                        background: "rgba(0,255,136,0.05)",
-                        border: "1px solid rgba(0,255,136,0.2)",
-                        borderRight: "3px solid #00FF88",
-                      }}
-                    >
-                      <p style={{ fontSize: 11, fontFamily: "monospace", color: "#00FF88", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                        {market === "israel" ? "🇮🇱 Market Size — Israel" : "🌍 Market Size — Global"}
-                      </p>
-                      <p style={{ fontSize: 14, color: "#F0F6FF", lineHeight: 1.6, fontWeight: 600 }}>
-                        {idea.market_size}
-                      </p>
+                      <Section title="הבעיה" text={idea.problem} />
+                      <Section title="הפתרון" text={idea.solution} />
+                      <Section title="קהל יעד" text={idea.target_audience} />
+                      <Section title="מודל הכנסות" text={idea.monetization} />
+                      <Section title="יתרון תחרותי" text={idea.competitive_edge} />
+                      <Section title="גודל שוק" text={idea.market_size} highlight />
                     </div>
 
                     {/* API Combinations */}
@@ -518,7 +494,7 @@ export default function IdeatorPage() {
                         }}
                       >
                         <p style={{ fontSize: 11, fontFamily: "monospace", color: "#00FF88", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
-                          Recommended API Stack
+                          שילובי API מומלצים ליישום
                         </p>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10, direction: "ltr" }}>
                           {idea.apis_used.map((api, j) => (
@@ -547,17 +523,9 @@ export default function IdeatorPage() {
 
                     {/* MVP Scope */}
                     {idea.mvp_scope && idea.mvp_scope.length > 0 && (
-                      <div
-                        style={{
-                          marginBottom: 16,
-                          padding: 16,
-                          borderRadius: 10,
-                          background: "rgba(8,10,15,0.6)",
-                          border: "1px solid rgba(30,45,69,0.5)",
-                        }}
-                      >
-                        <p style={{ fontSize: 11, fontFamily: "monospace", color: "#00FF88", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>
-                          MVP Scope
+                      <div style={{ marginBottom: 16 }}>
+                        <p style={{ fontSize: 11, fontFamily: "monospace", color: "#6B7FA3", marginBottom: 8, textTransform: "uppercase" }}>
+                          היקף MVP
                         </p>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                           {idea.mvp_scope.map((item, i) => (
@@ -565,11 +533,11 @@ export default function IdeatorPage() {
                               key={i}
                               style={{
                                 fontSize: 12,
-                                padding: "6px 14px",
-                                borderRadius: 8,
+                                padding: "4px 10px",
+                                borderRadius: 6,
                                 background: "rgba(0,255,136,0.08)",
                                 border: "1px solid rgba(0,255,136,0.2)",
-                                color: "#F0F6FF",
+                                color: "#00FF88",
                               }}
                             >
                               {item}
@@ -584,19 +552,18 @@ export default function IdeatorPage() {
                       onClick={() => handleActivateIdea(idea)}
                       style={{
                         width: "100%",
-                        padding: "14px",
-                        borderRadius: 12,
-                        border: "none",
-                        background: "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)",
-                        color: "#080A0F",
-                        fontSize: 15,
+                        padding: "12px",
+                        borderRadius: 10,
+                        border: "1.5px solid rgba(0,255,136,0.3)",
+                        background: "linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,255,136,0.04))",
+                        color: "#00FF88",
+                        fontSize: 14,
                         fontWeight: 700,
                         cursor: "pointer",
                         transition: "all 0.2s",
-                        boxShadow: "0 4px 16px rgba(0,255,136,0.3)",
                       }}
                     >
-                      🚀 Build a Go-To-Market Strategy for This Idea
+                      הוצא את הרעיון הזה לפועל
                     </button>
                   </div>
                 );
@@ -617,7 +584,7 @@ export default function IdeatorPage() {
                   fontSize: 14,
                 }}
               >
-                Try Another Category
+                נסה קטגוריה אחרת
               </button>
             </div>
           </>
