@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { RefreshCw } from "lucide-react";
 import { captureUTM, getUTMForPayload } from "@/lib/utm";
 import { fbLead, fbViewContent } from "@/lib/fbpixel";
+
+/* ── Brainstorm particles config ── */
+const BINARY_SNIPPETS = ["01", "10", "001", "110", "0101", "1010", "{ }", "< >", "=>", "AI", "//", "&&", "$$", "**"];
+const PARTICLE_COUNT = 28;
 
 /* ── Category tiles with emojis — user picks a niche ── */
 const CATEGORIES = [
@@ -68,6 +72,17 @@ export default function IdeatorPage() {
   const [cursorVisible, setCursorVisible] = useState(true);
   const [buildProgress, setBuildProgress] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Generate brainstorm particles (stable across renders)
+  const particles = useMemo(() =>
+    Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+      id: i,
+      x: Math.round((i / PARTICLE_COUNT) * 90 + Math.random() * 10),
+      text: BINARY_SNIPPETS[i % BINARY_SNIPPETS.length],
+      duration: 6 + Math.random() * 8,
+      delay: Math.random() * 10,
+    })),
+  []);
 
   // Inline form state per card
   const [openFormIdx, setOpenFormIdx] = useState<number | null>(null);
@@ -214,36 +229,66 @@ export default function IdeatorPage() {
         overflow: "hidden",
       }}
     >
-      {/* ── Ambient background orbs ── */}
-      <div style={{
-        position: "absolute",
-        top: "-10%",
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "80vw",
-        maxWidth: 900,
-        height: 600,
-        background: "radial-gradient(ellipse at center, rgba(0,255,136,0.07) 0%, rgba(0,255,136,0.02) 40%, transparent 70%)",
-        pointerEvents: "none",
-        zIndex: 0,
-      }} />
+      {/* ── Brainstorm: Floating binary particles ── */}
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="ideator-particle"
+          style={{
+            left: `${p.x}%`,
+            top: `-30px`,
+            animationDuration: `${p.duration}s`,
+            animationDelay: `${p.delay}s`,
+          }}
+        >
+          {p.text}
+        </div>
+      ))}
+
+      {/* ── Glowing orbs ── */}
       <div className="ideator-orb ideator-orb-1" />
       <div className="ideator-orb ideator-orb-2" />
       <div className="ideator-orb ideator-orb-3" />
+
+      {/* ── Neural network SVG lines ── */}
+      <svg
+        viewBox="0 0 1000 1000"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }}
+        preserveAspectRatio="none"
+      >
+        <path className="ideator-neural-line" d="M 100,50 Q 300,250 500,500 T 500,950" />
+        <path className="ideator-neural-line" d="M 900,50 Q 700,250 500,500 T 500,950" />
+        <path className="ideator-neural-line" d="M 500,0 Q 500,300 500,500 T 500,950" />
+        <path className="ideator-neural-line" d="M 250,80 Q 400,350 500,550 T 500,950" />
+        <path className="ideator-neural-line" d="M 750,80 Q 600,350 500,550 T 500,950" />
+      </svg>
+
+      {/* ── Spark dots traveling down ── */}
+      {[...Array(5)].map((_, i) => (
+        <div
+          key={`spark-${i}`}
+          className="ideator-spark"
+          style={{
+            left: `${20 + i * 15}%`,
+            animationDuration: `${3 + i * 0.8}s`,
+            animationDelay: `${i * 0.6}s`,
+          }}
+        />
+      ))}
 
       {/* ── Subtle grid overlay ── */}
       <div style={{
         position: "absolute",
         inset: 0,
         backgroundImage: `
-          linear-gradient(rgba(0,255,136,0.015) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0,255,136,0.015) 1px, transparent 1px)
+          linear-gradient(rgba(0,255,136,0.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,255,136,0.02) 1px, transparent 1px)
         `,
-        backgroundSize: "80px 80px",
+        backgroundSize: "60px 60px",
         pointerEvents: "none",
         zIndex: 0,
-        maskImage: "radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%)",
-        WebkitMaskImage: "radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%)",
+        maskImage: "radial-gradient(ellipse at 50% 40%, black 30%, transparent 70%)",
+        WebkitMaskImage: "radial-gradient(ellipse at 50% 40%, black 30%, transparent 70%)",
       }} />
 
       {/* Header */}
@@ -282,8 +327,37 @@ export default function IdeatorPage() {
                 מנוע רעיונות{" "}
                 <span style={{ color: "#00FF88" }}>Micro-SaaS</span>
                 <br />
-                <span style={{ fontSize: "clamp(16px, 2.5vw, 22px)", fontWeight: 500, color: "#CBD5E1" }}>
-                  בעזרת כלי AI
+                {/* AI icon + subtitle row */}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 10, justifyContent: "center", marginTop: 8 }}>
+                  <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    border: "1.5px solid rgba(0,255,136,0.4)",
+                    background: "rgba(0,255,136,0.08)",
+                    fontSize: 16,
+                  }}>
+                    🧠
+                  </span>
+                  <span style={{ fontSize: "clamp(16px, 2.5vw, 22px)", fontWeight: 500, color: "#CBD5E1" }}>
+                    בעזרת כלי AI
+                  </span>
+                  <span className="ideator-badge" style={{
+                    fontSize: 11,
+                    fontFamily: "monospace",
+                    fontWeight: 700,
+                    color: "#00FF88",
+                    padding: "4px 12px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(0,255,136,0.4)",
+                    background: "rgba(0,255,136,0.1)",
+                    letterSpacing: "0.05em",
+                  }}>
+                    IDEAS UNLOCKED
+                  </span>
                 </span>
               </h1>
               <p style={{ fontSize: 18, color: "#CBD5E1", maxWidth: 600, margin: "0 auto 8px" }}>
@@ -423,27 +497,35 @@ export default function IdeatorPage() {
               <p style={{ color: "#EF4444", textAlign: "center", marginBottom: 16 }}>{error}</p>
             )}
 
-            <div style={{ textAlign: "center" }}>
-              <button
-                onClick={handleGenerate}
-                disabled={!canGenerate}
-                style={{
-                  padding: "14px 48px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: canGenerate
-                    ? "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)"
-                    : "#1E2D45",
-                  color: canGenerate ? "#080A0F" : "#94A3B8",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  cursor: canGenerate ? "pointer" : "not-allowed",
-                  transition: "all 0.3s",
-                  boxShadow: canGenerate ? "0 4px 16px rgba(0,255,136,0.3)" : "none",
-                }}
-              >
-                ייצר לי רעיונות
-              </button>
+            {/* Converging glow above button */}
+            <div style={{ position: "relative" }}>
+              <div className="ideator-converge-glow" style={{ bottom: 0 }} />
+              <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
+                <button
+                  onClick={handleGenerate}
+                  disabled={!canGenerate}
+                  className={canGenerate ? "ideator-btn-glow" : ""}
+                  style={{
+                    padding: "16px 56px",
+                    borderRadius: 14,
+                    border: canGenerate ? "1.5px solid rgba(0,255,136,0.5)" : "1.5px solid transparent",
+                    background: canGenerate
+                      ? "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)"
+                      : "#1E2D45",
+                    color: canGenerate ? "#080A0F" : "#94A3B8",
+                    fontSize: 18,
+                    fontWeight: 800,
+                    cursor: canGenerate ? "pointer" : "not-allowed",
+                    transition: "all 0.3s",
+                    boxShadow: canGenerate
+                      ? "0 4px 24px rgba(0,255,136,0.35), 0 0 60px rgba(0,255,136,0.15)"
+                      : "none",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  ⚡ ייצר לי רעיונות
+                </button>
+              </div>
             </div>
           </>
         )}
