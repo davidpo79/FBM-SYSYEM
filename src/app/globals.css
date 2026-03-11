@@ -704,6 +704,25 @@ input[type="range"]::-moz-range-thumb {
 .gtm-btn-ghost:active {
   transform: scale(0.96);
 }
+.gtm-btn-regenerate {
+  padding: 12px 28px;
+  border-radius: 12px;
+  border: 1px solid #00FF88;
+  background: rgba(0, 255, 136, 0.08);
+  color: #00FF88;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.25s ease;
+}
+.gtm-btn-regenerate:hover {
+  background: rgba(0, 255, 136, 0.15);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.2);
+}
+.gtm-btn-regenerate:active {
+  transform: scale(0.96);
+}
 .gtm-btn-scale:active {
   transform: scale(0.96);
 }

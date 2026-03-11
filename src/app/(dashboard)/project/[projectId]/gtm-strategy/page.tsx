@@ -956,15 +956,15 @@ export default function GTMStrategyPage() {
       )}
 
       {/* Regenerate button */}
-      <div style={{ textAlign: "center", marginTop: 32 }}>
+      <div style={{ textAlign: "center", marginTop: 20, marginBottom: 16 }}>
         <button
           onClick={() => {
             generationAttempted.current = false;
             generateStrategy();
           }}
-          className="gtm-btn-ghost"
+          className="gtm-btn-regenerate"
         >
-          צור אסטרטגיה מחדש
+          🔄 צור אסטרטגיה מחדש
         </button>
       </div>
 
