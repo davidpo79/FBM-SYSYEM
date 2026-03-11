@@ -8,6 +8,7 @@ interface QuestionRecordCardProps {
   value: string;
   onChange: (value: string) => void;
   error?: string;
+  track?: "fbm" | "gtm";
 }
 
 export default function QuestionRecordCard({
@@ -15,7 +16,9 @@ export default function QuestionRecordCard({
   value,
   onChange,
   error,
+  track,
 }: QuestionRecordCardProps) {
+  const isGtm = track === "gtm";
   const [recStatus, setRecStatus] = useState<
     "idle" | "recording" | "transcribing"
   >("idle");
@@ -114,21 +117,33 @@ export default function QuestionRecordCard({
 
   return (
     <div
-      className="bg-white dark:bg-gray-900 rounded-2xl shadow-md border border-gray-200 dark:border-gray-800 p-6 sm:p-8"
+      className={`rounded-2xl shadow-md border p-6 sm:p-8 ${
+        isGtm
+          ? "bg-[#0D1117] border-[#1E2D45]"
+          : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
+      }`}
       dir="rtl"
     >
       {/* Section badge */}
-      <span className="inline-block text-xs font-semibold text-[var(--gold)] bg-[var(--gold-soft)] px-3 py-1 rounded-full mb-4">
+      <span
+        className={`inline-block text-xs font-semibold px-3 py-1 rounded-full mb-4 ${
+          isGtm ? "text-[#00FF88] bg-[rgba(0,255,136,0.1)]" : "text-[var(--gold)] bg-[var(--gold-soft)]"
+        }`}
+      >
         {question.sectionTitle}
       </span>
 
       {/* Title */}
-      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+      <h2
+        className={`text-xl sm:text-2xl font-bold mb-3 ${
+          isGtm ? "text-[#F0F6FF]" : "text-gray-900 dark:text-gray-100"
+        }`}
+      >
         {question.title}
       </h2>
 
       {/* Question text */}
-      <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+      <p className={`mb-6 leading-relaxed ${isGtm ? "text-[#B0BEC5]" : "text-gray-600 dark:text-gray-400"}`}>
         {question.text}
       </p>
 
@@ -138,7 +153,11 @@ export default function QuestionRecordCard({
           <button
             type="button"
             onClick={startRecording}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-colors cursor-pointer"
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors cursor-pointer ${
+              isGtm
+                ? "bg-[#00FF88] hover:bg-[#00CC6A] text-[#0D1117]"
+                : "bg-red-500 hover:bg-red-600 text-white"
+            }`}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -158,7 +177,9 @@ export default function QuestionRecordCard({
             <button
               type="button"
               onClick={stopRecording}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-800 text-white font-medium transition-colors cursor-pointer"
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors cursor-pointer ${
+                isGtm ? "bg-[#1E2D45] hover:bg-[#2A3B5A] text-[#F0F6FF]" : "bg-gray-700 hover:bg-gray-800 text-white"
+              }`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -184,7 +205,11 @@ export default function QuestionRecordCard({
         )}
 
         {recStatus === "transcribing" && (
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 font-medium">
+          <div
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium ${
+              isGtm ? "bg-[rgba(0,255,136,0.1)] text-[#00FF88]" : "bg-blue-50 dark:bg-blue-950 text-blue-600"
+            }`}
+          >
             <svg
               className="animate-spin"
               xmlns="http://www.w3.org/2000/svg"
@@ -211,10 +236,14 @@ export default function QuestionRecordCard({
         onChange={(e) => onChange(e.target.value)}
         placeholder="התמלול יופיע כאן... ניתן גם להקליד ידנית"
         rows={5}
-        className={`w-full rounded-xl border px-4 py-3 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 transition-colors ${
-          error
-            ? "border-red-400 focus:ring-red-400"
-            : "border-gray-300 dark:border-gray-700 focus:ring-blue-500 focus:border-blue-500"
+        className={`w-full rounded-xl border px-4 py-3 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 transition-colors ${
+          isGtm
+            ? error
+              ? "border-red-400 focus:ring-red-400 bg-[#161D2B] text-[#F0F6FF]"
+              : "border-[#1E2D45] bg-[#161D2B] text-[#F0F6FF] focus:ring-[#00FF88] focus:border-[#00FF88] placeholder:text-[#3D4F6F]"
+            : error
+              ? "border-red-400 focus:ring-red-400 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800"
+              : "border-gray-300 dark:border-gray-700 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800"
         }`}
       />
 
@@ -222,7 +251,7 @@ export default function QuestionRecordCard({
       {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
 
       {/* Character count */}
-      <p className="mt-2 text-xs text-gray-400 text-left" dir="ltr">
+      <p className={`mt-2 text-xs text-left ${isGtm ? "text-[#3D4F6F]" : "text-gray-400"}`} dir="ltr">
         {value.length} / 10 min
       </p>
     </div>

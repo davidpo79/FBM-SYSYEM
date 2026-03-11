@@ -54,6 +54,19 @@ export default function DashboardLayout({
   const [billingDaysLeft, setBillingDaysLeft] = useState<number | null>(null);
   const [billingLoading, setBillingLoading] = useState(true);
   const [projectTrack, setProjectTrack] = useState<"fbm" | "gtm">("fbm");
+  const [isGtmQuestionnaire, setIsGtmQuestionnaire] = useState(false);
+
+  // Detect GTM questionnaire mode (hide sidebar/nav for dedicated GTM workspace)
+  useEffect(() => {
+    if (pathname === "/questionnaire") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("track") === "gtm") {
+        setIsGtmQuestionnaire(true);
+        return;
+      }
+    }
+    setIsGtmQuestionnaire(false);
+  }, [pathname]);
 
   // Extract projectId from URL if on a project page
   const projectIdMatch = pathname.match(/\/project\/([^/]+)/);
@@ -239,24 +252,26 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className={`min-h-screen ${projectTrack === "gtm" ? "theme-gtm" : ""}`} style={{ backgroundColor: projectTrack === "gtm" ? "#080A0F" : "#F5F6FA" }} dir="rtl">
-      {/* Desktop sidebar */}
-      <Sidebar
-        userEmail={user?.email ?? ""}
-        userName={userName}
-        projectId={activeProjectId}
-        projectName={projectName}
-        projectCount={projectCount}
-        albumCount={albumCount}
-        isAdmin={isAdmin}
-        newSuggestionsCount={newSuggestionsCount}
-        currentPlan={billingPlan}
-        track={projectTrack}
-        onLogout={handleLogout}
-      />
+    <div className={`min-h-screen ${projectTrack === "gtm" || isGtmQuestionnaire ? "theme-gtm" : ""}`} style={{ backgroundColor: isGtmQuestionnaire ? "#0B111B" : projectTrack === "gtm" ? "#080A0F" : "#F5F6FA" }} dir="rtl">
+      {/* Desktop sidebar — hidden for GTM questionnaire */}
+      {!isGtmQuestionnaire && (
+        <Sidebar
+          userEmail={user?.email ?? ""}
+          userName={userName}
+          projectId={activeProjectId}
+          projectName={projectName}
+          projectCount={projectCount}
+          albumCount={albumCount}
+          isAdmin={isAdmin}
+          newSuggestionsCount={newSuggestionsCount}
+          currentPlan={billingPlan}
+          track={projectTrack}
+          onLogout={handleLogout}
+        />
+      )}
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
+      {/* Mobile sidebar overlay — hidden for GTM questionnaire */}
+      {!isGtmQuestionnaire && sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           {/* Backdrop */}
           <div
@@ -293,23 +308,25 @@ export default function DashboardLayout({
       )}
 
       {/* Main content area */}
-      <div className="lg:mr-[260px]">
-        {/* Top bar with notification bell */}
-        <div className="flex items-center justify-between px-6 lg:px-8 pt-4 pb-0">
-          <div />
-          <NotificationBell />
-        </div>
-        <main className="p-6 lg:p-8 min-h-screen pb-20 lg:pb-8">
-          {/* Trial warning banner (3 days or less remaining) */}
-          {shouldShowTrialBanner(billingPlan, billingDaysLeft) && (
+      <div className={isGtmQuestionnaire ? "" : "lg:mr-[260px]"}>
+        {/* Top bar with notification bell — hidden for GTM questionnaire */}
+        {!isGtmQuestionnaire && (
+          <div className="flex items-center justify-between px-6 lg:px-8 pt-4 pb-0">
+            <div />
+            <NotificationBell />
+          </div>
+        )}
+        <main className={isGtmQuestionnaire ? "p-6 lg:p-8 min-h-screen" : "p-6 lg:p-8 min-h-screen pb-20 lg:pb-8"}>
+          {/* Trial warning banner (3 days or less remaining) — not shown for GTM questionnaire */}
+          {!isGtmQuestionnaire && shouldShowTrialBanner(billingPlan, billingDaysLeft) && (
             <TrialBanner
               daysLeft={billingDaysLeft!}
               onUpgrade={() => router.push("/settings?tab=plan")}
             />
           )}
 
-          {/* Show Paywall if plan expired (admins bypass paywall) */}
-          {!billingLoading && billingPlan === "expired" && !isAdmin ? (
+          {/* Show Paywall if plan expired (admins bypass paywall) — not for GTM questionnaire */}
+          {!isGtmQuestionnaire && !billingLoading && billingPlan === "expired" && !isAdmin ? (
             <Paywall daysLeft={billingDaysLeft} currentPlan={billingPlan} projectCount={projectCount} />
           ) : (
             children
@@ -317,64 +334,66 @@ export default function DashboardLayout({
         </main>
       </div>
 
-      {/* Mobile bottom navigation bar */}
-      <nav
-        className="fixed bottom-0 left-0 right-0 lg:hidden z-30 mobile-bottom-nav"
-        style={{
-          backgroundColor: "rgba(15, 17, 23, 0.97)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          borderTop: "1px solid #2A2D3A",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        }}
-        dir="rtl"
-      >
-        <div className="flex items-center justify-around h-14">
-          <Link
-            href="/dashboard"
-            className="flex flex-col items-center gap-0.5 px-3 py-1.5"
-            style={{ color: pathname === "/dashboard" ? "#D4A843" : "#9DA3B4" }}
-          >
-            <LayoutDashboard size={20} strokeWidth={1.8} />
-            <span className="text-[10px] font-medium">דשבורד</span>
-          </Link>
-          {activeProjectId ? (
+      {/* Mobile bottom navigation bar — hidden for GTM questionnaire */}
+      {!isGtmQuestionnaire && (
+        <nav
+          className="fixed bottom-0 left-0 right-0 lg:hidden z-30 mobile-bottom-nav"
+          style={{
+            backgroundColor: "rgba(15, 17, 23, 0.97)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            borderTop: "1px solid #2A2D3A",
+            paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          }}
+          dir="rtl"
+        >
+          <div className="flex items-center justify-around h-14">
             <Link
-              href={`/project/${activeProjectId}/strategy`}
+              href="/dashboard"
               className="flex flex-col items-center gap-0.5 px-3 py-1.5"
-              style={{ color: pathname.includes("/project/") ? "#D4A843" : "#9DA3B4" }}
+              style={{ color: pathname === "/dashboard" ? "#D4A843" : "#9DA3B4" }}
             >
-              <Workflow size={20} strokeWidth={1.8} />
-              <span className="text-[10px] font-medium">תהליך</span>
+              <LayoutDashboard size={20} strokeWidth={1.8} />
+              <span className="text-[10px] font-medium">דשבורד</span>
             </Link>
-          ) : (
+            {activeProjectId ? (
+              <Link
+                href={`/project/${activeProjectId}/strategy`}
+                className="flex flex-col items-center gap-0.5 px-3 py-1.5"
+                style={{ color: pathname.includes("/project/") ? "#D4A843" : "#9DA3B4" }}
+              >
+                <Workflow size={20} strokeWidth={1.8} />
+                <span className="text-[10px] font-medium">תהליך</span>
+              </Link>
+            ) : (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="flex flex-col items-center gap-0.5 px-3 py-1.5 cursor-pointer"
+                style={{ color: "#9DA3B4" }}
+              >
+                <Workflow size={20} strokeWidth={1.8} />
+                <span className="text-[10px] font-medium">תהליך</span>
+              </button>
+            )}
             <button
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => setShowExpert((v) => !v)}
               className="flex flex-col items-center gap-0.5 px-3 py-1.5 cursor-pointer"
-              style={{ color: "#9DA3B4" }}
+              style={{ color: showExpert ? "#D4A843" : "#9DA3B4" }}
             >
-              <Workflow size={20} strokeWidth={1.8} />
-              <span className="text-[10px] font-medium">תהליך</span>
+              <BotMessageSquare size={20} strokeWidth={1.8} />
+              <span className="text-[10px] font-medium">מומחה</span>
             </button>
-          )}
-          <button
-            onClick={() => setShowExpert((v) => !v)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1.5 cursor-pointer"
-            style={{ color: showExpert ? "#D4A843" : "#9DA3B4" }}
-          >
-            <BotMessageSquare size={20} strokeWidth={1.8} />
-            <span className="text-[10px] font-medium">מומחה</span>
-          </button>
-          <Link
-            href="/settings"
-            className="flex flex-col items-center gap-0.5 px-3 py-1.5"
-            style={{ color: pathname === "/settings" ? "#D4A843" : "#9DA3B4" }}
-          >
-            <Settings size={20} strokeWidth={1.8} />
-            <span className="text-[10px] font-medium">הגדרות</span>
-          </Link>
-        </div>
-      </nav>
+            <Link
+              href="/settings"
+              className="flex flex-col items-center gap-0.5 px-3 py-1.5"
+              style={{ color: pathname === "/settings" ? "#D4A843" : "#9DA3B4" }}
+            >
+              <Settings size={20} strokeWidth={1.8} />
+              <span className="text-[10px] font-medium">הגדרות</span>
+            </Link>
+          </div>
+        </nav>
+      )}
 
       {/* FBM Expert Panel */}
       <FBMExpertPanel
