@@ -19,6 +19,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
     if (params.get("track") === "gtm") {
       setIsGtmTrack(true);
     }
+    const prefillEmail = params.get("email");
+    if (prefillEmail) {
+      setEmail(prefillEmail);
+    }
   }, []);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");

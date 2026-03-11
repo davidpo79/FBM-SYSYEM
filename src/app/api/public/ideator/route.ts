@@ -182,6 +182,9 @@ CRITICAL RULES:
 10. difficulty - "easy" | "medium" | "hard" (רמת קושי לבניית MVP)
 11. apis_used - רשימה של 2-5 APIs ספציפיים מהמאגר שלך שנדרשים לבנייה${isIsrael ? " (חובה לכלול לפחות API ישראלי/מקומי אחד)" : ""}
 12. api_explanation - הסבר של 2-3 משפטים: איך שילובי ה-API מתחברים יחד ליצירת הפתרון
+13. potential_mrr - הערכת MRR פוטנציאלי (Monthly Recurring Revenue) ריאלית עם סימן מטבע (${isIsrael ? "₪" : "$"}) למשל "${isIsrael ? "₪45,000+" : "$12,000+"}" — מבוססת על גודל קהל היעד × מחיר מוצע
+14. value_bullets - 3-4 נקודות ערך קצרות וחדות (כל אחת עד 8 מילים) שמסבירות למה הרעיון שווה, למשל: "MVP תוך 7 ימים", "מאמת כאב קיצוני בשוק"
+15. audience_bullets - 2-3 נקודות קהל יעד קצרות וספציפיות, למשל: "סוכני נדל\"ן", "בעלי עסקים קטנים"
 
 דרישות:
 - רעיונות שמפתח יחיד יכול לבנות ב-2-4 שבועות
@@ -205,7 +208,10 @@ CRITICAL RULES:
       "market_size": "...",
       "difficulty": "easy",
       "apis_used": ["Twilio", "Stripe", "OpenAI"],
-      "api_explanation": "..."
+      "api_explanation": "...",
+      "potential_mrr": "₪45,000+",
+      "value_bullets": ["MVP תוך 7 ימים", "מאמת כאב קיצוני", "שוק לא רווי"],
+      "audience_bullets": ["סוכני נדל\"ן", "בעלי עסקים קטנים"]
     }
   ]
 }`;

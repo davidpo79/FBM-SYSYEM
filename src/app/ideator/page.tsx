@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Script from "next/script";
 
 /* ── Category tiles with emojis — user picks a niche ── */
 const CATEGORIES = [
@@ -14,10 +13,13 @@ const CATEGORIES = [
   { value: "saas-b2b", label: "SaaS B2B", emoji: "🏢" },
   { value: "creator-economy", label: "כלכלת יוצרים", emoji: "🎬" },
   { value: "sustainability", label: "קלינטק וקיימות", emoji: "🌱" },
-  { value: "proptech", label: "נדל\"ן וטכנולוגיה", emoji: "🏠" },
+  { value: "proptech", label: 'נדל"ן וטכנולוגיה', emoji: "🏠" },
   { value: "legaltech", label: "משפטי וטכנולוגיה", emoji: "⚖️" },
   { value: "hrtech", label: "HR וגיוס", emoji: "👥" },
 ];
+
+const CATEGORY_LABELS: Record<string, string> = {};
+CATEGORIES.forEach((c) => { CATEGORY_LABELS[c.value] = c.label; });
 
 interface IdeaResult {
   name: string;
@@ -32,6 +34,9 @@ interface IdeaResult {
   difficulty: "easy" | "medium" | "hard";
   apis_used: string[];
   api_explanation: string;
+  potential_mrr?: string;
+  value_bullets?: string[];
+  audience_bullets?: string[];
 }
 
 type Stage = "select" | "building" | "results";
@@ -44,18 +49,20 @@ export default function IdeatorPage() {
   const [adminKey, setAdminKey] = useState("");
   const [stage, setStage] = useState<Stage>("select");
 
-  // Check for admin key in URL (e.g., /ideator?admin=YOUR_SECRET)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const key = params.get("admin");
     if (key) setAdminKey(key);
   }, []);
+
   const [ideas, setIdeas] = useState<IdeaResult[]>([]);
   const [error, setError] = useState("");
   const [buildStep, setBuildStep] = useState(0);
-  const [showModal, setShowModal] = useState(false);
-  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
+
+  // Inline form state per card
+  const [openFormIdx, setOpenFormIdx] = useState<number | null>(null);
+  const [formEmail, setFormEmail] = useState("");
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -63,21 +70,6 @@ export default function IdeatorPage() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-
-  const toggleExpand = (idx: number) => {
-    setExpandedCards(prev => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      return next;
-    });
-  };
-
-  const cardAccents = [
-    "linear-gradient(90deg, #00FF88, #00CC6A)",
-    "linear-gradient(90deg, #FF6B35, #FF8F6B)",
-    "linear-gradient(90deg, #00D4FF, #0099CC)",
-  ];
 
   const buildSteps = [
     "סורק מגמות שוק...",
@@ -90,6 +82,13 @@ export default function IdeatorPage() {
 
   const selectedCategory = category === "custom" ? customCategory.trim() : category;
   const canGenerate = category && (category !== "custom" || customCategory.trim().length > 1);
+
+  const getCategoryLabel = () => {
+    if (category === "custom") return customCategory.trim();
+    return CATEGORY_LABELS[category] || category;
+  };
+
+  const getMarketLabel = () => market === "israel" ? "ישראלי" : "גלובלי";
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
@@ -131,19 +130,8 @@ export default function IdeatorPage() {
     }
   };
 
-  const difficultyLabel = (d: string) => {
-    if (d === "easy") return "קל";
-    if (d === "medium") return "בינוני";
-    return "מאתגר";
-  };
-
-  const difficultyColor = (d: string) => {
-    if (d === "easy") return { bg: "rgba(0,255,136,0.15)", color: "#00FF88" };
-    if (d === "medium") return { bg: "rgba(255,107,53,0.15)", color: "#FF6B35" };
-    return { bg: "rgba(239,68,68,0.15)", color: "#EF4444" };
-  };
-
-  const handleActivateIdea = (idea: IdeaResult) => {
+  const handleInlineSubmit = (idea: IdeaResult) => {
+    if (!formEmail.trim()) return;
     try {
       localStorage.setItem("gtm-ideator-selected", JSON.stringify({
         name: idea.name,
@@ -152,7 +140,9 @@ export default function IdeatorPage() {
         apisUsed: idea.apis_used,
       }));
     } catch { /* ignore */ }
-    setShowModal(true);
+    const encodedEmail = encodeURIComponent(formEmail.trim());
+    const encodedIdea = encodeURIComponent(idea.name);
+    window.location.href = `/signup?track=gtm&email=${encodedEmail}&idea=${encodedIdea}`;
   };
 
   return (
@@ -165,20 +155,20 @@ export default function IdeatorPage() {
         paddingBottom: 80,
       }}
     >
-      {/* Header */}
+      {/* Header — no bootcamp button */}
       <header
         style={{
           padding: isMobile ? "14px 16px" : "20px 32px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "flex-start",
           borderBottom: "1px solid #1E2D45",
           gap: 8,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 12, minWidth: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/gtm-logo.svg" alt="GTM" style={{ height: isMobile ? 32 : 40, width: isMobile ? 32 : 40, flexShrink: 0 }} />
+          <img src="/gtm-logo.svg" alt="GTM Bootcamp" className="h-10 object-contain" style={{ height: isMobile ? 32 : 40, width: "auto", flexShrink: 0 }} />
           <span style={{ fontSize: isMobile ? 15 : 20, fontWeight: 700, fontFamily: "monospace", whiteSpace: "nowrap" }}>&lt;GTM&gt; BootCamp</span>
           <span
             style={{
@@ -194,23 +184,6 @@ export default function IdeatorPage() {
             BETA
           </span>
         </div>
-        <a
-          href="/signup?track=gtm"
-          style={{
-            padding: isMobile ? "6px 14px" : "8px 20px",
-            borderRadius: 8,
-            background: "linear-gradient(135deg, #00FF88, #00CC6A)",
-            color: "#080A0F",
-            fontSize: isMobile ? 12 : 14,
-            fontWeight: 700,
-            textDecoration: "none",
-            boxShadow: "0 2px 12px rgba(0,255,136,0.25)",
-            whiteSpace: "nowrap" as const,
-            flexShrink: 0,
-          }}
-        >
-          הצטרף לבוטקאמפ
-        </a>
       </header>
 
       <main style={{ maxWidth: 960, margin: "0 auto", padding: isMobile ? "32px 16px" : "48px 24px" }}>
@@ -276,7 +249,7 @@ export default function IdeatorPage() {
               ))}
             </div>
 
-            {/* Custom category tile — centered, separated */}
+            {/* Custom category tile */}
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
               <button
                 onClick={() => setCategory("custom")}
@@ -300,7 +273,6 @@ export default function IdeatorPage() {
               </button>
             </div>
 
-            {/* Custom category input — shown when "custom" is selected */}
             {category === "custom" && (
               <div style={{ maxWidth: 480, margin: "0 auto 24px" }}>
                 <input
@@ -443,262 +415,331 @@ export default function IdeatorPage() {
         {/* ── RESULTS ── */}
         {stage === "results" && (
           <>
+            {/* Reframed Header */}
             <div style={{ textAlign: "center", marginBottom: 56, animation: "fadeInUp 0.6s both" }}>
-              <h2 style={{ fontSize: isMobile ? 26 : 36, fontWeight: 800, marginBottom: 10, letterSpacing: "-0.02em" }}>
-                <span style={{ color: "#00FF88" }}>3 שרטוטי SaaS</span> מוכנים
-              </h2>
-              <p style={{ color: "#D1D5DB", fontSize: 15, maxWidth: 500, margin: "0 auto" }}>
-                כל רעיון אומת עבור התאמה לשוק, יכולת בנייה, ופוטנציאל הכנסות.
-              </p>
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12,
-                padding: "6px 16px", borderRadius: 20,
-                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
-                fontSize: 12, fontFamily: "monospace", color: "#D1D5DB",
+              <h2 style={{
+                fontSize: isMobile ? 22 : 32,
+                fontWeight: 800,
+                marginBottom: 12,
+                letterSpacing: "-0.02em",
+                lineHeight: 1.3,
               }}>
-                {market === "israel" ? "🇮🇱 שוק ישראלי" : "🌍 שוק בינלאומי"}
+                <span style={{ color: "#00FF88" }}>API Playbook:</span>{" "}
+                3 פריצות SaaS מאומתות מראש
+              </h2>
+              <div style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 10,
+                marginTop: 8,
+                padding: "8px 20px",
+                borderRadius: 20,
+                background: "rgba(0,255,136,0.06)",
+                border: "1px solid rgba(0,255,136,0.15)",
+                fontSize: 13,
+                fontFamily: "monospace",
+                color: "#CBD5E1",
+              }}>
+                <span style={{ color: "#00FF88", fontWeight: 600 }}>Playbook Context:</span>
+                {getCategoryLabel()}
+                <span style={{ color: "#3D4F6F" }}>|</span>
+                <span>שוק: {getMarketLabel()}</span>
               </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
               {ideas.map((idea, idx) => {
-                const dc = difficultyColor(idea.difficulty);
-                const isExpanded = expandedCards.has(idx);
+                const isFormOpen = openFormIdx === idx;
                 return (
                   <div
                     key={idx}
                     style={{
-                      background: "rgba(22, 29, 43, 0.55)",
-                      backdropFilter: "blur(24px) saturate(1.3)",
-                      WebkitBackdropFilter: "blur(24px) saturate(1.3)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      borderRadius: 20,
+                      background: "#161D2B",
+                      border: "1px solid #1E2D45",
+                      borderRadius: 16,
                       position: "relative",
                       overflow: "hidden",
                       animation: `fadeInUp 0.6s ${idx * 0.2}s both`,
-                      boxShadow: "0 4px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.03)",
                       transition: "transform 0.3s ease, box-shadow 0.3s ease",
                     }}
                   >
-                    {/* ── Top Glow Bar (card identity color) ── */}
+                    {/* Top accent line */}
                     <div style={{
                       position: "absolute", top: 0, right: 0, left: 0, height: 2,
-                      background: cardAccents[idx % 3], opacity: 0.8,
+                      background: "linear-gradient(90deg, #00FF88, #00CC6A)",
+                      opacity: 0.7,
                     }} />
 
-                    {/* ── Zone A: Hero Header ── */}
-                    <div style={{
-                      padding: isMobile ? "24px 20px 20px" : "32px 32px 24px",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                        <span style={{ fontSize: 11, fontFamily: "monospace", color: "#94A3B8", letterSpacing: "0.05em" }}>
-                          IDEA #{idx + 1}
-                        </span>
-                        <span style={{
-                          fontSize: 11, fontFamily: "monospace", fontWeight: 600,
-                          padding: "2px 8px", borderRadius: 4, background: dc.bg, color: dc.color,
-                        }}>
-                          {difficultyLabel(idea.difficulty)}
-                        </span>
-                      </div>
+                    <div style={{ padding: isMobile ? "24px 20px" : "32px 32px" }}>
+                      {/* Playbook ID */}
+                      <p style={{
+                        fontSize: 11,
+                        fontFamily: "monospace",
+                        color: "#00FF88",
+                        marginBottom: 6,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                      }}>
+                        Breach Playbook #{idx + 1}
+                      </p>
+
+                      {/* Idea Name */}
                       <h3 style={{
-                        fontSize: isMobile ? 20 : 26, fontWeight: 800, color: "#F1F5F9",
-                        direction: "ltr", textAlign: "right",
-                        letterSpacing: "-0.01em", lineHeight: 1.2, marginBottom: 10,
+                        fontSize: isMobile ? 20 : 26,
+                        fontWeight: 800,
+                        color: "#F1F5F9",
+                        direction: "ltr",
+                        textAlign: "right",
+                        letterSpacing: "-0.01em",
+                        lineHeight: 1.2,
+                        marginBottom: 4,
                       }}>
                         {idea.name}
                       </h3>
-                      <p style={{ color: "#FF6B35", fontSize: 16, fontWeight: 500, lineHeight: 1.6 }}>
+
+                      <p style={{
+                        color: "#94A3B8",
+                        fontSize: 14,
+                        marginBottom: 20,
+                        lineHeight: 1.5,
+                      }}>
                         {idea.tagline}
                       </p>
-                    </div>
 
-                    {/* ── Divider ── */}
-                    <div style={{
-                      height: 1, margin: "0 32px",
-                      background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)",
-                    }} />
-
-                    {/* ── Zone B: Bento Grid ── */}
-                    <div style={{
-                      padding: isMobile ? "20px 20px" : "24px 32px",
-                      display: "grid",
-                      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                      gap: 12,
-                    }}>
-                      {/* Market Size + Target Audience — top row */}
+                      {/* ── Compelling Metric — Large MRR ── */}
                       <div style={{
-                        background: "rgba(0,255,136,0.04)", borderRadius: 14,
-                        padding: "18px 20px", border: "1px solid rgba(0,255,136,0.1)",
+                        background: "rgba(0,255,136,0.06)",
+                        border: "1px solid rgba(0,255,136,0.15)",
+                        borderRadius: 12,
+                        padding: "16px 20px",
+                        marginBottom: 24,
+                        textAlign: "center",
                       }}>
                         <p style={{
-                          fontSize: 10, fontFamily: "monospace", color: "#00FF88",
-                          marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase",
-                        }}>גודל שוק</p>
-                        <p style={{ fontSize: 14, color: "#F1F5F9", fontWeight: 600, lineHeight: 1.5 }}>{idea.market_size}</p>
-                      </div>
-
-                      <div style={{
-                        background: "rgba(167,139,250,0.04)", borderRadius: 14,
-                        padding: "18px 20px", border: "1px solid rgba(167,139,250,0.1)",
-                      }}>
+                          fontSize: isMobile ? 28 : 36,
+                          fontWeight: 800,
+                          color: "#00FF88",
+                          fontFamily: "monospace",
+                          lineHeight: 1.2,
+                          direction: "ltr",
+                        }}>
+                          {idea.potential_mrr || idea.monetization}
+                        </p>
                         <p style={{
-                          fontSize: 10, fontFamily: "monospace", color: "#A78BFA",
-                          marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase",
-                        }}>קהל יעד</p>
-                        <p style={{ fontSize: 14, color: "#F1F5F9", fontWeight: 600, lineHeight: 1.5 }}>{idea.target_audience}</p>
+                          fontSize: 12,
+                          color: "#94A3B8",
+                          fontFamily: "monospace",
+                          marginTop: 4,
+                          letterSpacing: "0.05em",
+                        }}>
+                          POTENTIAL MRR
+                        </p>
                       </div>
 
-                      {/* Problem — full width */}
-                      <div style={{
-                        gridColumn: isMobile ? "1" : "1 / -1",
-                        background: "rgba(8,10,15,0.5)", borderRadius: 14,
-                        padding: "18px 20px", border: "1px solid rgba(239,68,68,0.08)",
-                      }}>
+                      {/* ── Value Proposition Bullets ── */}
+                      <div style={{ marginBottom: 20 }}>
                         <p style={{
-                          fontSize: 10, fontFamily: "monospace", color: "#EF4444",
-                          marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase",
-                        }}>הבעיה</p>
-                        <p style={{ fontSize: 14, color: "#E2E8F0", lineHeight: 1.7 }}>{idea.problem}</p>
-                      </div>
-
-                      {/* Solution — full width */}
-                      <div style={{
-                        gridColumn: isMobile ? "1" : "1 / -1",
-                        background: "rgba(0,255,136,0.03)", borderRadius: 14,
-                        padding: "18px 20px", border: "1px solid rgba(0,255,136,0.06)",
-                      }}>
-                        <p style={{
-                          fontSize: 10, fontFamily: "monospace", color: "#00FF88",
-                          marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase",
-                        }}>הפתרון</p>
-                        <p style={{ fontSize: 14, color: "#E2E8F0", lineHeight: 1.7 }}>{idea.solution}</p>
-                      </div>
-
-                      {/* Monetization */}
-                      <div style={{
-                        background: "rgba(255,107,53,0.04)", borderRadius: 14,
-                        padding: "18px 20px", border: "1px solid rgba(255,107,53,0.1)",
-                      }}>
-                        <p style={{
-                          fontSize: 10, fontFamily: "monospace", color: "#FF6B35",
-                          marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase",
-                        }}>מונטיזציה</p>
-                        <p style={{ fontSize: 14, color: "#F1F5F9", fontWeight: 500, lineHeight: 1.5 }}>{idea.monetization}</p>
-                      </div>
-
-                      {/* Competitive Edge */}
-                      <div style={{
-                        background: "rgba(0,212,255,0.04)", borderRadius: 14,
-                        padding: "18px 20px", border: "1px solid rgba(0,212,255,0.1)",
-                      }}>
-                        <p style={{
-                          fontSize: 10, fontFamily: "monospace", color: "#00D4FF",
-                          marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase",
-                        }}>יתרון תחרותי</p>
-                        <p style={{ fontSize: 14, color: "#F1F5F9", fontWeight: 500, lineHeight: 1.6 }}>{idea.competitive_edge}</p>
-                      </div>
-                    </div>
-
-                    {/* ── Zone D: Expandable Toggle ── */}
-                    <button
-                      onClick={() => toggleExpand(idx)}
-                      style={{
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                        width: "100%", padding: "14px 20px",
-                        background: "rgba(0,212,255,0.04)",
-                        border: "none",
-                        borderTop: "1px solid rgba(0,212,255,0.1)",
-                        borderBottom: isExpanded ? "1px solid rgba(0,212,255,0.1)" : "none",
-                        color: "#00D4FF", fontSize: 14, fontWeight: 600,
-                        cursor: "pointer", transition: "all 0.2s",
-                      }}
-                    >
-                      <span style={{
-                        transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-                        transition: "transform 0.3s ease", display: "inline-block",
-                      }}>▼</span>
-                      {isExpanded ? "הסתר פרטים טכניים" : "פרטים טכניים ו-MVP"}
-                    </button>
-
-                    {/* ── Expandable Content ── */}
-                    <div style={{
-                      maxHeight: isExpanded ? 500 : 0,
-                      overflow: "hidden",
-                      transition: "max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                    }}>
-                      <div style={{ padding: isMobile ? "0 20px 20px" : "0 32px 20px" }}>
-                        {/* API Tags — Cyan theme */}
-                        {idea.apis_used && idea.apis_used.length > 0 && (
-                          <div style={{ marginBottom: 16, marginTop: 8 }}>
-                            <p style={{
-                              fontSize: 10, fontFamily: "monospace", color: "#00D4FF",
-                              marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase",
-                            }}>APIs</p>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, direction: "ltr", marginBottom: 10 }}>
-                              {idea.apis_used.map((api, j) => (
-                                <span key={j} style={{
-                                  fontSize: 11, fontFamily: "monospace", padding: "4px 10px",
-                                  borderRadius: 6, background: "rgba(0,212,255,0.08)",
-                                  border: "1px solid rgba(0,212,255,0.2)", color: "#00D4FF",
-                                }}>
-                                  {api}
-                                </span>
-                              ))}
+                          fontSize: 10,
+                          fontFamily: "monospace",
+                          color: "#00FF88",
+                          marginBottom: 8,
+                          letterSpacing: "0.05em",
+                          textTransform: "uppercase",
+                        }}>
+                          הצעת ערך
+                        </p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {(idea.value_bullets && idea.value_bullets.length > 0
+                            ? idea.value_bullets
+                            : idea.mvp_scope?.slice(0, 4) || []
+                          ).map((bullet, i) => (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#E2E8F0" }}>
+                              <span style={{
+                                width: 5, height: 5, borderRadius: "50%",
+                                background: "#00FF88", flexShrink: 0,
+                              }} />
+                              {bullet}
                             </div>
-                            <p style={{ fontSize: 13, color: "#D1D5DB", lineHeight: 1.6 }}>
-                              {idea.api_explanation}
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* ── Target Audience Bullets ── */}
+                      <div style={{ marginBottom: 20 }}>
+                        <p style={{
+                          fontSize: 10,
+                          fontFamily: "monospace",
+                          color: "#A78BFA",
+                          marginBottom: 8,
+                          letterSpacing: "0.05em",
+                          textTransform: "uppercase",
+                        }}>
+                          קהל יעד
+                        </p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {(idea.audience_bullets && idea.audience_bullets.length > 0
+                            ? idea.audience_bullets
+                            : [idea.target_audience]
+                          ).map((bullet, i) => (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#E2E8F0" }}>
+                              <span style={{
+                                width: 5, height: 5, borderRadius: "50%",
+                                background: "#A78BFA", flexShrink: 0,
+                              }} />
+                              {bullet}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* ── Generated Tech Stack Tags ── */}
+                      {idea.apis_used && idea.apis_used.length > 0 && (
+                        <div style={{ marginBottom: 24 }}>
+                          <p style={{
+                            fontSize: 10,
+                            fontFamily: "monospace",
+                            color: "#00D4FF",
+                            marginBottom: 8,
+                            letterSpacing: "0.05em",
+                            textTransform: "uppercase",
+                          }}>
+                            GENERATED TECH STACK
+                          </p>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, direction: "ltr" }}>
+                            {idea.apis_used.map((api, j) => (
+                              <span key={j} style={{
+                                fontSize: 11,
+                                fontFamily: "monospace",
+                                padding: "4px 10px",
+                                borderRadius: 6,
+                                background: "rgba(0,212,255,0.08)",
+                                border: "1px solid rgba(0,212,255,0.2)",
+                                color: "#00D4FF",
+                                fontWeight: 600,
+                              }}>
+                                {api}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── CTA Button — Inline Lead Capture ── */}
+                      <div>
+                        <button
+                          onClick={() => {
+                            setOpenFormIdx(isFormOpen ? null : idx);
+                            setFormEmail("");
+                          }}
+                          style={{
+                            width: "100%",
+                            padding: "14px",
+                            borderRadius: 12,
+                            border: "none",
+                            background: isFormOpen
+                              ? "rgba(0,255,136,0.1)"
+                              : "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)",
+                            color: isFormOpen ? "#00FF88" : "#080A0F",
+                            fontSize: 15,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            transition: "all 0.25s ease",
+                            boxShadow: isFormOpen ? "none" : "0 4px 20px rgba(0,255,136,0.25)",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isFormOpen) {
+                              e.currentTarget.style.boxShadow = "0 6px 28px rgba(0,255,136,0.4)";
+                              e.currentTarget.style.transform = "translateY(-1px)";
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isFormOpen) {
+                              e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,255,136,0.25)";
+                              e.currentTarget.style.transform = "translateY(0)";
+                            }
+                          }}
+                        >
+                          הוצאת סימולציית GTM לפועל
+                        </button>
+
+                        {/* ── Inline Form (revealed on click) ── */}
+                        <div style={{
+                          maxHeight: isFormOpen ? 220 : 0,
+                          overflow: "hidden",
+                          transition: "max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                        }}>
+                          <div style={{
+                            marginTop: 16,
+                            padding: "20px",
+                            borderRadius: 12,
+                            background: "rgba(0,255,136,0.04)",
+                            border: "1px solid rgba(0,255,136,0.12)",
+                          }}>
+                            <p style={{
+                              fontSize: 14,
+                              fontWeight: 600,
+                              color: "#F1F5F9",
+                              marginBottom: 12,
+                            }}>
+                              לטיוטת סימולציית GTM מפורטת, הזן את האימייל שלך:
+                            </p>
+                            <div style={{
+                              display: "flex",
+                              gap: 8,
+                              flexDirection: isMobile ? "column" : "row",
+                            }}>
+                              <input
+                                type="email"
+                                value={formEmail}
+                                onChange={(e) => setFormEmail(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && formEmail.trim()) handleInlineSubmit(idea);
+                                }}
+                                placeholder="your@email.com"
+                                dir="ltr"
+                                style={{
+                                  flex: 1,
+                                  padding: "12px 16px",
+                                  borderRadius: 10,
+                                  border: "1.5px solid #1E2D45",
+                                  background: "#0D1117",
+                                  color: "#F0F6FF",
+                                  fontSize: 14,
+                                  outline: "none",
+                                }}
+                              />
+                              <button
+                                onClick={() => handleInlineSubmit(idea)}
+                                disabled={!formEmail.trim()}
+                                style={{
+                                  padding: "12px 20px",
+                                  borderRadius: 10,
+                                  border: "none",
+                                  background: formEmail.trim()
+                                    ? "linear-gradient(135deg, #00FF88, #00CC6A)"
+                                    : "#1E2D45",
+                                  color: formEmail.trim() ? "#080A0F" : "#94A3B8",
+                                  fontSize: 14,
+                                  fontWeight: 700,
+                                  cursor: formEmail.trim() ? "pointer" : "not-allowed",
+                                  whiteSpace: "nowrap",
+                                  transition: "all 0.2s",
+                                }}
+                              >
+                                Draft Architecture
+                              </button>
+                            </div>
+                            <p style={{
+                              fontSize: 11,
+                              color: "#6B7FA3",
+                              fontFamily: "monospace",
+                              marginTop: 8,
+                            }}>
+                              אימייל עסקי מומלץ — ננווט אותך ישירות ליצירת הארכיטקטורה
                             </p>
                           </div>
-                        )}
-
-                        {/* MVP Scope — bullet list */}
-                        {idea.mvp_scope && idea.mvp_scope.length > 0 && (
-                          <div>
-                            <p style={{
-                              fontSize: 10, fontFamily: "monospace", color: "#A78BFA",
-                              marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase",
-                            }}>היקף MVP</p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                              {idea.mvp_scope.map((item, i) => (
-                                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#E2E8F0" }}>
-                                  <span style={{
-                                    width: 6, height: 6, borderRadius: "50%",
-                                    background: "#A78BFA", flexShrink: 0,
-                                  }} />
-                                  {item}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
-
-                    {/* ── Zone E: CTA Button ── */}
-                    <div style={{ padding: isMobile ? "0 20px 24px" : "0 32px 28px" }}>
-                      <button
-                        onClick={() => handleActivateIdea(idea)}
-                        style={{
-                          width: "100%", padding: "14px", borderRadius: 14,
-                          border: "none",
-                          background: "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)",
-                          color: "#080A0F", fontSize: 15, fontWeight: 700,
-                          cursor: "pointer", transition: "all 0.25s ease",
-                          boxShadow: "0 4px 20px rgba(0,255,136,0.25)",
-                          letterSpacing: "-0.01em",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.boxShadow = "0 6px 28px rgba(0,255,136,0.4)";
-                          e.currentTarget.style.transform = "translateY(-1px)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,255,136,0.25)";
-                          e.currentTarget.style.transform = "translateY(0)";
-                        }}
-                      >
-                        הוצא את הרעיון לפועל
-                      </button>
                     </div>
                   </div>
                 );
@@ -708,7 +749,7 @@ export default function IdeatorPage() {
             {/* Try again */}
             <div style={{ textAlign: "center", marginTop: 40 }}>
               <button
-                onClick={() => { setStage("select"); setIdeas([]); setExpandedCards(new Set()); }}
+                onClick={() => { setStage("select"); setIdeas([]); setOpenFormIdx(null); }}
                 style={{
                   background: "rgba(255,255,255,0.03)",
                   border: "1px solid rgba(255,255,255,0.06)",
@@ -721,98 +762,82 @@ export default function IdeatorPage() {
                 נסה שילוב אחר
               </button>
             </div>
+
+            {/* ── FINAL BOTTOM CTA BLOCK ── */}
+            <div style={{
+              marginTop: 64,
+              padding: isMobile ? "40px 20px" : "56px 40px",
+              borderRadius: 20,
+              background: "linear-gradient(135deg, rgba(0,255,136,0.06) 0%, rgba(0,204,106,0.03) 100%)",
+              border: "1px solid rgba(0,255,136,0.15)",
+              textAlign: "center",
+              position: "relative",
+              overflow: "hidden",
+            }}>
+              {/* Decorative glow */}
+              <div style={{
+                position: "absolute",
+                top: "-50%",
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 400,
+                height: 400,
+                borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(0,255,136,0.08) 0%, transparent 70%)",
+                pointerEvents: "none",
+              }} />
+
+              <h3 style={{
+                fontSize: isMobile ? 24 : 32,
+                fontWeight: 800,
+                marginBottom: 12,
+                lineHeight: 1.3,
+                position: "relative",
+              }}>
+                מצאת את פריצת ה-<span style={{ color: "#00FF88" }}>Micro-SaaS</span> שלך?
+              </h3>
+              <p style={{
+                fontSize: 16,
+                color: "#CBD5E1",
+                marginBottom: 28,
+                maxWidth: 480,
+                margin: "0 auto 28px",
+                lineHeight: 1.7,
+                position: "relative",
+              }}>
+                תעשה לה סקייל. המקומות מוגבלים לקוהורטה הבאה.
+              </p>
+              <a
+                href="/signup?track=gtm"
+                style={{
+                  display: "inline-block",
+                  padding: isMobile ? "16px 36px" : "18px 52px",
+                  borderRadius: 14,
+                  background: "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)",
+                  color: "#080A0F",
+                  fontSize: isMobile ? 16 : 18,
+                  fontWeight: 800,
+                  textDecoration: "none",
+                  boxShadow: "0 6px 32px rgba(0,255,136,0.3)",
+                  transition: "all 0.3s ease",
+                  position: "relative",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                הגש מועמדות לקוהורטת GTM Bootcamp
+              </a>
+            </div>
           </>
         )}
       </main>
 
-      {/* ── LEAD CAPTURE MODAL ── */}
-      {showModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-            background: "rgba(0,0,0,0.8)",
-            backdropFilter: "blur(8px)",
-          }}
-        >
-          <div
-            style={{
-              position: "relative",
-              width: "100%",
-              maxWidth: 520,
-              borderRadius: 16,
-              overflow: "hidden",
-              background: "#0D1117",
-              border: "1.5px solid #1E2D45",
-              boxShadow: "0 0 60px rgba(0,255,136,0.1), 0 25px 50px rgba(0,0,0,0.5)",
-            }}
-          >
-            {/* Close button */}
-            <button
-              onClick={() => setShowModal(false)}
-              style={{
-                position: "absolute",
-                top: 12,
-                left: 12,
-                zIndex: 10,
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid #1E2D45",
-                color: "#CBD5E1",
-                cursor: "pointer",
-                fontSize: 14,
-              }}
-            >
-              X
-            </button>
-
-            {/* Modal Header */}
-            <div style={{ padding: "24px 24px 16px", textAlign: "center", borderBottom: "1px solid #1E2D45" }} dir="rtl">
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/gtm-logo.svg" alt="GTM" style={{ height: 48, width: 48 }} />
-              </div>
-              <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
-                מוכן להפוך את הרעיון{" "}
-                <span style={{ color: "#00FF88" }}>לעסק רווחי?</span>
-              </h3>
-              <p style={{ fontSize: 14, color: "#CBD5E1" }}>
-                הצטרף ל-GTM BootCamp — קבל אסטרטגיית Go-To-Market מלאה, מסגרת ולידציה, ותוכנית השקה ל-90 יום.
-              </p>
-            </div>
-
-            {/* GoHighLevel Form */}
-            <div style={{ padding: 16, maxHeight: "60vh", overflowY: "auto" }}>
-              <iframe
-                src="https://api.leadconnectorhq.com/widget/form/VY7Wpt7X70ijeluHvP8D"
-                style={{ width: "100%", height: 691, border: "none", borderRadius: 8 }}
-                id="inline-VY7Wpt7X70ijeluHvP8D"
-                data-layout={"{'id':'INLINE'}"}
-                data-trigger-type="alwaysShow"
-                data-activation-type="alwaysActivated"
-                data-deactivation-type="neverDeactivate"
-                data-form-name="bootcamp"
-                data-height="691"
-                data-layout-iframe-id="inline-VY7Wpt7X70ijeluHvP8D"
-                data-form-id="VY7Wpt7X70ijeluHvP8D"
-                title="bootcamp"
-              />
-              <Script src="https://link.msgsndr.com/js/form_embed.js" strategy="lazyOnload" />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Keyframes */}
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(24px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
-
