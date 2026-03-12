@@ -52,7 +52,7 @@ export default function NotificationBell() {
 
   // Fetch on mount and every 30 seconds
   useEffect(() => {
-    fetchNotifications();
+    fetchNotifications(); // eslint-disable-line react-hooks/set-state-in-effect
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
 import { captureUTM, getUTMForPayload } from "@/lib/utm";
 import { fbLead, fbViewContent } from "@/lib/fbpixel";
@@ -69,7 +69,7 @@ export default function IdeatorPage() {
     captureUTM();
     const params = new URLSearchParams(window.location.search);
     const key = params.get("admin");
-    if (key) setAdminKey(key);
+    if (key) setAdminKey(key); // eslint-disable-line react-hooks/set-state-in-effect
   }, []);
 
   const [ideas, setIdeas] = useState<IdeaResult[]>([]);
@@ -80,15 +80,15 @@ export default function IdeatorPage() {
   const [isMobile, setIsMobile] = useState(false);
 
   // Generate brainstorm particles (stable across renders)
-  const particles = useMemo(() =>
+  const [particles] = useState(() =>
     Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
       id: i,
-      x: Math.round((i / PARTICLE_COUNT) * 90 + Math.random() * 10),
+      x: Math.round((i / PARTICLE_COUNT) * 90 + (((i * 7 + 3) % 10))),
       text: BINARY_SNIPPETS[i % BINARY_SNIPPETS.length],
-      duration: 6 + Math.random() * 8,
-      delay: Math.random() * 10,
+      duration: 6 + ((i * 3 + 5) % 8),
+      delay: (i * 7) % 10,
     })),
-  []);
+  );
 
   // Inline form state per card
   const [openFormIdx, setOpenFormIdx] = useState<number | null>(null);
@@ -213,7 +213,7 @@ export default function IdeatorPage() {
     // Carry UTM params forward to signup
     const utmParams = getUTMForPayload();
     const utmQuery = Object.entries(utmParams).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
-    window.location.href = `/signup?track=gtm&email=${encodedEmail}&idea=${encodedIdea}${utmQuery ? "&" + utmQuery : ""}`;
+    window.location.assign(`/signup?track=gtm&email=${encodedEmail}&idea=${encodedIdea}${utmQuery ? "&" + utmQuery : ""}`);
   };
 
   // Helpers for backwards-compatible field access

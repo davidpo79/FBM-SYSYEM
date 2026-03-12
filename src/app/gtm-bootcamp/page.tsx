@@ -130,7 +130,7 @@ export default function GTMBootcampPage() {
           marginTop: 32,
           fontFamily: "monospace",
         }}>
-          // ללא עלות · 15 דקות · אונליין
+          {/* ללא עלות · 15 דקות · אונליין */}
         </p>
 
         {/* ══════════════════════════════════════════════════════════

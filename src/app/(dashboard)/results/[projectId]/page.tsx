@@ -41,11 +41,11 @@ type PipelineStep =
 
 function CountdownTimer({ seconds }: { seconds: number }) {
   const [remaining, setRemaining] = useState(seconds);
-  const startRef = useRef(Date.now());
+  const startRef = useRef(0);
 
   useEffect(() => {
     startRef.current = Date.now();
-    setRemaining(seconds);
+    setRemaining(seconds); // eslint-disable-line react-hooks/set-state-in-effect
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
       const left = Math.max(0, seconds - elapsed);

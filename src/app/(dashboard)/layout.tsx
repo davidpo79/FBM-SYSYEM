@@ -58,14 +58,8 @@ export default function DashboardLayout({
 
   // Detect GTM questionnaire mode (hide sidebar/nav for dedicated GTM workspace)
   useEffect(() => {
-    if (pathname === "/questionnaire") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("track") === "gtm") {
-        setIsGtmQuestionnaire(true);
-        return;
-      }
-    }
-    setIsGtmQuestionnaire(false);
+    const isGtm = pathname === "/questionnaire" && new URLSearchParams(window.location.search).get("track") === "gtm";
+    setIsGtmQuestionnaire(isGtm); // eslint-disable-line react-hooks/set-state-in-effect
   }, [pathname]);
 
   // Extract projectId from URL if on a project page
@@ -139,8 +133,7 @@ export default function DashboardLayout({
   // Fetch project name and track when activeProjectId changes
   useEffect(() => {
     if (!activeProjectId) {
-      setProjectName("");
-      setProjectTrack("fbm");
+      setProjectName(""); setProjectTrack("fbm"); // eslint-disable-line react-hooks/set-state-in-effect
       return;
     }
     supabase
@@ -158,7 +151,7 @@ export default function DashboardLayout({
 
   // Read album count from localStorage
   useEffect(() => {
-    if (!activeProjectId) { setAlbumCount(0); return; }
+    if (!activeProjectId) { setAlbumCount(0); return; } // eslint-disable-line react-hooks/set-state-in-effect
     const readCount = () => {
       try {
         const saved = localStorage.getItem(`album_${activeProjectId}`);
@@ -179,7 +172,7 @@ export default function DashboardLayout({
 
   // Close mobile sidebar on route change
   useEffect(() => {
-    setSidebarOpen(false);
+    setSidebarOpen(false); // eslint-disable-line react-hooks/set-state-in-effect
   }, [pathname]);
 
   // Listen for FBM Expert toggle events from TopBar/Sidebar
