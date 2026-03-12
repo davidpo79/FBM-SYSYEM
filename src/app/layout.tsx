@@ -5,20 +5,25 @@ import FacebookPixel from "@/components/FacebookPixel";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FBM Studio",
-  description: "שיווק מבוסס תדר — Frequency Based Marketing",
+  metadataBase: new URL("https://fbm-studio.com"),
+  title: {
+    default: "FBM Studio — AI Startup Go-To-Market Platform",
+    template: "%s | FBM Studio",
+  },
+  description: "Generate AI startup ideas, build go-to-market strategies, and launch with paying customers. The all-in-one GTM platform for AI founders.",
   openGraph: {
-    title: "FBM Studio",
+    title: "FBM Studio — AI Startup Go-To-Market Platform",
     description:
-      "מערכת שיווק מבוסס תדר — בניית אסטרטגיה, תסריטים וקריאייטיבים",
+      "Generate AI startup ideas, build go-to-market strategies, and launch with paying customers.",
     images: [{ url: "/og-image.png", width: 1200, height: 630 }],
     siteName: "FBM Studio",
     type: "website",
+    locale: "he_IL",
   },
   twitter: {
     card: "summary_large_image",
-    title: "FBM Studio",
-    description: "מערכת שיווק מבוסס תדר",
+    title: "FBM Studio — AI Startup Go-To-Market Platform",
+    description: "Generate AI startup ideas, build GTM strategies, and launch with paying customers.",
     images: ["/og-image.png"],
   },
   icons: {
