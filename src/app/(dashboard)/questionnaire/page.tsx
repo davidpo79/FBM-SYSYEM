@@ -13,6 +13,7 @@ import AudioUploader from "@/components/questionnaire/AudioUploader";
 import TranscriptionProgress from "@/components/questionnaire/TranscriptionProgress";
 import AnswerReview from "@/components/questionnaire/AnswerReview";
 import { trackEvent } from "@/lib/track-event";
+import { fbLead } from "@/lib/fbpixel";
 
 const STORAGE_KEY = "fbm_questionnaire_progress";
 
@@ -427,6 +428,9 @@ export default function QuestionnairePage() {
       if (dbError) throw dbError;
 
       localStorage.removeItem(STORAGE_KEY);
+
+      // Facebook Pixel: Lead event for questionnaire completion
+      fbLead("Questionnaire Completed");
 
       // EVENT_QUESTIONNAIRE_COMPLETED: fire webhook on project creation (with UTM)
       fetch("/api/webhooks/gtm-questionnaire-completed", {
