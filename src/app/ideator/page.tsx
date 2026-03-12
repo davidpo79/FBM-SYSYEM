@@ -263,18 +263,6 @@ export default function IdeatorPage() {
         <path className="ideator-neural-line" d="M 750,80 Q 600,350 500,550 T 500,950" />
       </svg>
 
-      {/* ── Spark dots traveling down ── */}
-      {[...Array(5)].map((_, i) => (
-        <div
-          key={`spark-${i}`}
-          className="ideator-spark"
-          style={{
-            left: `${20 + i * 15}%`,
-            animationDuration: `${3 + i * 0.8}s`,
-            animationDelay: `${i * 0.6}s`,
-          }}
-        />
-      ))}
 
       {/* ── Subtle grid overlay ── */}
       <div style={{

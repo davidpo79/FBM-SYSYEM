@@ -308,24 +308,6 @@ input[type="range"]::-moz-range-thumb {
   50% { opacity: 1; transform: translateX(-50%) scaleY(1.1); }
 }
 
-/* Spark dots that travel down neural lines */
-.ideator-spark {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #00FF88;
-  box-shadow: 0 0 8px #00FF88, 0 0 16px rgba(0,255,136,0.4);
-  pointer-events: none;
-  z-index: 1;
-  animation: ideatorSparkFall linear infinite;
-}
-@keyframes ideatorSparkFall {
-  0% { top: 5%; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 0.8; }
-  100% { top: 95%; opacity: 0; }
-}
 
 /* Badge pulse */
 .ideator-badge {
