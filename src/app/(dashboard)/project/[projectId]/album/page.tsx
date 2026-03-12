@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import JSZip from "jszip";
 import { exportToPdf } from "@/lib/pdf-export";
 import { downloadBlob } from "@/lib/pdf-export";
+import { trackEvent } from "@/lib/track-event";
 
 type AlbumImage = { url: string; base64?: string; scriptIdx: number };
 
@@ -50,6 +51,12 @@ export default function AlbumPage() {
   }, [projectId]);
 
   const toast = useToast();
+
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "album_page", stepName: "album", projectId });
+  }, [projectId]);
+
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
 
   // Track completed status locally so UI reacts immediately
@@ -63,6 +70,7 @@ export default function AlbumPage() {
 
   const handleMarkComplete = async () => {
     if (!projectId) return;
+    trackEvent({ eventType: "step_complete", eventName: "project_completed", stepName: "album", projectId });
     setMarkError("");
 
     // Get auth token to pass to API route

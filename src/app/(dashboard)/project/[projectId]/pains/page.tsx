@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import StepCelebration from "@/components/StepCelebration";
 import StepProgress from "@/components/ui/StepProgress";
 import Button from "@/components/ui/Button";
+import { trackEvent } from "@/lib/track-event";
 
 export default function PainsPage() {
   const router = useRouter();
@@ -34,6 +35,11 @@ export default function PainsPage() {
   const generationAttempted = useRef(false);
   const toast = useToast();
 
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "pains_page", stepName: "pains", projectId, metadata: { niche: selectedNiche?.name } });
+  }, [projectId, selectedNiche?.name]);
+
   // Redirect if no niche selected
   useEffect(() => {
     if (!selectedNiche) {
@@ -42,6 +48,7 @@ export default function PainsPage() {
   }, [selectedNiche, router, projectId]);
 
   const generatePains = async () => {
+    trackEvent({ eventType: "generation_start", eventName: "generate_pains", stepName: "pains", projectId, metadata: { niche: selectedNiche?.name } });
     setIsGenerating(true);
     setError("");
     try {
@@ -56,8 +63,10 @@ export default function PainsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setPainAnalysis(json.painAnalysis);
+      trackEvent({ eventType: "generation_complete", eventName: "pains_generated", stepName: "pains", projectId });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "שגיאה בניתוח כאבים");
+      trackEvent({ eventType: "error", eventName: "pains_generation_error", stepName: "pains", projectId });
     } finally {
       setIsGenerating(false);
     }
@@ -108,6 +117,7 @@ export default function PainsPage() {
   };
 
   const handleApprove = () => {
+    trackEvent({ eventType: "step_complete", eventName: "pains_approved", stepName: "pains", projectId });
     fetch("/api/log-feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

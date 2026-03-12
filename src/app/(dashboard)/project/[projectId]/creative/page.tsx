@@ -9,6 +9,7 @@ import type { TextStyleProps } from "@/components/creatives/TemplatePreview";
 import { TEMPLATES, suggestTemplate } from "@/components/creatives/templates";
 
 import type { CreativeSuggestion, FormatType } from "@/types";
+import { trackEvent } from "@/lib/track-event";
 
 /* ── Countdown Timer ── */
 function CountdownTimer({ seconds }: { seconds: number }) {
@@ -507,6 +508,11 @@ export default function CreativePage() {
   const [advancedOpen, setAdvancedOpen] = useState<Record<number, boolean>>({});
   const autoCreatedRef = useRef(false);
   const toast = useToast();
+
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "creative_page", stepName: "creative", projectId });
+  }, [projectId]);
 
   /* ── Get or init chat messages for a script ── */
   const getChatMessages = useCallback((idx: number): ChatMessage[] => {

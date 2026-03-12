@@ -12,6 +12,7 @@ import QuestionRecordCard from "@/components/questionnaire/QuestionRecordCard";
 import AudioUploader from "@/components/questionnaire/AudioUploader";
 import TranscriptionProgress from "@/components/questionnaire/TranscriptionProgress";
 import AnswerReview from "@/components/questionnaire/AnswerReview";
+import { trackEvent } from "@/lib/track-event";
 
 const STORAGE_KEY = "fbm_questionnaire_progress";
 
@@ -55,6 +56,11 @@ export default function QuestionnairePage() {
   // Track state (fbm or gtm)
   const [track, setTrack] = useState<"fbm" | "gtm">("fbm");
   const [ideaName, setIdeaName] = useState("");
+
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "questionnaire_page", stepName: "questionnaire" });
+  }, []);
 
   // Document upload state
   const [docFile, setDocFile] = useState<File | null>(null);
@@ -446,6 +452,7 @@ export default function QuestionnairePage() {
         return;
       }
 
+      trackEvent({ eventType: "step_complete", eventName: "questionnaire_completed", stepName: "questionnaire", projectId: data.id, metadata: { track, mode } });
       router.push(track === "gtm" ? `/project/${data.id}/gtm-strategy` : `/project/${data.id}/strategy`);
     } catch (err) {
       console.error("Submit error:", err);

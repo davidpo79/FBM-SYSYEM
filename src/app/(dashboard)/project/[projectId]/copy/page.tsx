@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import StepCelebration from "@/components/StepCelebration";
 import StepProgress from "@/components/ui/StepProgress";
 import Button from "@/components/ui/Button";
+import { trackEvent } from "@/lib/track-event";
 
 /* ── Chatbot result type ── */
 interface ChatbotResult {
@@ -42,6 +43,11 @@ export default function CopyPage() {
   const [chatbot, setChatbot] = useState<ChatbotResult | null>(null);
   const [chatbotGenerating, setChatbotGenerating] = useState(false);
   const [chatbotCopied, setChatbotCopied] = useState<Record<string, boolean>>({});
+
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "copy_page", stepName: "copy", projectId });
+  }, [projectId]);
 
   // Redirect if no scripts
   useEffect(() => {

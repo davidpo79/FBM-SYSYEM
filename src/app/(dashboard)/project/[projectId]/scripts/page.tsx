@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import StepCelebration from "@/components/StepCelebration";
 import StepProgress from "@/components/ui/StepProgress";
 import Button from "@/components/ui/Button";
+import { trackEvent } from "@/lib/track-event";
 
 export default function ScriptsPage() {
   const router = useRouter();
@@ -36,6 +37,11 @@ export default function ScriptsPage() {
   const generationAttempted = useRef(false);
   const toast = useToast();
 
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "scripts_page", stepName: "scripts", projectId });
+  }, [projectId]);
+
   // Redirect if no pain analysis
   useEffect(() => {
     if (!painAnalysis) {
@@ -44,6 +50,7 @@ export default function ScriptsPage() {
   }, [painAnalysis, router, projectId]);
 
   const generateScripts = async () => {
+    trackEvent({ eventType: "generation_start", eventName: "generate_scripts", stepName: "scripts", projectId });
     setIsGenerating(true);
     setError("");
     try {
@@ -55,8 +62,10 @@ export default function ScriptsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setScripts(json.scripts);
+      trackEvent({ eventType: "generation_complete", eventName: "scripts_generated", stepName: "scripts", projectId, metadata: { scriptCount: json.scripts?.split(/(?=## תסריט \d)/).filter((p: string) => p.trim()).length } });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "שגיאה ביצירת תסריטים");
+      trackEvent({ eventType: "error", eventName: "scripts_generation_error", stepName: "scripts", projectId });
     } finally {
       setIsGenerating(false);
     }
@@ -117,6 +126,7 @@ export default function ScriptsPage() {
   };
 
   const handleApprove = () => {
+    trackEvent({ eventType: "step_complete", eventName: "scripts_approved", stepName: "scripts", projectId });
     // Save any manual edits
     if (Object.keys(editedScripts).length > 0) {
       const scriptParts = splitScripts(scripts);
