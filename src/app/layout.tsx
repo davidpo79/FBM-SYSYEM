@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Suspense } from "react";
 import { ToastProvider } from "@/components/Toast";
 import FacebookPixel from "@/components/FacebookPixel";
@@ -60,26 +59,14 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600;1,700;1,800&family=Heebo:wght@400;600;700;800&family=Assistant:wght@400;600;700;800&family=Varela+Round&family=David+Libre:wght@400;700&family=Frank+Ruhl+Libre:wght@400;700&family=Noto+Sans+Hebrew:wght@400;600;700;800&family=Secular+One&family=Alef:wght@400;700&family=Karantina:wght@400;700&display=swap"
           rel="stylesheet"
         />
-      </head>
-      <body className="antialiased">
-        {/* Meta Pixel — inline script ensures it loads before any Next.js code */}
-        <Script
-          id="fb-pixel-init"
-          strategy="beforeInteractive"
+        {/* Meta Pixel — raw script tag in <head> for maximum reliability */}
+        <script
           dangerouslySetInnerHTML={{
-            __html: `
-!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window,document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init','${FB_PIXEL_ID}');
-fbq('track','PageView');
-            `,
+            __html: `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${FB_PIXEL_ID}');fbq('track','PageView');`,
           }}
         />
+      </head>
+      <body className="antialiased">
         <noscript>
           <img
             height="1"
