@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useProject } from "../layout";
 import { getUTMForPayload } from "@/lib/utm";
 import PaymentModal from "@/components/PaymentModal";
@@ -552,7 +553,7 @@ export default function GTMStrategyPage() {
   return (
     <div className="gtm-page-container" style={{ marginTop: 24, direction: "rtl", paddingBottom: (isUnlocked && purchasedTier) ? 80 : 0 }}>
       {/* ── Post-Payment Success Modal ── */}
-      {showPostPayment && (
+      {showPostPayment && createPortal(
         <div
           className="gtm-modal-overlay"
           onClick={(e) => { if (e.target === e.currentTarget) setShowPostPayment(false); }}
@@ -598,7 +599,8 @@ export default function GTMStrategyPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Summary Banner */}
@@ -1146,7 +1148,7 @@ function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; 
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="gtm-modal-overlay"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -1218,7 +1220,8 @@ function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
