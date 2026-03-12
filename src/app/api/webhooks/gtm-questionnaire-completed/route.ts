@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * EVENT_USER_REGISTERED — Triggered upon successful Supabase Auth signup.
- * Sends data to GoHighLevel CRM for onboarding sequences.
+ * EVENT_QUESTIONNAIRE_COMPLETED — Triggered when a user submits the questionnaire
+ * and a project is created. Sends data to GoHighLevel CRM.
  * Includes UTM attribution parameters.
  */
 
@@ -23,8 +23,8 @@ export async function POST(req: NextRequest) {
     }
 
     const payload: Record<string, string> = {
-      event_type: "user_registered",
-      event: "EVENT_USER_REGISTERED",
+      event_type: "questionnaire_completed",
+      event: "EVENT_QUESTIONNAIRE_COMPLETED",
       email: email.trim(),
       full_name: (name || "").trim(),
       user_id: user_id || "",
@@ -51,14 +51,14 @@ export async function POST(req: NextRequest) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }).catch((err) => console.error("GHL EVENT_USER_REGISTERED webhook failed:", err));
+      }).catch((err) => console.error("GHL EVENT_QUESTIONNAIRE_COMPLETED webhook failed:", err));
     }
 
-    console.log("EVENT_USER_REGISTERED:", payload);
+    console.log("EVENT_QUESTIONNAIRE_COMPLETED:", payload);
 
-    return NextResponse.json({ success: true, event: "EVENT_USER_REGISTERED" });
+    return NextResponse.json({ success: true, event: "EVENT_QUESTIONNAIRE_COMPLETED" });
   } catch (error: unknown) {
-    console.error("gtm-user-registered error:", error);
+    console.error("gtm-questionnaire-completed error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Webhook failed" },
       { status: 500 },

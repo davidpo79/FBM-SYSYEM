@@ -428,8 +428,8 @@ export default function QuestionnairePage() {
 
       localStorage.removeItem(STORAGE_KEY);
 
-      // EVENT_USER_REGISTERED: fire webhook on project creation (with UTM)
-      fetch("/api/webhooks/gtm-user-registered", {
+      // EVENT_QUESTIONNAIRE_COMPLETED: fire webhook on project creation (with UTM)
+      fetch("/api/webhooks/gtm-questionnaire-completed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
