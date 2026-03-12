@@ -1,9 +1,15 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { trackEvent } from "@/lib/track-event";
 
 export default function GTMBootcampPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "gtm_bootcamp_page", stepName: "gtm-bootcamp" });
+  }, []);
 
   /* Auto-resize iframe height based on content */
   useEffect(() => {

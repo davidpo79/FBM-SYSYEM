@@ -7,6 +7,7 @@ import CreativeEditor from "@/components/creatives/CreativeEditor";
 import type { CreativeSuggestion, CreativeResponse } from "@/types";
 import { exportToPdf, downloadBlob } from "@/lib/pdf-export";
 import { downloadAllAsZip } from "@/lib/zip-export";
+import { trackEvent } from "@/lib/track-event";
 
 /* ──────────────── types ──────────────── */
 
@@ -105,6 +106,11 @@ export default function ResultsPage() {
     scriptIdx: number;
   } | null>(null);
 
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "results_page", stepName: "results", projectId });
+  }, [projectId]);
+
   /* ── load project ── */
   useEffect(() => {
     async function load() {
@@ -183,6 +189,7 @@ export default function ResultsPage() {
 
   /* ── approve strategy and move to niches ── */
   const handleApproveStrategy = () => {
+    trackEvent({ eventType: "step_complete", eventName: "results_strategy_approved", stepName: "results", projectId });
     setStrategyApproved(true);
     setStep("niches");
   };
@@ -282,6 +289,7 @@ export default function ResultsPage() {
 
   /* ── helpers ── */
   const selectNiche = (n: Niche) => {
+    trackEvent({ eventType: "interaction", eventName: "results_niche_selected", stepName: "results", projectId, metadata: { nicheName: n.name } });
     setSelectedNiche(n);
     setStep("pains");
   };

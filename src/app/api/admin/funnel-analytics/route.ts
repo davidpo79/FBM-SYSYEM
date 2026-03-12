@@ -12,6 +12,14 @@ const FUNNEL_STEPS = [
   "album",
 ] as const;
 
+const GTM_FUNNEL_STEPS = [
+  "ideator",
+  "gtm-questionnaire",
+  "gtm-strategy",
+  "gtm-bootcamp",
+  "results",
+] as const;
+
 const STEP_LABELS: Record<string, string> = {
   questionnaire: "שאלון",
   strategy: "אסטרטגיה",
@@ -21,6 +29,11 @@ const STEP_LABELS: Record<string, string> = {
   creative: "קריאייטיב",
   copy: "קופי",
   album: "אלבום",
+  ideator: "אידיאטור",
+  "gtm-questionnaire": "שאלון GTM",
+  "gtm-strategy": "אסטרטגיית GTM",
+  "gtm-bootcamp": "בוטקאמפ GTM",
+  results: "תוצאות",
 };
 
 export async function GET(req: NextRequest) {
@@ -80,6 +93,40 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    // ─── 1b. GTM Funnel Analysis ───
+    const gtmStepUsers: Record<string, Set<string>> = {};
+    const gtmStepSessions: Record<string, Set<string>> = {};
+    for (const step of GTM_FUNNEL_STEPS) {
+      gtmStepUsers[step] = new Set();
+      gtmStepSessions[step] = new Set();
+    }
+
+    for (const ev of allEvents) {
+      if (ev.event_type === "page_view" && ev.step_name && gtmStepUsers[ev.step_name]) {
+        if (ev.user_id) gtmStepUsers[ev.step_name].add(ev.user_id);
+        if (ev.session_id) gtmStepSessions[ev.step_name].add(ev.session_id);
+      }
+    }
+
+    const gtmFunnelSteps = GTM_FUNNEL_STEPS.map((step, i) => {
+      const users = gtmStepUsers[step].size;
+      const sessions = gtmStepSessions[step].size;
+      const prevUsers = i > 0 ? gtmStepUsers[GTM_FUNNEL_STEPS[i - 1]].size : users;
+      const dropoff = prevUsers > 0 ? ((prevUsers - users) / prevUsers * 100) : 0;
+      const conversionFromStart = gtmStepUsers[GTM_FUNNEL_STEPS[0]].size > 0
+        ? (users / gtmStepUsers[GTM_FUNNEL_STEPS[0]].size * 100)
+        : 0;
+
+      return {
+        step,
+        label: STEP_LABELS[step] || step,
+        uniqueUsers: users,
+        uniqueSessions: sessions,
+        dropoffPercent: Math.round(dropoff * 10) / 10,
+        conversionFromStart: Math.round(conversionFromStart * 10) / 10,
+      };
+    });
+
     // ─── 2. Step Completions (approved steps) ───
     const completionEvents = allEvents.filter(ev => ev.event_type === "step_complete");
     const stepCompletions: Record<string, number> = {};
@@ -93,7 +140,8 @@ export async function GET(req: NextRequest) {
     const generationCompletes = allEvents.filter(ev => ev.event_type === "generation_complete");
     const generationErrors = allEvents.filter(ev => ev.event_type === "error");
 
-    const generationStats = FUNNEL_STEPS.map(step => {
+    const allSteps = [...FUNNEL_STEPS, ...GTM_FUNNEL_STEPS];
+    const generationStats = allSteps.map(step => {
       const starts = generationStarts.filter(ev => ev.step_name === step).length;
       const completes = generationCompletes.filter(ev => ev.step_name === step).length;
       const errors = generationErrors.filter(ev => ev.step_name === step).length;
@@ -249,6 +297,7 @@ export async function GET(req: NextRequest) {
         overallConversion,
       },
       funnelSteps,
+      gtmFunnelSteps,
       stepCompletions,
       generationStats,
       dailyActivity,

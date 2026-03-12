@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { RefreshCw } from "lucide-react";
 import { captureUTM, getUTMForPayload } from "@/lib/utm";
 import { fbLead, fbViewContent } from "@/lib/fbpixel";
+import { trackEvent } from "@/lib/track-event";
 
 /* ── Brainstorm particles config ── */
 const BINARY_SNIPPETS = ["01", "10", "001", "110", "0101", "1010", "{ }", "< >", "=>", "AI", "//", "&&", "$$", "**"];
@@ -58,6 +59,11 @@ export default function IdeatorPage() {
   const [market, setMarket] = useState<Market>("israel");
   const [adminKey, setAdminKey] = useState("");
   const [stage, setStage] = useState<Stage>("select");
+
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "ideator_page", stepName: "ideator" });
+  }, []);
 
   useEffect(() => {
     captureUTM();
@@ -125,6 +131,7 @@ export default function IdeatorPage() {
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
+    trackEvent({ eventType: "button_click", eventName: "ideator_generate_click", stepName: "ideator", metadata: { category: selectedCategory, market } });
     setStage("building");
     setError("");
     setVisibleLines(0);
@@ -165,6 +172,7 @@ export default function IdeatorPage() {
       setIdeas(data.ideas || []);
       setStage("results");
       fbViewContent("Ideator Results");
+      trackEvent({ eventType: "generation_complete", eventName: "ideator_ideas_generated", stepName: "ideator", metadata: { category: selectedCategory, market, ideaCount: data.ideas?.length, ideaNames: data.ideas?.map((i: IdeaResult) => i.name) } });
     } catch {
       timers.forEach(clearTimeout);
       clearInterval(cursorInterval);
@@ -177,6 +185,7 @@ export default function IdeatorPage() {
   const handleInlineSubmit = (idea: IdeaResult) => {
     if (!formEmail.trim()) return;
     fbLead("Ideator Entry");
+    trackEvent({ eventType: "step_complete", eventName: "ideator_lead_submitted", stepName: "ideator", metadata: { ideaName: idea.name, category: selectedCategory } });
     try {
       localStorage.setItem("gtm-ideator-selected", JSON.stringify({
         name: idea.name,

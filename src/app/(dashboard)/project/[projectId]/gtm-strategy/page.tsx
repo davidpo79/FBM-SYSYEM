@@ -8,6 +8,7 @@ import PaymentModal from "@/components/PaymentModal";
 import type { CustomerDetails } from "@/components/PaymentModal";
 import { supabase } from "@/lib/supabase";
 import { fbInitiateCheckout, fbPurchase, fbBootcampApplication } from "@/lib/fbpixel";
+import { trackEvent } from "@/lib/track-event";
 
 interface GTMStrategy {
   icp: {
@@ -288,6 +289,11 @@ export default function GTMStrategyPage() {
   const stageNavRef = useRef<HTMLDivElement>(null);
   const paywallRef = useRef<HTMLDivElement>(null);
 
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "gtm_strategy_page", stepName: "gtm-strategy", projectId: project?.id });
+  }, [project?.id]);
+
   const switchStage = (stage: StrategyStage) => {
     setCurrentStage(stage);
     // For locked marketing stage, scroll directly to paywall overlay
@@ -335,6 +341,7 @@ export default function GTMStrategyPage() {
     setPaymentUrl(null);
     setShowPayment(true);
     fbInitiateCheckout(`GTM ${tier.toUpperCase()}`);
+    trackEvent({ eventType: "button_click", eventName: "gtm_tier_selected", stepName: "gtm-strategy", projectId: project?.id, metadata: { tier } });
   };
 
   const handlePaymentSubmit = async (details: CustomerDetails) => {
@@ -381,6 +388,7 @@ export default function GTMStrategyPage() {
     // Track purchase
     const price = selectedTier === "diy" ? 290 : 99;
     fbPurchase(price, "ILS");
+    trackEvent({ eventType: "step_complete", eventName: "gtm_payment_complete", stepName: "gtm-strategy", projectId: project?.id, metadata: { tier, price } });
   }, [selectedTier]);
 
   const handlePaymentClose = useCallback(() => {
@@ -488,6 +496,7 @@ export default function GTMStrategyPage() {
 
   const generateStrategy = async () => {
     if (!project) return;
+    trackEvent({ eventType: "generation_start", eventName: "gtm_strategy_generate", stepName: "gtm-strategy", projectId: project.id });
     setIsGenerating(true);
     setError("");
     try {
@@ -503,11 +512,13 @@ export default function GTMStrategyPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setStrategy(json.strategy);
+      trackEvent({ eventType: "generation_complete", eventName: "gtm_strategy_generated", stepName: "gtm-strategy", projectId: project.id });
       try {
         localStorage.setItem(`gtm-strategy-${project.id}`, JSON.stringify(json.strategy));
       } catch { /* ignore */ }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "נכשל ביצירת האסטרטגיה");
+      trackEvent({ eventType: "error", eventName: "gtm_strategy_generation_error", stepName: "gtm-strategy", projectId: project.id });
     } finally {
       setIsGenerating(false);
     }
@@ -756,7 +767,7 @@ export default function GTMStrategyPage() {
                   <p>למפתחים ויזמים שרוצים לייצר תוכנית שיווקית</p>
                   <p>חדירה לשוק ולקוחות משלמים</p>
                 </div>
-                <button onClick={() => setShowBootcampModal(true)} className="gtm-btn-orange">
+                <button onClick={() => { setShowBootcampModal(true); trackEvent({ eventType: "button_click", eventName: "gtm_bootcamp_apply_click", stepName: "gtm-strategy", projectId: project?.id }); }} className="gtm-btn-orange">
                   תיאום שיחת אבחון אסטרטגית של 15 דקות עם דוד פופוביץ (ללא עלות)
                 </button>
               </div>
@@ -1141,6 +1152,7 @@ function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; 
       });
       setSubmitted(true);
       fbBootcampApplication("Bootcamp Application");
+      trackEvent({ eventType: "step_complete", eventName: "gtm_bootcamp_applied", stepName: "gtm-strategy", metadata: { paymentLevel: paymentLevel || "free" } });
     } catch {
       setError("שגיאה בשליחת המועמדות. נסה שוב.");
     } finally {

@@ -78,6 +78,7 @@ interface FunnelData {
     overallConversion: number;
   };
   funnelSteps: FunnelStep[];
+  gtmFunnelSteps?: FunnelStep[];
   stepCompletions: Record<string, number>;
   generationStats: GenerationStat[];
   dailyActivity: DailyActivity[];
@@ -177,7 +178,7 @@ export default function FunnelAnalyticsPage() {
 
   if (!data) return null;
 
-  const { summary, funnelSteps, generationStats, dailyActivity, topEvents, nicheAnalytics, leakPoints, stuckAt, hourlyHeatmap } = data;
+  const { summary, funnelSteps, gtmFunnelSteps, generationStats, dailyActivity, topEvents, nicheAnalytics, leakPoints, stuckAt, hourlyHeatmap } = data;
 
   const maxHourViews = Math.max(...hourlyHeatmap.map(h => h.views), 1);
 
@@ -287,6 +288,62 @@ export default function FunnelAnalyticsPage() {
           </div>
         )}
       </div>
+
+      {/* ── GTM Funnel Visualization ── */}
+      {gtmFunnelSteps && gtmFunnelSteps.length > 0 && (
+        <div className="card-elevated p-6 mb-8 animate-in delay-6">
+          <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">משפך GTM</h2>
+          <p className="text-sm text-[var(--text-muted)] mb-6">מסלול Go-To-Market — מהאידיאטור ועד הבוטקאמפ</p>
+
+          {gtmFunnelSteps.every(s => s.uniqueUsers === 0) ? (
+            <div className="text-center py-16">
+              <p className="text-[var(--text-muted)] text-lg mb-2">אין נתוני GTM עדיין</p>
+              <p className="text-[var(--text-muted)] text-sm">נתונים יתחילו להופיע כאשר משתמשים ישתמשו במסלול GTM</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {gtmFunnelSteps.map((step, i) => {
+                const maxUsers = gtmFunnelSteps[0]?.uniqueUsers || 1;
+                const widthPercent = Math.max((step.uniqueUsers / maxUsers) * 100, 8);
+                const GTM_COLORS = ["#00FF88", "#00CC6A", "#3B82F6", "#6366F1", "#8B5CF6"];
+                return (
+                  <div key={step.step} className="flex items-center gap-3">
+                    <div className="w-24 text-sm font-medium text-[var(--text-secondary)] text-left flex-shrink-0">
+                      {step.label}
+                    </div>
+                    <div className="flex-1 relative">
+                      <div
+                        className="h-10 rounded-lg flex items-center px-3 transition-all duration-500"
+                        style={{
+                          width: `${widthPercent}%`,
+                          background: `linear-gradient(135deg, ${GTM_COLORS[i % GTM_COLORS.length]}, ${GTM_COLORS[(i + 1) % GTM_COLORS.length]})`,
+                          minWidth: "60px",
+                        }}
+                      >
+                        <span className="text-white font-bold text-sm">{step.uniqueUsers}</span>
+                      </div>
+                    </div>
+                    <div className="w-28 flex-shrink-0 text-left">
+                      {i > 0 && step.dropoffPercent > 0 ? (
+                        <span className="text-red-500 text-sm font-semibold">
+                          &#x2193; {step.dropoffPercent}% נשירה
+                        </span>
+                      ) : i === 0 ? (
+                        <span className="text-[var(--text-muted)] text-sm">100%</span>
+                      ) : (
+                        <span className="text-green-500 text-sm font-semibold">0% נשירה</span>
+                      )}
+                    </div>
+                    <div className="w-16 text-left text-xs text-[var(--text-muted)]">
+                      {step.conversionFromStart}%
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Leak Points Alert ── */}
       {leakPoints.length > 0 && (
@@ -414,6 +471,9 @@ export default function FunnelAnalyticsPage() {
                   questionnaire: "שאלון", strategy: "אסטרטגיה", niches: "נישות",
                   pains: "ניתוח כאבים", scripts: "תסריטים", creative: "קריאייטיב",
                   copy: "קופי", album: "אלבום",
+                  ideator: "אידיאטור", "gtm-questionnaire": "שאלון GTM",
+                  "gtm-strategy": "אסטרטגיית GTM", "gtm-bootcamp": "בוטקאמפ GTM",
+                  results: "תוצאות",
                 };
                 return (
                   <div key={step} className="p-4 rounded-xl text-center" style={{ background: "var(--gold-soft)" }}>
@@ -557,6 +617,11 @@ export default function FunnelAnalyticsPage() {
               pains_approved: "אישרו כאבים",
               scripts_approved: "אישרו תסריטים",
               project_completed: "השלימו פרויקט",
+              ideator_lead_submitted: "הגישו ליד מאידיאטור",
+              gtm_strategy_generated: "יצרו אסטרטגיית GTM",
+              gtm_payment_complete: "שילמו GTM",
+              gtm_bootcamp_applied: "הגישו מועמדות לבוטקאמפ",
+              results_strategy_approved: "אישרו אסטרטגיה (תוצאות)",
             };
             return (
               <div key={step} className="p-4 rounded-xl text-center" style={{ background: "var(--content-bg)", border: "1px solid var(--card-border)" }}>
