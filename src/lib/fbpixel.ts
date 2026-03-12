@@ -56,3 +56,6 @@ export const fbContact = (contentName: string) =>
 
 export const fbViewContent = (contentName: string) =>
   fbEvent("ViewContent", { content_name: contentName });
+
+export const fbBootcampApplication = (contentName: string) =>
+  fbCustomEvent("BootcampApplication", { content_name: contentName });

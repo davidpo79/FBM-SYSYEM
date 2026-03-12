@@ -6,7 +6,7 @@ import { getUTMForPayload } from "@/lib/utm";
 import PaymentModal from "@/components/PaymentModal";
 import type { CustomerDetails } from "@/components/PaymentModal";
 import { supabase } from "@/lib/supabase";
-import { fbInitiateCheckout, fbPurchase, fbContact } from "@/lib/fbpixel";
+import { fbInitiateCheckout, fbPurchase, fbBootcampApplication } from "@/lib/fbpixel";
 
 interface GTMStrategy {
   icp: {
@@ -1138,7 +1138,7 @@ function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; 
         }),
       });
       setSubmitted(true);
-      fbContact("Bootcamp Application");
+      fbBootcampApplication("Bootcamp Application");
     } catch {
       setError("שגיאה בשליחת המועמדות. נסה שוב.");
     } finally {
