@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Question } from "@/lib/questions";
+import { supabase } from "@/lib/supabase";
 
 interface QuestionCardProps {
   question: Question;
@@ -51,9 +52,13 @@ export default function QuestionCard({
   const handleAiSuggest = useCallback(async () => {
     setAiLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/suggest-gtm-answer", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           questionId: question.id,
           questionTitle: question.title,

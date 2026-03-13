@@ -57,6 +57,7 @@ export default function QuestionnairePage() {
   // Track state (fbm or gtm)
   const [track, setTrack] = useState<"fbm" | "gtm">("fbm");
   const [ideaName, setIdeaName] = useState("");
+  const [refineProjectId, setRefineProjectId] = useState<string | null>(null);
 
   // Track page view
   useEffect(() => {
@@ -211,12 +212,13 @@ export default function QuestionnairePage() {
       }
 
       // Refine mode: load existing project answers from Supabase
-      const refineProjectId = params.get("projectId");
-      if (params.get("refine") === "true" && refineProjectId) {
+      const refineProjectIdParam = params.get("projectId");
+      if (params.get("refine") === "true" && refineProjectIdParam) {
+        setRefineProjectId(refineProjectIdParam);
         supabase
           .from("projects")
           .select("answers_map, user_name, gtm_onboarding_data")
-          .eq("id", refineProjectId)
+          .eq("id", refineProjectIdParam)
           .single()
           .then(({ data: proj }) => {
             if (proj) {
@@ -464,13 +466,29 @@ export default function QuestionnairePage() {
         insertData.transcript = transcript;
       }
 
-      const { data, error: dbError } = await supabase
-        .from("projects")
-        .insert(insertData)
-        .select("id")
-        .single();
+      let projectId: string;
 
-      if (dbError) throw dbError;
+      if (refineProjectId) {
+        // Refine mode: update existing project instead of creating a duplicate
+        const { error: dbError } = await supabase
+          .from("projects")
+          .update(insertData)
+          .eq("id", refineProjectId)
+          .eq("user_id", user.id); // ensure ownership
+
+        if (dbError) throw dbError;
+        projectId = refineProjectId;
+      } else {
+        // New project: insert
+        const { data, error: dbError } = await supabase
+          .from("projects")
+          .insert(insertData)
+          .select("id")
+          .single();
+
+        if (dbError) throw dbError;
+        projectId = data.id;
+      }
 
       localStorage.removeItem(STORAGE_KEY);
 
@@ -486,7 +504,7 @@ export default function QuestionnairePage() {
           name: userName,
           user_id: user.id,
           registration_date: new Date().toISOString(),
-          projectId: data.id,
+          projectId,
           track,
           ideaName: isGtm ? (ideaName || answersToUse["2"]?.slice(0, 120) || "") : undefined,
           ...getUTMForPayload(),
@@ -495,14 +513,14 @@ export default function QuestionnairePage() {
 
       // Token users see booking after questionnaire
       if (isTokenUser) {
-        setSavedProjectId(data.id);
+        setSavedProjectId(projectId);
         setFlowStage("booking");
         setSubmitting(false);
         return;
       }
 
-      trackEvent({ eventType: "step_complete", eventName: "questionnaire_completed", stepName: "questionnaire", projectId: data.id, metadata: { track, mode } });
-      router.push(track === "gtm" ? `/project/${data.id}/gtm-strategy` : `/project/${data.id}/strategy`);
+      trackEvent({ eventType: "step_complete", eventName: "questionnaire_completed", stepName: "questionnaire", projectId, metadata: { track, mode } });
+      router.push(track === "gtm" ? `/project/${projectId}/gtm-strategy` : `/project/${projectId}/strategy`);
     } catch (err) {
       console.error("Submit error:", err);
       setError("אירעה שגיאה בשמירה. נסה שוב.");
