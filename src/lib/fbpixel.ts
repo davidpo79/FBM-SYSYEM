@@ -6,7 +6,7 @@
  */
 
 export const FB_PIXEL_ID =
-  process.env.NEXT_PUBLIC_META_PIXEL_ID || process.env.NEXT_PUBLIC_FB_PIXEL_ID || "468742119653388";
+  process.env.NEXT_PUBLIC_META_PIXEL_ID || process.env.NEXT_PUBLIC_FB_PIXEL_ID || "657314928924080";
 
 declare global {
   interface Window {
