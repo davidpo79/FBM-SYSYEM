@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 export default function FacebookPixel() {
   const pathname = usePathname();
+  const prevPathname = useRef(pathname);
 
-  // Track PageView on SPA route changes
+  // Track PageView only on SPA route *changes* (skip initial mount — handled by base script)
   useEffect(() => {
-    if (typeof window !== "undefined" && window.fbq) {
-      window.fbq("track", "PageView");
+    if (prevPathname.current !== pathname) {
+      prevPathname.current = pathname;
+      if (typeof window !== "undefined" && window.fbq) {
+        window.fbq("track", "PageView");
+      }
     }
   }, [pathname]);
 
