@@ -23,10 +23,28 @@ declare global {
 
 // ─── Safety-net event queue ───
 // In case fbq isn't available yet (e.g. ad-blocker delayed script),
-// we queue calls and retry until fbq is ready.
+// we queue calls and retry until fbq is ready. Falls back to image
+// pixel for critical events (PageView, Lead, Purchase) if fbq never loads.
 type QueuedCall = { method: string; args: unknown[] };
 const pendingQueue: QueuedCall[] = [];
 let flushTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Send a critical event via image pixel fallback (works even if JS pixel is blocked) */
+function sendImageFallback(eventName: string, params?: Record<string, unknown>) {
+  if (typeof window === "undefined") return;
+  const img = new Image();
+  const qs = new URLSearchParams({
+    id: FB_PIXEL_ID,
+    ev: eventName,
+    noscript: "1",
+    t: Date.now().toString(),
+  });
+  if (params) {
+    qs.set("cd", JSON.stringify(params));
+  }
+  img.src = `https://www.facebook.com/tr?${qs.toString()}`;
+  console.log(`[MetaPixel] Image fallback sent for ${eventName}`);
+}
 
 function ensureFlush() {
   if (flushTimer || pendingQueue.length === 0) return;
@@ -34,26 +52,43 @@ function ensureFlush() {
   flushTimer = setInterval(() => {
     attempts++;
     if (typeof window !== "undefined" && window.fbq) {
+      console.log(`[MetaPixel] fbq ready — flushing ${pendingQueue.length} queued events`);
       while (pendingQueue.length > 0) {
         const call = pendingQueue.shift()!;
         window.fbq(call.method, ...call.args);
       }
       clearInterval(flushTimer!);
       flushTimer = null;
-    } else if (attempts > 50) {
-      // Give up after ~5 seconds — pixel is likely blocked by ad-blocker
+    } else if (attempts > 80) {
+      // Give up after ~8 seconds — pixel is likely blocked
+      console.warn(`[MetaPixel] fbq unavailable after ${attempts} attempts. Sending critical events via image fallback.`);
+      // Send critical events via image pixel fallback
+      const criticalEvents = ["PageView", "Lead", "Purchase", "CompleteRegistration", "InitiateCheckout"];
+      while (pendingQueue.length > 0) {
+        const call = pendingQueue.shift()!;
+        if (call.method === "track" && criticalEvents.includes(call.args[0] as string)) {
+          sendImageFallback(call.args[0] as string, call.args[1] as Record<string, unknown>);
+        }
+      }
       clearInterval(flushTimer!);
       flushTimer = null;
-      pendingQueue.length = 0;
     }
   }, 100);
 }
 
 function callFbq(method: string, ...args: unknown[]) {
   if (typeof window === "undefined") return;
-  if (window.fbq) {
+  if (window.fbq && window.fbq.callMethod) {
+    // Pixel is fully loaded — fire directly
+    console.log(`[MetaPixel] ${method}(${args[0]})`, args.slice(1));
+    window.fbq(method, ...args);
+  } else if (window.fbq) {
+    // Queue function exists but fbevents.js hasn't processed yet — call goes to queue
+    console.log(`[MetaPixel] ${method}(${args[0]}) → queued (fbevents.js loading)`);
     window.fbq(method, ...args);
   } else {
+    // fbq doesn't exist at all — add to our safety queue
+    console.log(`[MetaPixel] ${method}(${args[0]}) → safety queue (fbq not found)`);
     pendingQueue.push({ method, args });
     ensureFlush();
   }
