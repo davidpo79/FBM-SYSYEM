@@ -198,16 +198,15 @@ export default function IdeatorPage() {
     fbLead("Ideator Rate Limit Call");
     trackEvent({ eventType: "step_complete", eventName: "ideator_rate_limit_lead", stepName: "ideator", metadata: { name: rateLimitName, phone: rateLimitPhone, email: rateLimitEmail, category: selectedCategory, market } });
 
-    // Send lead to GHL webhook
-    fetch("/api/webhooks/gtm-lead-start", {
+    // Send lead to GHL webhook (EVENT_BOOTCAMP_APPLICATION)
+    fetch("/api/webhooks/bootcamp-apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: rateLimitEmail.trim() || `${rateLimitPhone.trim()}@phone.lead`,
         name: rateLimitName.trim(),
         phone: rateLimitPhone.trim(),
-        ideaName: getCategoryLabel(),
-        category: selectedCategory,
+        idea_context: getCategoryLabel(),
         source: "ideator_rate_limit",
         ...getUTMForPayload(),
       }),
@@ -1120,9 +1119,12 @@ export default function IdeatorPage() {
             {!rateLimitSubmitted ? (
               <>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>🚀</div>
-                <h2 style={{ fontSize: 22, fontWeight: 800, color: "#F0F6FF", marginBottom: 8 }}>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: "#F0F6FF", marginBottom: 4 }}>
                   הגעת למגבלת הרעיונות היומית
                 </h2>
+                <p style={{ color: "#64748B", fontSize: 13, marginBottom: 12 }}>
+                  (המגבלה היומית היא 3)
+                </p>
                 <p style={{ color: "#94A3B8", fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
                   השאר פרטים לשיחה עם דוד — 15 דקות ללא עלות
                   <br />
