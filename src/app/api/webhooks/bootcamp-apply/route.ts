@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       utm_placement, utm_adset, utm_ad,
     } = body;
 
-    if (!phone || typeof phone !== "string" || phone.trim().length < 9) {
+    if (!phone || typeof phone !== "string" || phone.trim().length < 9 || !/^[\d\-+() ]{9,15}$/.test(phone.trim())) {
       return NextResponse.json({ error: "נא להזין מספר טלפון תקין" }, { status: 400 });
     }
 

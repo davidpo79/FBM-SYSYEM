@@ -77,15 +77,16 @@ export const fbInitiateCheckout = (contentName: string) =>
     content_type: "product",
   });
 
-export const fbPurchase = (value: number, currency = "ILS", contentName?: string) =>
+export const fbPurchase = (value: number, currency = "ILS", contentName?: string, isSubscription = false) =>
   fbEvent("Purchase", {
     value,
     currency,
     content_name: contentName || `GTM Plan - ${value} ${currency}`,
     content_category: "gtm_bootcamp",
-    content_type: "product",
+    content_type: isSubscription ? "subscription" : "product",
     content_ids: [value === 290 ? "gtm_diy" : "gtm_pro"],
     num_items: 1,
+    ...(isSubscription ? { predicted_ltv: value * 6 } : {}),
   });
 
 export const fbContact = (contentName: string) =>

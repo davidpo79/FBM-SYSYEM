@@ -90,7 +90,7 @@ ICP: ${gtmOnboardingData.icp || ""}
     // Parse the JSON response
     const strategy = JSON.parse(raw);
 
-    logApiCall({
+    await logApiCall({
       endpoint: "/api/generate-gtm-strategy",
       status: "success",
       durationMs: Date.now() - startTime,
@@ -101,7 +101,7 @@ ICP: ${gtmOnboardingData.icp || ""}
     const message = error instanceof Error ? error.message : String(error);
     console.error("generate-gtm-strategy error:", message);
 
-    logApiCall({
+    await logApiCall({
       endpoint: "/api/generate-gtm-strategy",
       status: "error",
       errorMessage: error instanceof Error ? error.message : "Unknown error",

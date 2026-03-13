@@ -419,7 +419,8 @@ export default function GTMStrategyPage() {
     } catch { /* ignore */ }
     // Track purchase
     const price = selectedTier === "diy" ? 290 : 99;
-    fbPurchase(price, "ILS", `GTM ${tier.toUpperCase()} Plan`);
+    const isSubscription = selectedTier !== "diy";
+    fbPurchase(price, "ILS", `GTM ${tier.toUpperCase()} Plan`, isSubscription);
     trackEvent({ eventType: "step_complete", eventName: "gtm_payment_complete", stepName: "gtm-strategy", projectId: project?.id, metadata: { tier, price } });
   }, [selectedTier, project?.id]);
 
