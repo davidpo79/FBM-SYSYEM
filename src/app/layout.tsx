@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Script from "next/script";
 import { ToastProvider } from "@/components/Toast";
 import FacebookPixel from "@/components/FacebookPixel";
 import "./globals.css";
@@ -52,23 +53,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#D4A843" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 
-        {/* Meta Pixel — must be in <head> for Pixel Helper to detect */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              !function(f,b,e,v,n,t,s)
-              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-              n.queue=[];t=b.createElement(e);t.async=!0;
-              t.src=v;s=b.getElementsByTagName(e)[0];
-              s.parentNode.insertBefore(t,s)}(window, document,'script',
-              'https://connect.facebook.net/en_US/fbevents.js');
-              fbq('init', '657314928924080');
-              fbq('track', 'PageView');
-            `,
-          }}
-        />
+        {/* Meta Pixel noscript fallback */}
         <noscript>
           <img
             height="1"
@@ -87,6 +72,25 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
+        {/* Meta Pixel — loaded via next/script for reliable execution */}
+        <Script
+          id="fb-pixel-base"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              !function(f,b,e,v,n,t,s)
+              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+              n.queue=[];t=b.createElement(e);t.async=!0;
+              t.src=v;s=b.getElementsByTagName(e)[0];
+              s.parentNode.insertBefore(t,s)}(window, document,'script',
+              'https://connect.facebook.net/en_US/fbevents.js');
+              fbq('init', '657314928924080');
+              fbq('track', 'PageView');
+            `,
+          }}
+        />
         <Suspense fallback={null}>
           <FacebookPixel />
         </Suspense>

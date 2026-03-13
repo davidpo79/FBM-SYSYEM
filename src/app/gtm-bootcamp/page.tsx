@@ -207,14 +207,17 @@ export default function GTMBootcampPage() {
             marginBottom: 24,
             textAlign: "center",
           }}>
-            איך הבוטקאמפ עובד?
+            איך תוכנית ההכשרה עובדת?
           </h3>
+          <p style={{ color: "#94A3B8", lineHeight: 1.9, fontSize: 16, marginBottom: 28, textAlign: "center" }}>
+            תוכנית הכשרה של <strong style={{ color: "#F0F6FF" }}>חודש בליווי אישי במסגרת קבוצתית</strong> — שבה תלמדו איך לעשות שיווק Go-To-Market למערכת הטכנולוגית שלכם או לכל מערכת אחרת.
+          </p>
           <ol style={{ color: "#94A3B8", lineHeight: 2.2, fontSize: 15, paddingRight: 20, margin: 0 }}>
-            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>צרו רעיון לסטארטאפ AI</strong> — השתמשו בכלי ה-Ideator החינמי כדי לגלות רעיונות עסקיים מאומתים עם קהל יעד ואינטגרציות API.</li>
-            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>ענו על שאלון ה-GTM</strong> — 10 שאלות ממוקדות שעוזרות למנוע ה-AI להבין את המוצר, השוק והמטרות שלכם.</li>
-            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>קבלו אסטרטגיה מותאמת אישית</strong> — ניתוח ICP, מיצוב תחרותי, המלצות ערוצי שיווק ותוכנית השקה ל-90 יום.</li>
-            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>צרו קריאייטיב לפרסום</strong> — סקריפטים, ויזואליים והוקים שנוצרו על ידי AI ומותאמים ל-ICP ולערוצים שלכם.</li>
-            <li><strong style={{ color: "#F0F6FF" }}>קבעו שיחת אבחון</strong> — 15 דקות עם מומחה GTM כדי לחדד את האסטרטגיה ולתעדף את הצעדים הבאים.</li>
+            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>הגדרת ICP ומיצוב מוצר</strong> — נזהה יחד את הלקוח האידיאלי שלכם ונבנה מיצוב שמדבר אליו בדיוק.</li>
+            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>בניית אסטרטגיית GTM מותאמת</strong> — תוכנית שיווק מובנית עם ערוצי רכישה, מסרים ותהליכי המרה.</li>
+            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>יצירת קריאייטיב ותוכן</strong> — סקריפטים, ויזואליים והוקים מותאמים לקהל היעד ולערוצי השיווק שלכם.</li>
+            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>ליווי אישי שבועי</strong> — פגישות אישיות ומשוב מתמשך לאורך כל החודש כדי לחדד ולשפר את הביצועים.</li>
+            <li><strong style={{ color: "#F0F6FF" }}>למידה קבוצתית</strong> — מפגשים קבוצתיים עם מייסדים נוספים לשיתוף ידע, תובנות והזדמנויות שיתוף פעולה.</li>
           </ol>
         </section>
 
