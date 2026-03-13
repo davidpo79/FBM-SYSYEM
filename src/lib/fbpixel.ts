@@ -16,8 +16,11 @@ export const FB_PIXEL_ID =
 
 declare global {
   interface Window {
-    fbq: (...args: unknown[]) => void;
+    fbq: ((...args: unknown[]) => void) & { callMethod?: (...args: unknown[]) => void; queue?: unknown[] };
     _fbq: (...args: unknown[]) => void;
+    __fbPixelLoaded?: boolean;
+    __fbPixelFailed?: boolean;
+    __fbPixelFallback?: boolean;
   }
 }
 
