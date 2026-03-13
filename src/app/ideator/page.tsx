@@ -74,6 +74,11 @@ export default function IdeatorPage() {
 
   const [ideas, setIdeas] = useState<IdeaResult[]>([]);
   const [error, setError] = useState("");
+  const [showRateLimitModal, setShowRateLimitModal] = useState(false);
+  const [rateLimitName, setRateLimitName] = useState("");
+  const [rateLimitPhone, setRateLimitPhone] = useState("");
+  const [rateLimitEmail, setRateLimitEmail] = useState("");
+  const [rateLimitSubmitted, setRateLimitSubmitted] = useState(false);
   const [visibleLines, setVisibleLines] = useState(0);
   const [cursorVisible, setCursorVisible] = useState(true);
   const [buildProgress, setBuildProgress] = useState(0);
@@ -164,8 +169,14 @@ export default function IdeatorPage() {
       clearInterval(progressInterval);
 
       if (data.error) {
-        setError(data.error);
-        setStage("select");
+        if (res.status === 429) {
+          setShowRateLimitModal(true);
+          setStage("select");
+          trackEvent({ eventType: "interaction", eventName: "ideator_rate_limit_hit", stepName: "ideator", metadata: { category: selectedCategory, market } });
+        } else {
+          setError(data.error);
+          setStage("select");
+        }
         return;
       }
 
@@ -180,6 +191,29 @@ export default function IdeatorPage() {
       setError("משהו השתבש. נסה שוב.");
       setStage("select");
     }
+  };
+
+  const handleRateLimitSubmit = () => {
+    if (!rateLimitName.trim() || !rateLimitPhone.trim()) return;
+    fbLead("Ideator Rate Limit Call");
+    trackEvent({ eventType: "step_complete", eventName: "ideator_rate_limit_lead", stepName: "ideator", metadata: { name: rateLimitName, phone: rateLimitPhone, email: rateLimitEmail, category: selectedCategory, market } });
+
+    // Send lead to GHL webhook
+    fetch("/api/webhooks/gtm-lead-start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: rateLimitEmail.trim() || `${rateLimitPhone.trim()}@phone.lead`,
+        name: rateLimitName.trim(),
+        phone: rateLimitPhone.trim(),
+        ideaName: getCategoryLabel(),
+        category: selectedCategory,
+        source: "ideator_rate_limit",
+        ...getUTMForPayload(),
+      }),
+    }).catch(() => { /* fire and forget */ });
+
+    setRateLimitSubmitted(true);
   };
 
   const handleInlineSubmit = (idea: IdeaResult) => {
@@ -1033,6 +1067,181 @@ export default function IdeatorPage() {
           </>
         )}
       </main>
+
+      {/* ── Rate Limit Modal ── */}
+      {showRateLimitModal && (
+        <div
+          onClick={() => { setShowRateLimitModal(false); setRateLimitSubmitted(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(6px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "linear-gradient(135deg, #0F1729 0%, #131B2E 100%)",
+              border: "1.5px solid rgba(0,255,136,0.3)",
+              borderRadius: 20,
+              padding: "36px 28px",
+              maxWidth: 420,
+              width: "100%",
+              textAlign: "center",
+              position: "relative",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(0,255,136,0.1)",
+              animation: "fadeInUp 0.3s ease-out",
+            }}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => { setShowRateLimitModal(false); setRateLimitSubmitted(false); }}
+              style={{
+                position: "absolute",
+                top: 12,
+                left: 12,
+                background: "none",
+                border: "none",
+                color: "#94A3B8",
+                fontSize: 22,
+                cursor: "pointer",
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+
+            {!rateLimitSubmitted ? (
+              <>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>🚀</div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: "#F0F6FF", marginBottom: 8 }}>
+                  הגעת למגבלת הרעיונות היומית
+                </h2>
+                <p style={{ color: "#94A3B8", fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
+                  השאר פרטים לשיחה עם דוד — 15 דקות ללא עלות
+                  <br />
+                  על הרעיונות שמצאת ואיך להפוך אותם לעסק
+                </p>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+                  <input
+                    type="text"
+                    placeholder="שם מלא *"
+                    value={rateLimitName}
+                    onChange={(e) => setRateLimitName(e.target.value)}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      border: "1.5px solid #1E2D45",
+                      background: "#0A0E17",
+                      color: "#F0F6FF",
+                      fontSize: 15,
+                      outline: "none",
+                      direction: "rtl",
+                    }}
+                  />
+                  <input
+                    type="tel"
+                    placeholder="טלפון *"
+                    value={rateLimitPhone}
+                    onChange={(e) => setRateLimitPhone(e.target.value)}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      border: "1.5px solid #1E2D45",
+                      background: "#0A0E17",
+                      color: "#F0F6FF",
+                      fontSize: 15,
+                      outline: "none",
+                      direction: "ltr",
+                      textAlign: "right",
+                    }}
+                  />
+                  <input
+                    type="email"
+                    placeholder="אימייל (אופציונלי)"
+                    value={rateLimitEmail}
+                    onChange={(e) => setRateLimitEmail(e.target.value)}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      border: "1.5px solid #1E2D45",
+                      background: "#0A0E17",
+                      color: "#F0F6FF",
+                      fontSize: 15,
+                      outline: "none",
+                      direction: "ltr",
+                      textAlign: "right",
+                    }}
+                  />
+                </div>
+
+                <button
+                  onClick={handleRateLimitSubmit}
+                  disabled={!rateLimitName.trim() || !rateLimitPhone.trim()}
+                  style={{
+                    width: "100%",
+                    padding: "14px 24px",
+                    borderRadius: 12,
+                    border: "none",
+                    background: rateLimitName.trim() && rateLimitPhone.trim()
+                      ? "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)"
+                      : "#1E2D45",
+                    color: rateLimitName.trim() && rateLimitPhone.trim() ? "#080A0F" : "#94A3B8",
+                    fontSize: 17,
+                    fontWeight: 800,
+                    cursor: rateLimitName.trim() && rateLimitPhone.trim() ? "pointer" : "not-allowed",
+                    transition: "all 0.2s",
+                    boxShadow: rateLimitName.trim() && rateLimitPhone.trim()
+                      ? "0 4px 20px rgba(0,255,136,0.3)"
+                      : "none",
+                  }}
+                >
+                  קבע שיחה עם דוד 📞
+                </button>
+
+                <p style={{ color: "#475569", fontSize: 12, marginTop: 12 }}>
+                  15 דקות ללא עלות • ללא התחייבות
+                </p>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: "#00FF88", marginBottom: 8 }}>
+                  הפרטים נשלחו בהצלחה!
+                </h2>
+                <p style={{ color: "#94A3B8", fontSize: 15, lineHeight: 1.6 }}>
+                  דוד יחזור אליך בהקדם לתיאום שיחה קצרה
+                  <br />
+                  על הרעיונות שמצאת 🚀
+                </p>
+                <button
+                  onClick={() => { setShowRateLimitModal(false); setRateLimitSubmitted(false); }}
+                  style={{
+                    marginTop: 20,
+                    padding: "12px 32px",
+                    borderRadius: 10,
+                    border: "1.5px solid #00FF88",
+                    background: "transparent",
+                    color: "#00FF88",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  סגור
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Keyframes */}
       <style>{`

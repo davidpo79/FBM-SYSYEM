@@ -2,13 +2,33 @@
 
 import { useEffect, useRef } from "react";
 import { trackEvent } from "@/lib/track-event";
+import { fbLead, fbViewContent } from "@/lib/fbpixel";
 
 export default function GTMBootcampPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Track page view
+  // Track page view + FB Pixel
   useEffect(() => {
     trackEvent({ eventType: "page_view", eventName: "gtm_bootcamp_page", stepName: "gtm-bootcamp" });
+    fbViewContent("GTM Bootcamp Page");
+  }, []);
+
+  // Listen for GHL form submission via postMessage to fire FB Lead event
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      // GHL iframe sends postMessage on form events
+      if (typeof event.data === "string" && event.data.includes("formSubmitted")) {
+        fbLead("GTM Bootcamp Booking");
+        trackEvent({ eventType: "step_complete", eventName: "gtm_bootcamp_booking", stepName: "gtm-bootcamp" });
+      }
+      // Also check for object-style messages from GHL
+      if (event.data && typeof event.data === "object" && (event.data.type === "formSubmitted" || event.data.event === "formSubmitted")) {
+        fbLead("GTM Bootcamp Booking");
+        trackEvent({ eventType: "step_complete", eventName: "gtm_bootcamp_booking", stepName: "gtm-bootcamp" });
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
   }, []);
 
   /* Auto-resize iframe height based on content */
