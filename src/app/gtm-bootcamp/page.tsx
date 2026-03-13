@@ -156,98 +156,174 @@ export default function GTMBootcampPage() {
         {/* ══════════════════════════════════════════════════════════
             SEO Content — crawlable by search engines and LLMs
             ══════════════════════════════════════════════════════════ */}
-        <section style={{ marginTop: 80 }}>
+        <section style={{
+          marginTop: 80,
+          background: "rgba(255,255,255,0.015)",
+          border: "1px solid rgba(0,255,136,0.08)",
+          borderRadius: 20,
+          padding: "48px 32px",
+        }}>
           <h2 style={{
             fontSize: "clamp(20px, 4vw, 28px)",
-            fontWeight: 700,
+            fontWeight: 800,
             color: "#F0F6FF",
+            marginBottom: 12,
+            textAlign: "center",
+          }}>
+            מהי אסטרטגיית Go-To-Market לסטארטאפ AI?
+          </h2>
+          <div style={{
+            width: 40,
+            height: 3,
+            background: "linear-gradient(90deg, #00FF88, #00CC6A)",
+            borderRadius: 2,
+            margin: "0 auto 28px",
+          }} />
+          <p style={{ color: "#94A3B8", lineHeight: 1.9, fontSize: 16, marginBottom: 20 }}>
+            אסטרטגיית GTM היא התוכנית שלב-אחר-שלב שלוקחת את מוצר ה-AI שלכם
+            מרעיון ללקוחות משלמים. עבור סטארטאפים בתחום ה-AI, המשמעות היא הגדרת
+            פרופיל לקוח אידיאלי (ICP), מיצוב המוצר מול חלופות, בחירת ערוצי רכישה
+            מתאימים ובניית תהליך מכירות חוזר.
+          </p>
+          <p style={{ color: "#94A3B8", lineHeight: 1.9, fontSize: 16, marginBottom: 0 }}>
+            בניגוד ל-SaaS מסורתי, מוצרי AI עומדים בפני אתגרי GTM ייחודיים: בניית
+            אמון עם משתמשים, הסבר טכנולוגיה מורכבת במילים פשוטות וניווט בדרישות
+            אינטגרציה. ה-GTM Bootcamp של FBM Studio מטפל בכל אלה עם מסגרת עבודה
+            שנבנתה במיוחד עבור מייסדי AI.
+          </p>
+        </section>
+
+        <section style={{
+          marginTop: 32,
+          background: "rgba(255,255,255,0.015)",
+          border: "1px solid rgba(0,255,136,0.08)",
+          borderRadius: 20,
+          padding: "48px 32px",
+        }}>
+          <h3 style={{
+            fontSize: 22,
+            fontWeight: 700,
+            color: "#00FF88",
             marginBottom: 24,
             textAlign: "center",
           }}>
-            What is a Go-To-Market Strategy for AI Startups?
-          </h2>
-          <p style={{ color: "#94A3B8", lineHeight: 1.9, fontSize: 16, marginBottom: 20 }}>
-            A Go-To-Market (GTM) strategy is the step-by-step plan that takes your AI product
-            from idea to paying customers. For AI startups, this means defining your Ideal Customer
-            Profile (ICP), positioning your product against both AI and non-AI alternatives,
-            selecting the right acquisition channels, and building a repeatable sales motion.
-          </p>
-          <p style={{ color: "#94A3B8", lineHeight: 1.9, fontSize: 16, marginBottom: 20 }}>
-            Unlike traditional SaaS, AI products face unique GTM challenges: building trust with
-            users who are skeptical of AI accuracy, explaining complex technology in simple terms,
-            and navigating integration requirements. The GTM Bootcamp at FBM Studio addresses all
-            of these with a framework built specifically for AI founders.
-          </p>
-
-          <h3 style={{ fontSize: 20, fontWeight: 600, color: "#00FF88", marginBottom: 16, marginTop: 40 }}>
-            How the GTM Bootcamp Works
+            איך הבוטקאמפ עובד?
           </h3>
-          <ol style={{ color: "#94A3B8", lineHeight: 2, fontSize: 15, paddingRight: 20 }}>
-            <li><strong style={{ color: "#F0F6FF" }}>Generate your AI startup idea</strong> — Use the free Ideator tool to discover validated business concepts with target audience and API integrations.</li>
-            <li><strong style={{ color: "#F0F6FF" }}>Answer the GTM questionnaire</strong> — 10 focused questions that help the AI engine understand your product, market, and goals.</li>
-            <li><strong style={{ color: "#F0F6FF" }}>Get your personalized strategy</strong> — ICP analysis, competitive positioning, marketing channel recommendations, and a 90-day launch plan.</li>
-            <li><strong style={{ color: "#F0F6FF" }}>Create ad creatives</strong> — AI-generated scripts, visuals, and hooks tailored to your ICP and chosen channels.</li>
-            <li><strong style={{ color: "#F0F6FF" }}>Book a diagnostic call</strong> — 15-minute session with a GTM expert to refine your strategy and prioritize next steps.</li>
+          <ol style={{ color: "#94A3B8", lineHeight: 2.2, fontSize: 15, paddingRight: 20, margin: 0 }}>
+            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>צרו רעיון לסטארטאפ AI</strong> — השתמשו בכלי ה-Ideator החינמי כדי לגלות רעיונות עסקיים מאומתים עם קהל יעד ואינטגרציות API.</li>
+            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>ענו על שאלון ה-GTM</strong> — 10 שאלות ממוקדות שעוזרות למנוע ה-AI להבין את המוצר, השוק והמטרות שלכם.</li>
+            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>קבלו אסטרטגיה מותאמת אישית</strong> — ניתוח ICP, מיצוב תחרותי, המלצות ערוצי שיווק ותוכנית השקה ל-90 יום.</li>
+            <li style={{ marginBottom: 8 }}><strong style={{ color: "#F0F6FF" }}>צרו קריאייטיב לפרסום</strong> — סקריפטים, ויזואליים והוקים שנוצרו על ידי AI ומותאמים ל-ICP ולערוצים שלכם.</li>
+            <li><strong style={{ color: "#F0F6FF" }}>קבעו שיחת אבחון</strong> — 15 דקות עם מומחה GTM כדי לחדד את האסטרטגיה ולתעדף את הצעדים הבאים.</li>
           </ol>
+        </section>
 
-          <h3 style={{ fontSize: 20, fontWeight: 600, color: "#00FF88", marginBottom: 16, marginTop: 40 }}>
-            Who Is This For?
+        <section style={{
+          marginTop: 32,
+          background: "rgba(255,255,255,0.015)",
+          border: "1px solid rgba(0,255,136,0.08)",
+          borderRadius: 20,
+          padding: "48px 32px",
+        }}>
+          <h3 style={{
+            fontSize: 22,
+            fontWeight: 700,
+            color: "#00FF88",
+            marginBottom: 24,
+            textAlign: "center",
+          }}>
+            למי זה מתאים?
           </h3>
-          <ul style={{ color: "#94A3B8", lineHeight: 2, fontSize: 15, paddingRight: 20 }}>
-            <li>AI founders who have a product but struggle to find paying customers</li>
-            <li>Technical builders who want a structured marketing framework</li>
-            <li>Solo founders launching their first AI SaaS</li>
-            <li>Teams transitioning from B2C to B2B AI products</li>
-            <li>Anyone exploring AI startup ideas and wanting a clear path to market</li>
+          <ul style={{ color: "#94A3B8", lineHeight: 2.2, fontSize: 15, paddingRight: 20, margin: 0, listStyle: "none" }}>
+            <li style={{ marginBottom: 8, paddingRight: 8 }}><span style={{ color: "#00FF88", marginLeft: 8 }}>&#x2713;</span> מייסדי AI שיש להם מוצר אבל מתקשים למצוא לקוחות משלמים</li>
+            <li style={{ marginBottom: 8, paddingRight: 8 }}><span style={{ color: "#00FF88", marginLeft: 8 }}>&#x2713;</span> בילדרים טכניים שרוצים מסגרת שיווקית מובנית</li>
+            <li style={{ marginBottom: 8, paddingRight: 8 }}><span style={{ color: "#00FF88", marginLeft: 8 }}>&#x2713;</span> מייסדים יחידים שמשיקים את ה-SaaS הראשון שלהם</li>
+            <li style={{ marginBottom: 8, paddingRight: 8 }}><span style={{ color: "#00FF88", marginLeft: 8 }}>&#x2713;</span> צוותים שעוברים ממוצרי AI ל-B2C למוצרי B2B</li>
+            <li style={{ paddingRight: 8 }}><span style={{ color: "#00FF88", marginLeft: 8 }}>&#x2713;</span> כל מי שחוקר רעיונות לסטארטאפ AI ורוצה מסלול ברור לשוק</li>
           </ul>
+        </section>
 
-          <h3 style={{ fontSize: 20, fontWeight: 600, color: "#00FF88", marginBottom: 16, marginTop: 40 }}>
-            Frequently Asked Questions
+        <section style={{
+          marginTop: 32,
+          background: "rgba(255,255,255,0.015)",
+          border: "1px solid rgba(0,255,136,0.08)",
+          borderRadius: 20,
+          padding: "48px 32px",
+        }}>
+          <h3 style={{
+            fontSize: 22,
+            fontWeight: 700,
+            color: "#00FF88",
+            marginBottom: 28,
+            textAlign: "center",
+          }}>
+            שאלות נפוצות
           </h3>
 
-          <div style={{ marginBottom: 20 }}>
-            <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
-              What is a Go-To-Market strategy for an AI startup?
+          <div style={{
+            marginBottom: 24,
+            padding: "20px 24px",
+            background: "rgba(0,0,0,0.2)",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.04)",
+          }}>
+            <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 700, marginBottom: 10 }}>
+              מהי אסטרטגיית GTM לסטארטאפ AI?
             </h4>
-            <p style={{ color: "#94A3B8", lineHeight: 1.8, fontSize: 15 }}>
-              A GTM strategy for AI startups is a structured plan that defines your Ideal Customer
-              Profile (ICP), positions your AI product in the market, selects the right marketing
-              channels, and creates a repeatable process for acquiring paying customers. AI GTM
-              strategies must also address trust, explainability, and integration complexity.
+            <p style={{ color: "#94A3B8", lineHeight: 1.8, fontSize: 15, margin: 0 }}>
+              אסטרטגיית GTM לסטארטאפים בתחום ה-AI היא תוכנית מובנית שמגדירה את
+              פרופיל הלקוח האידיאלי (ICP), ממצבת את מוצר ה-AI בשוק, בוחרת את ערוצי
+              השיווק הנכונים ויוצרת תהליך חוזר לרכישת לקוחות משלמים.
             </p>
           </div>
 
-          <div style={{ marginBottom: 20 }}>
-            <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
-              How do I find my first paying customers for my AI product?
+          <div style={{
+            marginBottom: 24,
+            padding: "20px 24px",
+            background: "rgba(0,0,0,0.2)",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.04)",
+          }}>
+            <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 700, marginBottom: 10 }}>
+              איך מוצאים את הלקוחות המשלמים הראשונים למוצר AI?
             </h4>
-            <p style={{ color: "#94A3B8", lineHeight: 1.8, fontSize: 15 }}>
-              Start by identifying your ICP — who has the pain your AI solves, the budget to pay,
-              and the technical ability to adopt. Then validate with discovery calls, build a landing
-              page with a clear value proposition, and use targeted ads or community outreach to
-              drive qualified leads.
+            <p style={{ color: "#94A3B8", lineHeight: 1.8, fontSize: 15, margin: 0 }}>
+              התחילו בזיהוי ה-ICP — מי סובל מהבעיה שה-AI שלכם פותר, יש לו תקציב
+              לשלם ויכולת טכנית לאמץ. לאחר מכן אמתו עם שיחות גילוי, בנו דף נחיתה
+              עם הצעת ערך ברורה והשתמשו בפרסום ממוקד כדי להביא לידים איכותיים.
             </p>
           </div>
 
-          <div style={{ marginBottom: 20 }}>
-            <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
-              How long does it take to build a GTM strategy?
+          <div style={{
+            marginBottom: 24,
+            padding: "20px 24px",
+            background: "rgba(0,0,0,0.2)",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.04)",
+          }}>
+            <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 700, marginBottom: 10 }}>
+              כמה זמן לוקח לבנות אסטרטגיית GTM?
             </h4>
-            <p style={{ color: "#94A3B8", lineHeight: 1.8, fontSize: 15 }}>
-              With the FBM Studio GTM Bootcamp, you can have a complete go-to-market strategy in
-              under a week. The platform uses AI to analyze your product, identify your ICP, suggest
-              marketing channels, and generate ad creatives.
+            <p style={{ color: "#94A3B8", lineHeight: 1.8, fontSize: 15, margin: 0 }}>
+              עם ה-GTM Bootcamp של FBM Studio, תוכלו לקבל אסטרטגיית Go-To-Market
+              מלאה תוך פחות משבוע. הפלטפורמה משתמשת ב-AI כדי לנתח את המוצר, לזהות
+              את ה-ICP, להציע ערוצי שיווק וליצור קריאייטיב לפרסום.
             </p>
           </div>
 
-          <div style={{ marginBottom: 20 }}>
-            <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
-              What is the FBM Ideator tool?
+          <div style={{
+            padding: "20px 24px",
+            background: "rgba(0,0,0,0.2)",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.04)",
+          }}>
+            <h4 style={{ color: "#F0F6FF", fontSize: 16, fontWeight: 700, marginBottom: 10 }}>
+              מהו כלי ה-FBM Ideator?
             </h4>
-            <p style={{ color: "#94A3B8", lineHeight: 1.8, fontSize: 15 }}>
-              FBM Ideator is a free AI startup idea generator. Pick a niche and market, and the
-              tool generates complete startup ideas with target audience analysis, API integrations,
-              and go-to-market strategy — all powered by AI.
+            <p style={{ color: "#94A3B8", lineHeight: 1.8, fontSize: 15, margin: 0 }}>
+              FBM Ideator הוא מחולל רעיונות חינמי לסטארטאפי AI. בחרו נישה ושוק,
+              והכלי מייצר רעיונות עסקיים מלאים עם ניתוח קהל יעד, אינטגרציות API
+              ואסטרטגיית Go-To-Market — הכל מונע על ידי AI.
             </p>
           </div>
         </section>
