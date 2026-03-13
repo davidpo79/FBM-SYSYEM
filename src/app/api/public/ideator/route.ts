@@ -41,15 +41,15 @@ export async function POST(req: Request) {
     // Admin bypass: skip rate limiting if correct key is provided
     const isAdmin = admin_key === "fbm-admin-2024";
 
-    if (ratelimit && !isAdmin) {
-      // Use per-device cookie as rate-limit key so devices on the same
-      // network each get their own 3-per-day quota.
-      const cookieStore = await cookies();
-      let deviceId = cookieStore.get("_fbm_did")?.value;
-      if (!deviceId) {
-        deviceId = crypto.randomUUID();
-      }
+    // Per-device rate limiting via cookie
+    const cookieStore = await cookies();
+    let deviceId = cookieStore.get("_fbm_did")?.value;
+    const isNewDevice = !deviceId;
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+    }
 
+    if (ratelimit && !isAdmin) {
       const { success } = await ratelimit.limit(deviceId);
       if (!success) {
         const res = NextResponse.json(
@@ -59,9 +59,6 @@ export async function POST(req: Request) {
         res.cookies.set("_fbm_did", deviceId, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
         return res;
       }
-
-      // Ensure the device cookie is set on successful responses too
-      cookieStore.set("_fbm_did", deviceId, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
     }
 
     const catLabel = API_CATEGORIES[category] || category || "טכנולוגיה כללית";
@@ -228,7 +225,11 @@ CRITICAL RULES:
       durationMs: Date.now() - startTime,
     });
 
-    return Response.json(parsed);
+    const res = NextResponse.json(parsed);
+    if (isNewDevice) {
+      res.cookies.set("_fbm_did", deviceId, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+    }
+    return res;
   } catch (error: unknown) {
     console.error("Ideator API error:", error);
 
