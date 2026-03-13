@@ -11,7 +11,7 @@ import { sendGhlWebhook } from "@/lib/ghl-webhook";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, ideaName, category, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_placement, utm_adset, utm_ad } = body;
+    const { email, name, phone, ideaName, category, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_placement, utm_adset, utm_ad } = body;
 
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Missing email" }, { status: 400 });
@@ -26,6 +26,10 @@ export async function POST(req: NextRequest) {
       source: source || "gtm_ideator",
       timestamp: new Date().toISOString(),
     };
+
+    // Attach name and phone if present
+    if (name) payload.name = name;
+    if (phone) payload.phone = phone;
 
     // Attach UTM params if present
     if (utm_source) payload.utm_source = utm_source;
