@@ -216,7 +216,7 @@ export default function IdeatorPage() {
 
     // Redirect to GHL booking page after a short delay
     setTimeout(() => {
-      window.location.href = "/gtm-bootcamp";
+      window.location.href = "https://fbm-studio.com/gtm-bootcamp";
     }, 2000);
   };
 
