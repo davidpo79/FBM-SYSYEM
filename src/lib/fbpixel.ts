@@ -16,12 +16,28 @@ declare global {
 }
 
 /**
- * Track a standard Facebook Pixel event.
+ * Generate a unique event ID for browser↔server deduplication.
  */
-export function fbEvent(eventName: string, params?: Record<string, unknown>) {
+export function generateEventId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+/**
+ * Track a standard Facebook Pixel event.
+ * When eventID is provided, Facebook uses it to deduplicate with server-side CAPI events.
+ */
+export function fbEvent(eventName: string, params?: Record<string, unknown>, eventID?: string) {
   if (typeof window !== "undefined" && window.fbq) {
-    if (params) {
+    const options = eventID ? { eventID } : undefined;
+    if (params && options) {
+      window.fbq("track", eventName, params, options);
+    } else if (params) {
       window.fbq("track", eventName, params);
+    } else if (options) {
+      window.fbq("track", eventName, {}, options);
     } else {
       window.fbq("track", eventName);
     }
@@ -77,7 +93,8 @@ export const fbInitiateCheckout = (contentName: string) =>
     content_type: "product",
   });
 
-export const fbPurchase = (value: number, currency = "ILS", contentName?: string, isSubscription = false) =>
+export const fbPurchase = (value: number, currency = "ILS", contentName?: string, isSubscription = false) => {
+  const eventId = generateEventId();
   fbEvent("Purchase", {
     value,
     currency,
@@ -87,7 +104,9 @@ export const fbPurchase = (value: number, currency = "ILS", contentName?: string
     content_ids: [value === 290 ? "gtm_diy" : "gtm_pro"],
     num_items: 1,
     ...(isSubscription ? { predicted_ltv: value * 6 } : {}),
-  });
+  }, eventId);
+  return eventId;
+};
 
 export const fbContact = (contentName: string) =>
   fbEvent("Contact", {

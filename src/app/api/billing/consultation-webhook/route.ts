@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { sendPurchaseEvent } from "@/lib/fb-capi";
 
 /**
  * Sumit webhook handler for consulting payments.
@@ -81,6 +82,16 @@ export async function POST(req: NextRequest) {
     } catch {
       // non-critical, ignore
     }
+
+    // Send server-side Purchase event to Facebook Conversions API
+    sendPurchaseEvent({
+      email: customerEmail,
+      value: amount || 1170,
+      currency: "ILS",
+      contentName: "Consultation Hour",
+      contentIds: ["consultation"],
+      userId: user.id,
+    }).catch((err) => console.error("fb-capi: Consultation purchase event failed:", err));
 
     console.log(`Consultation webhook: created consultation for ${user.email}`);
     return NextResponse.json({ received: true, processed: true });
