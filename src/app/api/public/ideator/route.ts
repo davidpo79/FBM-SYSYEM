@@ -1,6 +1,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { callAI } from "@/lib/ai";
 import { logApiCall } from "@/lib/api-log";
 
@@ -41,18 +42,26 @@ export async function POST(req: Request) {
     const isAdmin = admin_key === "fbm-admin-2024";
 
     if (ratelimit && !isAdmin) {
-      const forwarded = req.headers.get("x-forwarded-for");
-      const ip =
-        req.headers.get("x-real-ip") ||
-        (forwarded ? forwarded.split(",")[0].trim() : null) ||
-        "127.0.0.1";
-      const { success } = await ratelimit.limit(ip);
+      // Use per-device cookie as rate-limit key so devices on the same
+      // network each get their own 3-per-day quota.
+      const cookieStore = await cookies();
+      let deviceId = cookieStore.get("_fbm_did")?.value;
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+      }
+
+      const { success } = await ratelimit.limit(deviceId);
       if (!success) {
-        return NextResponse.json(
+        const res = NextResponse.json(
           { error: "הגעת למגבלת הרעיונות היומית. נסה שוב מחר או הירשם לבוטקאמפ!" },
           { status: 429 }
         );
+        res.cookies.set("_fbm_did", deviceId, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+        return res;
       }
+
+      // Ensure the device cookie is set on successful responses too
+      cookieStore.set("_fbm_did", deviceId, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
     }
 
     const catLabel = API_CATEGORIES[category] || category || "טכנולוגיה כללית";
