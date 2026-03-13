@@ -21,17 +21,21 @@ export async function GET(request: Request) {
         data.user.user_metadata?.name ||
         "";
 
-      if (displayName) {
+      const track = searchParams.get("track");
+      const profileData: Record<string, string> = {
+        user_id: data.user.id,
+        full_name: displayName || "",
+      };
+      if (track === "gtm") {
+        profileData.track = "gtm";
+      }
+      if (displayName || track === "gtm") {
         await supabase.from("user_profiles").upsert(
-          {
-            user_id: data.user.id,
-            full_name: displayName,
-          },
+          profileData,
           { onConflict: "user_id" },
         );
       }
 
-      const track = searchParams.get("track");
       if (track === "gtm") {
         const idea = searchParams.get("idea");
         const ideaParam = idea ? "&idea=" + encodeURIComponent(idea) : "";

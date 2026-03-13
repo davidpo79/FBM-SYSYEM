@@ -111,12 +111,16 @@ export default function AuthForm({ mode }: AuthFormProps) {
         fbLead("Signup", isGtmTrack ? "gtm" : "fbm");
         fbCompleteRegistration("email", isGtmTrack ? "gtm" : "fbm");
 
-        // Save full name to user_profiles
+        // Save full name (and track for GTM) to user_profiles
         if (data.user) {
-          await supabase.from("user_profiles").upsert({
+          const profileData: Record<string, string> = {
             user_id: data.user.id,
             full_name: fullName.trim(),
-          });
+          };
+          if (isGtmTrack) {
+            profileData.track = "gtm";
+          }
+          await supabase.from("user_profiles").upsert(profileData);
         }
 
         // Fire EVENT_USER_REGISTERED webhook for GTM signups (with UTM)
