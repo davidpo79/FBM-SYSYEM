@@ -21,15 +21,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing email" }, { status: 400 });
     }
 
+    if (!name || typeof name !== "string" || name.trim().length < 2) {
+      return NextResponse.json({ error: "Missing or invalid name" }, { status: 400 });
+    }
+
     const payload: Record<string, string> = {
       event_type: "user_registered",
       event: "EVENT_USER_REGISTERED",
       email: email.trim(),
-      full_name: (name || "").trim(),
+      full_name: name.trim(),
       user_id: user_id || "",
       registration_date: registration_date || new Date().toISOString(),
       project_id: projectId || "",
-      track: track || "gtm",
+      track: track || "fbm",
       idea_name: ideaName || "",
       timestamp: new Date().toISOString(),
     };

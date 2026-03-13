@@ -123,8 +123,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
           await supabase.from("user_profiles").upsert(profileData);
         }
 
-        // Fire EVENT_USER_REGISTERED webhook for GTM signups (with UTM)
-        if (isGtmTrack && data.user) {
+        // Fire EVENT_USER_REGISTERED webhook for all signups (with UTM)
+        if (data.user) {
           const utmData = getUTMForPayload();
           fetch("/api/webhooks/gtm-user-registered", {
             method: "POST",
@@ -134,7 +134,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               name: fullName.trim(),
               user_id: data.user.id,
               registration_date: new Date().toISOString(),
-              track: "gtm",
+              track: isGtmTrack ? "gtm" : "fbm",
               ideaName: gtmIdeaName || "",
               ...utmData,
             }),
