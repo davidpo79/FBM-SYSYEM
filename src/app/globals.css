@@ -1183,12 +1183,12 @@ input[type="range"]::-moz-range-thumb {
 
   /* ── GTM Paywall overlay — lighter blur on mobile ── */
   .gtm-paywall-overlay {
-    background: rgba(8,10,15,0.30) !important;
-    backdrop-filter: blur(2px) !important;
-    -webkit-backdrop-filter: blur(2px) !important;
+    background: rgba(8,10,15,0.55) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
   }
   .gtm-stage-locked {
-    filter: blur(2px) !important;
+    filter: blur(6px) !important;
   }
 
   /* ── GTM Pricing grid — side by side on mobile ── */
