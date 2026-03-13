@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
 import { buildGTMStrategyPrompt } from "@/lib/prompts";
 import { logApiCall } from "@/lib/api-log";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   try {
+    // Auth check: prevent unauthenticated AI credit consumption
+    const authHeader = req.headers.get("authorization");
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+      if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     const { userName, answers, gtmOnboardingData, ganttMode } = await req.json();
 
     if (!answers || typeof answers !== "object") {

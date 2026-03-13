@@ -13,7 +13,7 @@ import AudioUploader from "@/components/questionnaire/AudioUploader";
 import TranscriptionProgress from "@/components/questionnaire/TranscriptionProgress";
 import AnswerReview from "@/components/questionnaire/AnswerReview";
 import { trackEvent } from "@/lib/track-event";
-import { fbLead } from "@/lib/fbpixel";
+import { fbLead, fbCompleteRegistration, fbSetUserData } from "@/lib/fbpixel";
 
 const STORAGE_KEY = "fbm_questionnaire_progress";
 
@@ -150,6 +150,15 @@ export default function QuestionnairePage() {
       setTrack("gtm");
       setProjectMode("owner"); // GTM is always the entrepreneur themselves
 
+      // Fire CompleteRegistration pixel for Google OAuth signups
+      if (params.get("registered") === "google") {
+        fbCompleteRegistration("google", "gtm");
+        // Advanced Matching: send user email for better match rate
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user?.email) fbSetUserData(user.email);
+        });
+      }
+
       // Read idea name and pre-fill user name from URL params
       const ideaParam = params.get("idea");
       const nameParam = params.get("name");
@@ -178,22 +187,58 @@ export default function QuestionnairePage() {
       } catch { /* ignore */ }
 
       // GTM Magic: bypass mode selection AND name step — go directly to manual Question 1
-      // Use name from URL param, auth, or fallback to "יזם"
+      // Use name from URL param, auth, or Supabase profile, or fallback to "יזם"
       if (!nameParam) {
-        // Try to get name from auth/localStorage
         try {
           const savedName = localStorage.getItem("fbm_user_name");
-          if (savedName) setOwnerName(savedName);
-          else setOwnerName("יזם");
+          if (savedName) {
+            setOwnerName(savedName);
+          } else {
+            // Try fetching name from Supabase user_profiles
+            supabase.auth.getUser().then(({ data: { user } }) => {
+              if (user) {
+                supabase.from("user_profiles").select("full_name").eq("user_id", user.id).single().then(({ data: profile }) => {
+                  if (profile?.full_name && profile.full_name.trim().length > 1) {
+                    setOwnerName(profile.full_name);
+                    try { localStorage.setItem("fbm_user_name", profile.full_name); } catch { /* ignore */ }
+                  }
+                });
+              }
+            });
+            setOwnerName("יזם"); // temporary until async resolves
+          }
         } catch { setOwnerName("יזם"); }
       }
-      // Restore saved answers for GTM (but NOT flowStage — always start at manual Q1)
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const data = JSON.parse(saved);
-          if (data.answers) setAnswers((prev) => ({ ...prev, ...data.answers }));
-        } catch { /* ignore */ }
+
+      // Refine mode: load existing project answers from Supabase
+      const refineProjectId = params.get("projectId");
+      if (params.get("refine") === "true" && refineProjectId) {
+        supabase
+          .from("projects")
+          .select("answers_map, user_name, gtm_onboarding_data")
+          .eq("id", refineProjectId)
+          .single()
+          .then(({ data: proj }) => {
+            if (proj) {
+              if (proj.user_name) setOwnerName(proj.user_name);
+              if (proj.answers_map) {
+                const projAnswers = proj.answers_map as Record<string, string>;
+                setAnswers((prev) => ({ ...prev, ...projAnswers }));
+              }
+              if (proj.gtm_onboarding_data?.idea_name) {
+                setIdeaName(proj.gtm_onboarding_data.idea_name);
+              }
+            }
+          });
+      } else {
+        // Restore saved answers for GTM (but NOT flowStage — always start at manual Q1)
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          try {
+            const data = JSON.parse(saved);
+            if (data.answers) setAnswers((prev) => ({ ...prev, ...data.answers }));
+          } catch { /* ignore */ }
+        }
       }
 
       setMode("manual");
@@ -388,7 +433,7 @@ export default function QuestionnairePage() {
 
       const insertData: Record<string, unknown> = {
         user_id: user.id,
-        name: answersToUse["1"]?.slice(0, 60) || (track === "gtm" ? "GTM Project" : "פרויקט חדש"),
+        name: isGtm ? (ideaName || answersToUse["2"]?.slice(0, 60) || "GTM Project") : (answersToUse["1"]?.slice(0, 60) || "פרויקט חדש"),
         answers: answersArray,
         user_name: userName,
         answers_map: answersMap,
@@ -667,6 +712,8 @@ export default function QuestionnairePage() {
                   return;
                 }
                 setError("");
+                // Persist the name for future sessions
+                try { localStorage.setItem("fbm_user_name", ownerName.trim()); } catch { /* ignore */ }
                 if (isGtm) {
                   // GTM: bypass mode selection, go directly to manual Q1
                   setMode("manual");

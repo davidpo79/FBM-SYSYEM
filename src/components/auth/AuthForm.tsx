@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { captureUTM, getUTMForPayload } from "@/lib/utm";
-import { fbCompleteRegistration } from "@/lib/fbpixel";
+import { fbCompleteRegistration, fbSetUserData } from "@/lib/fbpixel";
 import Image from "next/image";
 
 interface AuthFormProps {
@@ -106,8 +106,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
           return;
         }
 
-        // Track registration
-        fbCompleteRegistration();
+        // Advanced Matching + registration tracking
+        fbSetUserData(email);
+        fbCompleteRegistration("email", isGtmTrack ? "gtm" : "fbm");
 
         // Save full name to user_profiles
         if (data.user) {

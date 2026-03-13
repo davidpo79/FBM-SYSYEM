@@ -7,7 +7,7 @@ import { getUTMForPayload } from "@/lib/utm";
 import PaymentModal from "@/components/PaymentModal";
 import type { CustomerDetails } from "@/components/PaymentModal";
 import { supabase } from "@/lib/supabase";
-import { fbInitiateCheckout, fbPurchase, fbBootcampApplication } from "@/lib/fbpixel";
+import { fbInitiateCheckout, fbPurchase, fbBootcampApplication, fbViewContent, fbSetUserData } from "@/lib/fbpixel";
 import { trackEvent } from "@/lib/track-event";
 
 interface GTMStrategy {
@@ -289,9 +289,14 @@ export default function GTMStrategyPage() {
   const stageNavRef = useRef<HTMLDivElement>(null);
   const paywallRef = useRef<HTMLDivElement>(null);
 
-  // Track page view
+  // Track page view + Facebook Pixel ViewContent
   useEffect(() => {
     trackEvent({ eventType: "page_view", eventName: "gtm_strategy_page", stepName: "gtm-strategy", projectId: project?.id });
+    fbViewContent("GTM Strategy", "gtm_bootcamp");
+    // Advanced Matching for better Facebook attribution
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) fbSetUserData(user.email);
+    });
   }, [project?.id]);
 
   const switchStage = (stage: StrategyStage) => {
@@ -307,11 +312,13 @@ export default function GTMStrategyPage() {
     }, 50);
   };
 
-  // Check if already purchased
+  // Check if already purchased — localStorage first, then Supabase fallback
   useEffect(() => {
+    let unlocked = false;
     try {
-      const unlocked = localStorage.getItem("gtm-marketing-unlocked");
-      if (unlocked === "true") {
+      const ls = localStorage.getItem("gtm-marketing-unlocked");
+      if (ls === "true") {
+        unlocked = true;
         setIsUnlocked(true);
         const tier = localStorage.getItem("gtm-purchased-tier") as "diy" | "pro" | null;
         if (tier) setPurchasedTier(tier);
@@ -321,6 +328,29 @@ export default function GTMStrategyPage() {
       const savedGantt = localStorage.getItem(`gtm-gantt-${project?.id}`);
       if (savedGantt) setGanttTimeline(JSON.parse(savedGantt));
     } catch { /* ignore */ }
+
+    // Supabase fallback: if localStorage says not unlocked, check user_profiles.plan
+    if (!unlocked) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return;
+        supabase
+          .from("user_profiles")
+          .select("plan")
+          .eq("user_id", user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile?.plan === "gtm_diy" || profile?.plan === "gtm_pro") {
+              setIsUnlocked(true);
+              const tier = profile.plan === "gtm_pro" ? "pro" : "diy";
+              setPurchasedTier(tier);
+              try {
+                localStorage.setItem("gtm-marketing-unlocked", "true");
+                localStorage.setItem("gtm-purchased-tier", tier);
+              } catch { /* ignore */ }
+            }
+          });
+      });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -387,7 +417,7 @@ export default function GTMStrategyPage() {
     } catch { /* ignore */ }
     // Track purchase
     const price = selectedTier === "diy" ? 290 : 99;
-    fbPurchase(price, "ILS");
+    fbPurchase(price, "ILS", `GTM ${tier.toUpperCase()} Plan`);
     trackEvent({ eventType: "step_complete", eventName: "gtm_payment_complete", stepName: "gtm-strategy", projectId: project?.id, metadata: { tier, price } });
   }, [selectedTier]);
 
