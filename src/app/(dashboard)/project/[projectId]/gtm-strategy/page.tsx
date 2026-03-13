@@ -397,8 +397,9 @@ export default function GTMStrategyPage() {
         throw new Error(json.error || "שגיאה ביצירת קישור תשלום");
       }
       setPaymentUrl(json.paymentUrl);
-    } catch {
+    } catch (e) {
       setShowPayment(false);
+      setError(e instanceof Error ? e.message : "שגיאה ביצירת קישור תשלום. נסה שוב.");
     } finally {
       setPaymentLoading(false);
     }
@@ -448,9 +449,13 @@ export default function GTMStrategyPage() {
     if (!project || !strategy) return;
     setGanttGenerating(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/generate-gtm-strategy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           userName: project.user_name,
           answers: project.answers_map,
@@ -530,9 +535,13 @@ export default function GTMStrategyPage() {
     setIsGenerating(true);
     setError("");
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/generate-gtm-strategy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           userName: project.user_name,
           answers: project.answers_map,
