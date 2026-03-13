@@ -213,6 +213,11 @@ export default function IdeatorPage() {
     }).catch(() => { /* fire and forget */ });
 
     setRateLimitSubmitted(true);
+
+    // Redirect to GHL booking page after a short delay
+    setTimeout(() => {
+      window.location.href = "/gtm-bootcamp";
+    }, 2000);
   };
 
   const handleInlineSubmit = (idea: IdeaResult) => {
