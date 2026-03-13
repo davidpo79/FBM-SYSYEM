@@ -1015,6 +1015,7 @@ export default function GTMStrategyPage() {
         <BootcampModal
           userName={project?.user_name || ""}
           paymentLevel={purchasedTier}
+          ideaContext={strategy ? `${strategy.positioning?.oneliner || ""} | ICP: ${strategy.icp?.persona_name || ""}` : ""}
           onClose={() => setShowBootcampModal(false)}
         />
       )}
@@ -1113,7 +1114,7 @@ function GanttChart({ timeline }: { timeline: GanttTimeline }) {
 
 /* ──── Bootcamp Application Modal ──── */
 
-function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; paymentLevel?: "diy" | "pro" | null; onClose: () => void }) {
+function BootcampModal({ userName, paymentLevel, ideaContext, onClose }: { userName: string; paymentLevel?: "diy" | "pro" | null; ideaContext?: string; onClose: () => void }) {
   const [name, setName] = useState(userName);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -1146,6 +1147,7 @@ function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; 
           email: email.trim(),
           phone: phone.trim(),
           source: "gtm-strategy-page",
+          idea_context: ideaContext || "",
           payment_level: paymentLevel || "free",
           ...getUTMForPayload(),
         }),

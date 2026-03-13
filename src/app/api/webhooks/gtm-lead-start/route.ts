@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendGhlWebhook } from "@/lib/ghl-webhook";
 
 /**
  * EVENT_LEAD_START — Abandonment recovery webhook
@@ -6,8 +7,6 @@ import { NextRequest, NextResponse } from "next/server";
  * Sends data to GoHighLevel CRM for follow-up sequences.
  * Includes UTM attribution parameters.
  */
-
-const GHL_WEBHOOK_URL = process.env.NEXT_PUBLIC_GHL_WEBHOOK_URL || "";
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,18 +37,12 @@ export async function POST(req: NextRequest) {
     if (utm_adset) payload.utm_adset = utm_adset;
     if (utm_ad) payload.utm_ad = utm_ad;
 
-    // Fire and forget to GHL webhook
-    if (GHL_WEBHOOK_URL) {
-      fetch(GHL_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }).catch((err) => console.error("GHL EVENT_LEAD_START webhook failed:", err));
-    }
+    // Await GHL webhook delivery (critical for serverless)
+    const ghl = await sendGhlWebhook("EVENT_LEAD_START", payload);
 
-    console.log("EVENT_LEAD_START:", payload);
+    console.log("EVENT_LEAD_START:", { email: payload.email, ghl_sent: ghl.sent, ghl_status: ghl.status });
 
-    return NextResponse.json({ success: true, event: "EVENT_LEAD_START" });
+    return NextResponse.json({ success: true, event: "EVENT_LEAD_START", ghl_delivered: ghl.sent });
   } catch (error: unknown) {
     console.error("gtm-lead-start error:", error);
     return NextResponse.json(
