@@ -6,7 +6,7 @@ export default function PaymentCompletePage() {
   useEffect(() => {
     // Notify parent window (PaymentModal iframe) that payment is done
     if (window.parent !== window) {
-      window.parent.postMessage("payment-complete", "*");
+      window.parent.postMessage("payment-complete", window.location.origin);
     }
   }, []);
 

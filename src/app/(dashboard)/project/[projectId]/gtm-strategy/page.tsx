@@ -376,6 +376,7 @@ export default function GTMStrategyPage() {
 
   const handlePaymentSubmit = async (details: CustomerDetails) => {
     setPaymentLoading(true);
+    setError("");
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
@@ -420,7 +421,7 @@ export default function GTMStrategyPage() {
     const price = selectedTier === "diy" ? 290 : 99;
     fbPurchase(price, "ILS", `GTM ${tier.toUpperCase()} Plan`);
     trackEvent({ eventType: "step_complete", eventName: "gtm_payment_complete", stepName: "gtm-strategy", projectId: project?.id, metadata: { tier, price } });
-  }, [selectedTier]);
+  }, [selectedTier, project?.id]);
 
   const handlePaymentClose = useCallback(() => {
     setShowPayment(false);
@@ -1178,7 +1179,7 @@ function BootcampModal({ userName, paymentLevel, ideaContext, onClose }: { userN
     setSubmitting(true);
     setError("");
     try {
-      await fetch("/api/webhooks/bootcamp-apply", {
+      const res = await fetch("/api/webhooks/bootcamp-apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1191,6 +1192,10 @@ function BootcampModal({ userName, paymentLevel, ideaContext, onClose }: { userN
           ...getUTMForPayload(),
         }),
       });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "שגיאה בשליחת הבקשה");
+      }
       setSubmitted(true);
       fbBootcampApplication("Bootcamp Application");
       trackEvent({ eventType: "step_complete", eventName: "gtm_bootcamp_applied", stepName: "gtm-strategy", metadata: { paymentLevel: paymentLevel || "free" } });
