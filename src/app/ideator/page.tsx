@@ -5,6 +5,7 @@ import { RefreshCw } from "lucide-react";
 import { captureUTM, getUTMForPayload } from "@/lib/utm";
 import { fbLead, fbViewContent } from "@/lib/fbpixel";
 import { trackEvent } from "@/lib/track-event";
+import { validateEmail } from "@/lib/validation";
 
 /* ── Brainstorm particles config ── */
 const BINARY_SNIPPETS = ["01", "10", "001", "110", "0101", "1010", "{ }", "< >", "=>", "AI", "//", "&&", "$$", "**"];
@@ -220,8 +221,16 @@ export default function IdeatorPage() {
     }, 2000);
   };
 
+  const [formEmailError, setFormEmailError] = useState("");
+
   const handleInlineSubmit = (idea: IdeaResult) => {
     if (!formEmail.trim()) return;
+    const emailCheck = validateEmail(formEmail);
+    if (!emailCheck.valid) {
+      setFormEmailError(emailCheck.error!);
+      return;
+    }
+    setFormEmailError("");
     fbLead("Ideator Entry");
     trackEvent({ eventType: "step_complete", eventName: "ideator_lead_submitted", stepName: "ideator", metadata: { ideaName: idea.name, category: selectedCategory } });
     try {
@@ -980,7 +989,7 @@ export default function IdeatorPage() {
                               <input
                                 type="email"
                                 value={formEmail}
-                                onChange={(e) => setFormEmail(e.target.value)}
+                                onChange={(e) => { setFormEmail(e.target.value); if (formEmailError) setFormEmailError(""); }}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" && formEmail.trim()) handleInlineSubmit(idea);
                                 }}
@@ -1019,6 +1028,9 @@ export default function IdeatorPage() {
                                 צור לי תוכנית עסקית ושיווקית
                               </button>
                             </div>
+                            {formEmailError && (
+                              <p style={{ color: "#FF6B6B", fontSize: 13, marginTop: 6, textAlign: "right" }}>{formEmailError}</p>
+                            )}
                             {/* Animated Stepper */}
                             <div className="flex items-center justify-center gap-0 mt-4" dir="rtl">
                               {/* Step 1 - Completed */}

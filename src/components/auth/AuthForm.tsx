@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { captureUTM, getUTMForPayload } from "@/lib/utm";
 import { fbCompleteRegistration, fbLead, fbSetUserData } from "@/lib/fbpixel";
+import { validateEmail } from "@/lib/validation";
 import Image from "next/image";
 
 interface AuthFormProps {
@@ -75,6 +76,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
     if (!isLogin && fullName.trim().length < 2) {
       setError("נא להזין שם מלא");
+      return;
+    }
+
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.valid) {
+      setError(emailCheck.error!);
       return;
     }
 
@@ -184,8 +191,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError("");
-    if (!forgotEmail.trim()) {
-      setForgotError("נא להזין כתובת אימייל");
+    const forgotEmailCheck = validateEmail(forgotEmail);
+    if (!forgotEmailCheck.valid) {
+      setForgotError(forgotEmailCheck.error!);
       return;
     }
     setForgotLoading(true);

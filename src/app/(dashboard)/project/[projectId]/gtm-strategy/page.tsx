@@ -9,6 +9,7 @@ import type { CustomerDetails } from "@/components/PaymentModal";
 import { supabase } from "@/lib/supabase";
 import { fbInitiateCheckout, fbPurchase, fbBootcampApplication, fbViewContent, fbSetUserData } from "@/lib/fbpixel";
 import { trackEvent } from "@/lib/track-event";
+import { validateEmail } from "@/lib/validation";
 
 interface GTMStrategy {
   icp: {
@@ -1173,6 +1174,13 @@ function BootcampModal({ userName, paymentLevel, ideaContext, onClose }: { userN
   }, []);
 
   const handleSubmit = async () => {
+    if (email.trim()) {
+      const emailCheck = validateEmail(email);
+      if (!emailCheck.valid) {
+        setError(emailCheck.error!);
+        return;
+      }
+    }
     if (!phone.trim() || phone.trim().length < 9) {
       setError("נא להזין מספר טלפון תקין");
       return;
