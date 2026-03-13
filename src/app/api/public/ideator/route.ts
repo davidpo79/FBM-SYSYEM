@@ -41,7 +41,11 @@ export async function POST(req: Request) {
     const isAdmin = admin_key === "fbm-admin-2024";
 
     if (ratelimit && !isAdmin) {
-      const ip = req.headers.get("x-forwarded-for") ?? "127.0.0.1";
+      const forwarded = req.headers.get("x-forwarded-for");
+      const ip =
+        req.headers.get("x-real-ip") ||
+        (forwarded ? forwarded.split(",")[0].trim() : null) ||
+        "127.0.0.1";
       const { success } = await ratelimit.limit(ip);
       if (!success) {
         return NextResponse.json(
