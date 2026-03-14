@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { getFBMExpertSystemPrompt } from "@/lib/fbm-expert-prompt";
 import { logApiCall } from "@/lib/api-log";
+import { findRelevantContext } from "@/lib/embeddings";
 
 let _ai: GoogleGenAI | null = null;
 function getAI() { return (_ai ??= new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! })); }
@@ -10,7 +11,28 @@ export async function POST(req: Request) {
   try {
     const { message, history, context } = await req.json();
 
-    const systemPrompt = getFBMExpertSystemPrompt(context);
+    // Use Gemini Embeddings to find the most relevant context sections
+    let embeddingContext = "";
+    if (context) {
+      const docs: { name: string; content: string }[] = [];
+      if (context.strategyDoc) docs.push({ name: "strategy", content: context.strategyDoc });
+      if (context.niches) docs.push({ name: "niches", content: context.niches });
+      if (context.pains) docs.push({ name: "pains", content: context.pains });
+      if (context.scripts) docs.push({ name: "scripts", content: context.scripts });
+
+      if (docs.length > 0) {
+        try {
+          const { context: relevantCtx } = await findRelevantContext(message, docs, 5);
+          if (relevantCtx) {
+            embeddingContext = `\n\n=== הקשר סמנטי רלוונטי (נמצא באמצעות Gemini Embedding) ===\n${relevantCtx}\n===`;
+          }
+        } catch (e) {
+          console.warn("Embedding context search failed, falling back to standard context:", e instanceof Error ? e.message : e);
+        }
+      }
+    }
+
+    const systemPrompt = getFBMExpertSystemPrompt(context) + embeddingContext;
 
     // Build chat history (last 20 messages)
     const chatHistory = (history || [])
