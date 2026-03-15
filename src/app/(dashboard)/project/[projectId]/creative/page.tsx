@@ -372,7 +372,7 @@ function CreativeChatModal({
                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
                   msg.role === "user"
                     ? "bg-[var(--gold)] text-white rounded-br-none"
-                    : "bg-gray-100 dark:bg-gray-800 text-[var(--text-primary)] rounded-bl-none"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-none"
                 }`}
                 style={{ userSelect: "text" }}
               >
@@ -447,7 +447,7 @@ function CreativeChatModal({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="שאל את המומחה..."
-            className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-transparent text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+            className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
           />
           <button
             onClick={handleSend}
@@ -501,13 +501,30 @@ export default function CreativePage() {
   } = useProject();
 
   const [creativeError, setCreativeError] = useState("");
-  const [scriptCreatives, setScriptCreatives] = useState<Record<number, ScriptCreative>>({});
+  const creativesStorageKey = `creatives_${projectId}`;
+  const [scriptCreatives, setScriptCreatives] = useState<Record<number, ScriptCreative>>(() => {
+    try {
+      const saved = localStorage.getItem(creativesStorageKey);
+      return saved ? (JSON.parse(saved) as Record<number, ScriptCreative>) : {};
+    } catch { return {}; }
+  });
   const [isGeneratingBg, setIsGeneratingBg] = useState<Record<number, boolean>>({});
   const [chatOpen, setChatOpen] = useState<number | null>(null);
   const [chatMessages, setChatMessages] = useState<Record<number, ChatMessage[]>>({});
   const [advancedOpen, setAdvancedOpen] = useState<Record<number, boolean>>({});
   const autoCreatedRef = useRef(false);
   const toast = useToast();
+
+  // Persist scriptCreatives to localStorage
+  useEffect(() => {
+    // Only save when there are actual creatives (avoid overwriting with empty on mount race)
+    if (Object.keys(scriptCreatives).length === 0) return;
+    try {
+      localStorage.setItem(creativesStorageKey, JSON.stringify(scriptCreatives));
+    } catch (e) {
+      console.error("Failed to save creatives to localStorage:", e);
+    }
+  }, [scriptCreatives, creativesStorageKey]);
 
   // Track page view
   useEffect(() => {
