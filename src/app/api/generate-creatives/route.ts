@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateImage } from "@/lib/gemini";
+import { generateSceneImage } from "@/lib/fal";
 import { supabase } from "@/lib/supabase";
 import { logApiCall } from "@/lib/api-log";
 import type { CreativeConfig, CreativeResponse } from "@/types";
@@ -29,6 +30,8 @@ export async function POST(req: NextRequest) {
     const { background, format } = body as CreativeConfig;
     const designVision: string | undefined = body.designVision;
     const imagePrompt: string | undefined = body.imagePrompt;
+    const referenceImageUrl: string | undefined = body.referenceImageUrl;
+    const useFlux: boolean = body.useFlux === true;
 
     if (!background) {
       return NextResponse.json(
@@ -93,9 +96,27 @@ WHAT TO INCLUDE:
 This should look like it was shot by a professional photographer and color graded by a Hollywood colorist.
 Remember: ZERO TEXT on the image. Pure background only.`;
 
-    // Gemini generates the background image (no text!)
-    const geminiAspectRatio = fmt === "story" ? "9:16" : "1:1";
-    const { base64: rawBase64, mimeType } = await generateImage(prompt, geminiAspectRatio);
+    // Generate background image: FLUX (with reference image) or Gemini (text-only)
+    const aspectRatio = fmt === "story" ? "9:16" : "1:1";
+    let rawBase64: string;
+    let mimeType: string;
+
+    if ((useFlux || referenceImageUrl) && process.env.FAL_KEY) {
+      // Use FLUX for image generation (with optional reference/product image)
+      const fluxPrompt = `${sceneDescription}. Professional advertising background, cinematic lighting, photorealistic, no text or watermarks.`;
+      const result = await generateSceneImage(
+        fluxPrompt,
+        referenceImageUrl,
+        aspectRatio as "16:9" | "9:16" | "1:1",
+      );
+      rawBase64 = result.base64;
+      mimeType = result.mimeType;
+    } else {
+      // Fallback to Gemini
+      const result = await generateImage(prompt, aspectRatio);
+      rawBase64 = result.base64;
+      mimeType = result.mimeType;
+    }
 
     const imageBase64 = rawBase64;
 

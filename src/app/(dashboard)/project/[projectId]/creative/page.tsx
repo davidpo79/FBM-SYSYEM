@@ -475,6 +475,7 @@ interface ScriptCreative {
   format: FormatType;
   customBackground?: string;
   designVision?: string;
+  referenceImageUrl?: string; // Product/website image URL for FLUX image-to-image
   showHeadline: boolean;
   showSubtitle: boolean;
   showCta: boolean;
@@ -755,7 +756,7 @@ export default function CreativePage() {
 
   /* ── Generate AI background ── */
   const handleGenerateBackground = useCallback(
-    async (config: { background: string; format?: string; designVision?: string; imagePrompt?: string }, scriptIdx: number) => {
+    async (config: { background: string; format?: string; designVision?: string; imagePrompt?: string; referenceImageUrl?: string }, scriptIdx: number) => {
       setCreativeError("");
       try {
         const creative = getCreative(scriptIdx);
@@ -765,6 +766,8 @@ export default function CreativePage() {
           body: JSON.stringify({
             ...config,
             imagePrompt: config.imagePrompt || creative.suggestion?.image_prompt,
+            referenceImageUrl: config.referenceImageUrl || creative.referenceImageUrl,
+            useFlux: !!(config.referenceImageUrl || creative.referenceImageUrl),
           }),
         });
         const text = await res.text();
@@ -1245,6 +1248,38 @@ export default function CreativePage() {
                         </p>
                       </div>
 
+                      {/* Reference Image URL — FLUX image-to-image */}
+                      <div>
+                        <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+                          תמונת מוצר מהאתר (FLUX)
+                        </label>
+                        <input
+                          type="url"
+                          value={creative.referenceImageUrl || ""}
+                          onChange={(e) => updateField(idx, "referenceImageUrl", e.target.value)}
+                          placeholder="הדבק URL של תמונת מוצר מהאתר שלך..."
+                          className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
+                          dir="ltr"
+                        />
+                        {creative.referenceImageUrl && (
+                          <div className="mt-2 flex items-center gap-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={creative.referenceImageUrl}
+                              alt="תמונת מוצר"
+                              className="w-12 h-12 rounded-lg object-cover border border-[var(--card-border)]"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            />
+                            <p className="text-[10px] text-[var(--gold)]">
+                              FLUX ייצור רקע מבוסס על תמונת המוצר הזו
+                            </p>
+                          </div>
+                        )}
+                        <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                          הדבק קישור לתמונת מוצר — FLUX ייצור תמונה על בסיס המוצר שלך (במקום תמונה אקראית)
+                        </p>
+                      </div>
+
                       {/* Generate AI Background */}
                       <button
                         onClick={async () => {
@@ -1257,6 +1292,7 @@ export default function CreativePage() {
                               imagePrompt: creative.designVision
                                 ? creative.designVision
                                 : (creative.suggestion?.image_prompt || ""),
+                              referenceImageUrl: creative.referenceImageUrl,
                             }, idx);
                           } finally {
                             setIsGeneratingBg(prev => ({ ...prev, [idx]: false }));
@@ -1269,15 +1305,21 @@ export default function CreativePage() {
                             ? '#6B7084'
                             : creative.customBackground
                               ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                              : 'linear-gradient(135deg, #22C55E 0%, #16a34a 100%)',
-                          boxShadow: isGeneratingBg[idx] ? 'none' : '0 4px 16px rgba(34,197,94,0.3)',
+                              : creative.referenceImageUrl
+                                ? 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)'
+                                : 'linear-gradient(135deg, #22C55E 0%, #16a34a 100%)',
+                          boxShadow: isGeneratingBg[idx] ? 'none' : creative.referenceImageUrl
+                            ? '0 4px 16px rgba(139,92,246,0.3)'
+                            : '0 4px 16px rgba(34,197,94,0.3)',
                         }}
                       >
                         {isGeneratingBg[idx]
                           ? '⏳ יוצר רקע AI... (~15 שניות)'
-                          : creative.customBackground
-                            ? '🔄 צור רקע מחדש (1 credit)'
-                            : '✨ צור רקע AI (1 credit)'}
+                          : creative.referenceImageUrl
+                            ? (creative.customBackground ? '🔄 צור מחדש עם FLUX (תמונת מוצר)' : '🎨 צור רקע FLUX (תמונת מוצר)')
+                            : creative.customBackground
+                              ? '🔄 צור רקע מחדש (1 credit)'
+                              : '✨ צור רקע AI (1 credit)'}
                       </button>
 
                       {/* Upload custom background + Remove background */}
