@@ -707,12 +707,17 @@ export default function CreativePage() {
   useEffect(() => {
     if (!scripts || autoCreatedRef.current) return;
     const parts = splitScripts(scripts);
-    if (parts.length > 0 && !scriptCreatives[0]) {
+    // Only auto-create if there's NO saved creative data at all (avoid overwriting user's work)
+    const hasSavedCreatives = Object.keys(scriptCreatives).length > 0;
+    if (parts.length > 0 && !hasSavedCreatives) {
       autoCreatedRef.current = true;
       // Silently handle failure — don't show error banner on auto-create
       handleCreateCreative(0, true).catch(() => {
         setCreativeError("");
       });
+    } else {
+      // Mark as already created so we don't re-check
+      autoCreatedRef.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scripts]);

@@ -25,7 +25,15 @@ export default function CopyPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { project, scripts, selectedNiche, setAdCopy } = useProject();
 
-  const [copies, setCopies] = useState<Record<number, string>>({});
+  const copiesStorageKey = `copy_copies_${projectId}`;
+  const chatbotStorageKey = `copy_chatbot_${projectId}`;
+
+  const [copies, setCopies] = useState<Record<number, string>>(() => {
+    try {
+      const saved = localStorage.getItem(copiesStorageKey);
+      return saved ? (JSON.parse(saved) as Record<number, string>) : {};
+    } catch { return {}; }
+  });
   const [generating, setGenerating] = useState<Record<number, boolean>>({});
   const [editing, setEditing] = useState<Record<number, boolean>>({});
   const [editText, setEditText] = useState<Record<number, string>>({});
@@ -38,11 +46,58 @@ export default function CopyPage() {
   const toast = useToast();
 
   // Chatbot state
-  const [ownerGender, setOwnerGender] = useState<OwnerGender>("male");
-  const [audienceGender, setAudienceGender] = useState<AudienceGender>("all");
-  const [chatbot, setChatbot] = useState<ChatbotResult | null>(null);
+  const [ownerGender, setOwnerGender] = useState<OwnerGender>(() => {
+    try {
+      const saved = localStorage.getItem(chatbotStorageKey);
+      if (saved) { const d = JSON.parse(saved); return d.ownerGender || "male"; }
+    } catch { /* ignore */ }
+    return "male";
+  });
+  const [audienceGender, setAudienceGender] = useState<AudienceGender>(() => {
+    try {
+      const saved = localStorage.getItem(chatbotStorageKey);
+      if (saved) { const d = JSON.parse(saved); return d.audienceGender || "all"; }
+    } catch { /* ignore */ }
+    return "all";
+  });
+  const [chatbot, setChatbot] = useState<ChatbotResult | null>(() => {
+    try {
+      const saved = localStorage.getItem(chatbotStorageKey);
+      if (saved) { const d = JSON.parse(saved); return d.chatbot || null; }
+    } catch { /* ignore */ }
+    return null;
+  });
   const [chatbotGenerating, setChatbotGenerating] = useState(false);
   const [chatbotCopied, setChatbotCopied] = useState<Record<string, boolean>>({});
+
+  // Persist copies to localStorage
+  useEffect(() => {
+    if (Object.keys(copies).length === 0) return;
+    try {
+      localStorage.setItem(copiesStorageKey, JSON.stringify(copies));
+    } catch (e) {
+      console.error("Failed to save copies to localStorage:", e);
+    }
+  }, [copies, copiesStorageKey]);
+
+  // Persist chatbot state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(chatbotStorageKey, JSON.stringify({ ownerGender, audienceGender, chatbot }));
+    } catch (e) {
+      console.error("Failed to save chatbot to localStorage:", e);
+    }
+  }, [ownerGender, audienceGender, chatbot, chatbotStorageKey]);
+
+  // Sync restored copies to global adCopy context (so pipeline stepper marks copy as complete)
+  useEffect(() => {
+    const keys = Object.keys(copies);
+    if (keys.length > 0) {
+      const lastCopy = copies[Number(keys[keys.length - 1])];
+      if (lastCopy) setAdCopy(lastCopy);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only on mount — sync restored data
 
   // Track page view
   useEffect(() => {

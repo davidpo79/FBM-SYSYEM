@@ -257,11 +257,12 @@ export default function ProjectLayout({
         selectedNiche,
         painAnalysis,
         scripts,
-        // Save URLs; keep base64 only when URL is missing (upload failed fallback)
+        // Save both URL and base64 to localStorage for reliable persistence
+        // base64 ensures images survive URL expiration
         generatedImages: generatedImages.map(({ url, base64, scriptIdx }) => ({
           url,
           scriptIdx,
-          ...((!url && base64) ? { base64 } : {}),
+          ...(base64 ? { base64 } : {}),
         })),
         adCopy,
         versionHistory,
