@@ -310,7 +310,7 @@ export default function DashboardLayout({
             {billingPlan !== "trial" && billingPlan !== "expired" && <NotificationBell />}
           </div>
         )}
-        <main className={isGtmQuestionnaire ? "p-4 lg:p-8 min-h-screen" : "p-4 lg:p-8 min-h-screen pb-24 lg:pb-8"}>
+        <main className={isGtmQuestionnaire ? "px-2 py-1 h-[100dvh]" : "p-4 lg:p-8 min-h-screen pb-24 lg:pb-8"}>
           {/* Trial warning banner (3 days or less remaining) — not shown for GTM questionnaire */}
           {!isGtmQuestionnaire && shouldShowTrialBanner(billingPlan, billingDaysLeft) && (
             <TrialBanner

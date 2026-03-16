@@ -574,7 +574,7 @@ export default function QuestionnairePage() {
   const progress = getProgress();
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className={`max-w-2xl mx-auto ${isGtm && flowStage === "manual" ? "gtm-no-scroll h-full flex flex-col overflow-hidden" : ""}`}>
       <StepIndicator current={progress.current} total={progress.total} label={progress.label} track={track} ideaName={ideaName} />
 
       {/* ─── Step: Project Mode ─── */}
@@ -1161,7 +1161,7 @@ export default function QuestionnairePage() {
       {/* ─── Manual / Record mode — question-by-question ─── */}
       {flowStage === "manual" && currentQuestion && (
         <>
-          <div className="questionnaire-card-stable">
+          <div className={`questionnaire-card-stable ${isGtm ? "flex flex-col flex-1 min-h-0" : ""}`}>
             {mode === "record" ? (
               <QuestionRecordCard
                 key={currentQuestion.id}
@@ -1186,10 +1186,10 @@ export default function QuestionnairePage() {
           </div>
 
           {/* Spacer so sticky bar doesn't cover content */}
-          <div className="h-20 sm:h-6" />
+          {!isGtm && <div className="h-20 sm:h-6" />}
 
-          <div className={`questionnaire-nav-bar flex items-center justify-between ${
-            isGtm ? "questionnaire-nav-bar-gtm" : ""
+          <div className={`flex items-center justify-between ${
+            isGtm ? "py-2 flex-shrink-0" : "questionnaire-nav-bar"
           }`}>
             <button
               type="button"

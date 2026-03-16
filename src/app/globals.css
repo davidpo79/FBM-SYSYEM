@@ -1318,6 +1318,11 @@ input[type="range"]::-moz-range-thumb {
     overflow-anchor: none;
   }
 
+  /* GTM: allow textarea to shrink to fit viewport */
+  .gtm-no-scroll .questionnaire-textarea {
+    min-height: 80px;
+  }
+
   /* ── Prevent Chrome mobile keyboard from resizing layout ── */
   html {
     overflow-anchor: auto;
