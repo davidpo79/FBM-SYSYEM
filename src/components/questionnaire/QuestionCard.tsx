@@ -26,6 +26,17 @@ export default function QuestionCard({
   const [magicData, setMagicData] = useState<Record<string, string> | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
+  // Scroll to textarea after AI fills it to prevent button from jumping away
+  const scrollToTextarea = useCallback(() => {
+    // Small delay to let the DOM update with new content
+    setTimeout(() => {
+      const el = document.querySelector<HTMLTextAreaElement>(".questionnaire-textarea");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
+  }, []);
+
   // Check if ideator data is available for magic fill
   useEffect(() => {
     if (!isGtm) return;
@@ -70,13 +81,14 @@ export default function QuestionCard({
       const json = await res.json();
       if (json.answer) {
         onChange(json.answer);
+        scrollToTextarea();
       }
     } catch {
       /* ignore */
     } finally {
       setAiLoading(false);
     }
-  }, [question.id, question.title, question.text, ideaName, allAnswers, onChange]);
+  }, [question.id, question.title, question.text, ideaName, allAnswers, onChange, scrollToTextarea]);
 
   const canMagicFill = isGtm && magicFillAvailable && magicData?.[question.id] && (!value || value.length < 5);
 
@@ -192,7 +204,7 @@ export default function QuestionCard({
         onChange={(e) => onChange(e.target.value)}
         placeholder="הקלד/י את התשובה כאן..."
         rows={isGtm ? 6 : 5}
-        className={`w-full rounded-xl border px-4 py-3 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 transition-colors ${
+        className={`questionnaire-textarea w-full rounded-xl border px-4 py-3 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 transition-colors ${
           isGtm
             ? error
               ? "border-red-400 focus:ring-red-400 bg-[#161D2B] text-[#F0F6FF] text-lg"

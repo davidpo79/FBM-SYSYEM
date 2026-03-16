@@ -1161,29 +1161,36 @@ export default function QuestionnairePage() {
       {/* ─── Manual / Record mode — question-by-question ─── */}
       {flowStage === "manual" && currentQuestion && (
         <>
-          {mode === "record" ? (
-            <QuestionRecordCard
-              key={currentQuestion.id}
-              question={currentQuestion}
-              value={currentAnswer}
-              onChange={handleAnswerChange}
-              error={error}
-              track={track}
-            />
-          ) : (
-            <QuestionCard
-              key={currentQuestion.id}
-              question={currentQuestion}
-              value={currentAnswer}
-              onChange={handleAnswerChange}
-              error={error}
-              track={track}
-              ideaName={ideaName}
-              allAnswers={answers}
-            />
-          )}
+          <div className="questionnaire-card-stable">
+            {mode === "record" ? (
+              <QuestionRecordCard
+                key={currentQuestion.id}
+                question={currentQuestion}
+                value={currentAnswer}
+                onChange={handleAnswerChange}
+                error={error}
+                track={track}
+              />
+            ) : (
+              <QuestionCard
+                key={currentQuestion.id}
+                question={currentQuestion}
+                value={currentAnswer}
+                onChange={handleAnswerChange}
+                error={error}
+                track={track}
+                ideaName={ideaName}
+                allAnswers={answers}
+              />
+            )}
+          </div>
 
-          <div className="flex items-center justify-between mt-6">
+          {/* Spacer so sticky bar doesn't cover content */}
+          <div className="h-20 sm:h-6" />
+
+          <div className={`questionnaire-nav-bar flex items-center justify-between ${
+            isGtm ? "questionnaire-nav-bar-gtm" : ""
+          }`}>
             <button
               type="button"
               onClick={handleManualPrev}
