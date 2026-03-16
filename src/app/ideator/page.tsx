@@ -200,6 +200,7 @@ export default function IdeatorPage() {
     trackEvent({ eventType: "step_complete", eventName: "ideator_rate_limit_lead", stepName: "ideator", metadata: { name: rateLimitName, phone: rateLimitPhone, email: rateLimitEmail, category: selectedCategory, market } });
 
     // Send lead to GHL webhook (EVENT_BOOTCAMP_APPLICATION)
+    // Use keepalive so the request survives page navigation
     fetch("/api/webhooks/bootcamp-apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -211,7 +212,8 @@ export default function IdeatorPage() {
         source: "ideator_rate_limit",
         ...getUTMForPayload(),
       }),
-    }).catch(() => { /* fire and forget */ });
+      keepalive: true,
+    }).catch(() => { /* best-effort */ });
 
     setRateLimitSubmitted(true);
 
@@ -243,6 +245,7 @@ export default function IdeatorPage() {
     } catch { /* ignore */ }
 
     // EVENT_LEAD_START: fire abandonment recovery webhook with UTM
+    // Use keepalive so the request survives page navigation
     fetch("/api/webhooks/gtm-lead-start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -253,7 +256,8 @@ export default function IdeatorPage() {
         source: "gtm_ideator",
         ...getUTMForPayload(),
       }),
-    }).catch(() => { /* fire and forget */ });
+      keepalive: true,
+    }).catch(() => { /* best-effort */ });
 
     const encodedEmail = encodeURIComponent(formEmail.trim());
     const encodedIdea = encodeURIComponent(idea.name);

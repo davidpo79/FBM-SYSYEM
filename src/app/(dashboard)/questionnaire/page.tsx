@@ -509,7 +509,8 @@ export default function QuestionnairePage() {
           ideaName: isGtm ? (ideaName || answersToUse["2"]?.slice(0, 120) || "") : undefined,
           ...getUTMForPayload(),
         }),
-      }).catch(() => { /* fire and forget */ });
+        keepalive: true,
+      }).catch(() => { /* best-effort */ });
 
       // Token users see booking after questionnaire
       if (isTokenUser) {

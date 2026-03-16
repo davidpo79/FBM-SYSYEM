@@ -145,7 +145,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
               ideaName: gtmIdeaName || "",
               ...utmData,
             }),
-          }).catch(() => { /* fire and forget */ });
+            keepalive: true,
+          }).catch(() => { /* best-effort */ });
         }
 
         // If session exists, user is immediately logged in (no email confirmation needed)
