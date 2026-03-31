@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { validateEmail } from "@/lib/validation";
 
 interface InviteStudentModalProps {
   isOpen: boolean;
@@ -22,6 +23,14 @@ export default function InviteStudentModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentName.trim()) return;
+
+    if (studentEmail.trim()) {
+      const emailCheck = validateEmail(studentEmail);
+      if (!emailCheck.valid) {
+        setError(emailCheck.error!);
+        return;
+      }
+    }
 
     setIsLoading(true);
     setError("");

@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS api_logs (
 CREATE INDEX IF NOT EXISTS idx_api_logs_user ON api_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_api_logs_created ON api_logs(created_at);
 ALTER TABLE api_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Service role can manage api_logs" ON api_logs FOR ALL USING (true);
+CREATE POLICY "Service role can manage api_logs" ON api_logs FOR ALL USING (auth.role() = 'service_role');
 
 -- 5. Notifications
 CREATE TABLE IF NOT EXISTS admin_notifications (
@@ -86,7 +86,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON admin_notifications(user_id
 ALTER TABLE admin_notifications ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can read own notifications" ON admin_notifications FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update own notifications" ON admin_notifications FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Service role can insert notifications" ON admin_notifications FOR INSERT USING (true);
+CREATE POLICY "Service role can insert notifications" ON admin_notifications FOR INSERT WITH CHECK (auth.role() = 'service_role');
 
 -- 6. Consultations (one-time consulting sessions)
 CREATE TABLE IF NOT EXISTS consultations (
@@ -105,7 +105,7 @@ ALTER TABLE consultations ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can read own consultations" ON consultations
   FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Service role can manage consultations" ON consultations
-  FOR ALL USING (true);
+  FOR ALL USING (auth.role() = 'service_role');
 
 -- 7. Improvement suggestions
 CREATE TABLE IF NOT EXISTS improvement_suggestions (
@@ -119,8 +119,8 @@ CREATE TABLE IF NOT EXISTS improvement_suggestions (
 );
 CREATE INDEX IF NOT EXISTS idx_suggestions_user ON improvement_suggestions(user_id);
 ALTER TABLE improvement_suggestions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage own suggestions" ON improvement_suggestions FOR ALL USING (true);
-CREATE POLICY "Service role full access suggestions" ON improvement_suggestions FOR ALL USING (true);
+CREATE POLICY "Users can manage own suggestions" ON improvement_suggestions FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Service role full access suggestions" ON improvement_suggestions FOR ALL USING (auth.role() = 'service_role');
 
 -- 8. Video projects (video creator feature)
 CREATE TABLE IF NOT EXISTS video_projects (
@@ -137,7 +137,14 @@ CREATE TABLE IF NOT EXISTS video_projects (
 );
 CREATE INDEX IF NOT EXISTS idx_video_projects_project ON video_projects(project_id);
 ALTER TABLE video_projects ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage own video projects" ON video_projects FOR ALL USING (true);
+CREATE POLICY "Users can manage own video projects" ON video_projects FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM projects
+      WHERE projects.id = video_projects.project_id
+        AND projects.user_id = auth.uid()
+    )
+  );
 
 -- 9. Feedback logs (tracks user feedback on generated content)
 CREATE TABLE IF NOT EXISTS feedback_logs (
@@ -151,4 +158,4 @@ CREATE TABLE IF NOT EXISTS feedback_logs (
 CREATE INDEX IF NOT EXISTS idx_feedback_logs_step ON feedback_logs(step_name);
 CREATE INDEX IF NOT EXISTS idx_feedback_logs_created ON feedback_logs(created_at);
 ALTER TABLE feedback_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Service role can manage feedback_logs" ON feedback_logs FOR ALL USING (true);
+CREATE POLICY "Service role can manage feedback_logs" ON feedback_logs FOR ALL USING (auth.role() = 'service_role');

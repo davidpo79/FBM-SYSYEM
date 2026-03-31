@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { captureUTM, getUTMForPayload } from "@/lib/utm";
-import { fbCompleteRegistration } from "@/lib/fbpixel";
+import { fbCompleteRegistration, fbLead, fbSetUserData } from "@/lib/fbpixel";
+import { validateEmail } from "@/lib/validation";
 import Image from "next/image";
 
 interface AuthFormProps {
@@ -78,6 +79,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
       return;
     }
 
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.valid) {
+      setError(emailCheck.error!);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -106,19 +113,25 @@ export default function AuthForm({ mode }: AuthFormProps) {
           return;
         }
 
-        // Track registration
-        fbCompleteRegistration();
+        // Advanced Matching + registration tracking
+        fbSetUserData(email);
+        fbLead("Signup", isGtmTrack ? "gtm" : "fbm");
+        fbCompleteRegistration("email", isGtmTrack ? "gtm" : "fbm");
 
-        // Save full name to user_profiles
+        // Save full name (and track for GTM) to user_profiles
         if (data.user) {
-          await supabase.from("user_profiles").upsert({
+          const profileData: Record<string, string> = {
             user_id: data.user.id,
             full_name: fullName.trim(),
-          });
+          };
+          if (isGtmTrack) {
+            profileData.track = "gtm";
+          }
+          await supabase.from("user_profiles").upsert(profileData);
         }
 
-        // Fire EVENT_USER_REGISTERED webhook for GTM signups (with UTM)
-        if (isGtmTrack && data.user) {
+        // Fire EVENT_USER_REGISTERED webhook for all signups (with UTM)
+        if (data.user) {
           const utmData = getUTMForPayload();
           fetch("/api/webhooks/gtm-user-registered", {
             method: "POST",
@@ -128,11 +141,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
               name: fullName.trim(),
               user_id: data.user.id,
               registration_date: new Date().toISOString(),
-              track: "gtm",
+              track: isGtmTrack ? "gtm" : "fbm",
               ideaName: gtmIdeaName || "",
               ...utmData,
             }),
-          }).catch(() => { /* fire and forget */ });
+            keepalive: true,
+          }).catch(() => { /* best-effort */ });
         }
 
         // If session exists, user is immediately logged in (no email confirmation needed)
@@ -178,8 +192,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError("");
-    if (!forgotEmail.trim()) {
-      setForgotError("נא להזין כתובת אימייל");
+    const forgotEmailCheck = validateEmail(forgotEmail);
+    if (!forgotEmailCheck.valid) {
+      setForgotError(forgotEmailCheck.error!);
       return;
     }
     setForgotLoading(true);

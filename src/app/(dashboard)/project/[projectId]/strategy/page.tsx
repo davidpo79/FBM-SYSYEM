@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import StepCelebration from "@/components/StepCelebration";
 import StepProgress from "@/components/ui/StepProgress";
 import Button from "@/components/ui/Button";
+import { trackEvent } from "@/lib/track-event";
 
 export default function StrategyPage() {
   const router = useRouter();
@@ -32,8 +33,14 @@ export default function StrategyPage() {
   const generationAttempted = useRef(false);
   const toast = useToast();
 
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "strategy_page", stepName: "strategy", projectId: project?.id });
+  }, [project?.id]);
+
   const generateStrategy = async () => {
     if (!project) return;
+    trackEvent({ eventType: "generation_start", eventName: "generate_strategy", stepName: "strategy", projectId: project.id });
     setIsGenerating(true);
     setError("");
     try {
@@ -48,8 +55,10 @@ export default function StrategyPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setStrategy(json.strategy);
+      trackEvent({ eventType: "generation_complete", eventName: "strategy_generated", stepName: "strategy", projectId: project.id, metadata: { wordCount: json.strategy?.split(/\s+/).length } });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "שגיאה ביצירת האסטרטגיה");
+      trackEvent({ eventType: "error", eventName: "strategy_generation_error", stepName: "strategy", projectId: project.id });
     } finally {
       setIsGenerating(false);
     }
@@ -101,6 +110,7 @@ export default function StrategyPage() {
   };
 
   const handleApprove = () => {
+    trackEvent({ eventType: "step_complete", eventName: "strategy_approved", stepName: "strategy", projectId: project?.id });
     // Log approval
     fetch("/api/log-feedback", {
       method: "POST",

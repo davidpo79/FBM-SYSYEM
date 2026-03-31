@@ -117,17 +117,18 @@ export default function QuestionRecordCard({
 
   return (
     <div
-      className={`rounded-2xl shadow-md border p-6 sm:p-8 ${
+      className={`rounded-2xl shadow-md border flex flex-col ${
         isGtm
-          ? "bg-[#0D1117] border-[#1E2D45]"
-          : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
+          ? "bg-[#0D1117] border-[#1E2D45] p-4 sm:p-5"
+          : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 p-6 sm:p-8"
       }`}
+      style={isGtm ? { minHeight: 0, flex: 1 } : undefined}
       dir="rtl"
     >
       {/* Section badge */}
       <span
-        className={`inline-block text-xs font-semibold px-3 py-1 rounded-full mb-4 ${
-          isGtm ? "text-[#00FF88] bg-[rgba(0,255,136,0.1)]" : "text-[var(--gold)] bg-[var(--gold-soft)]"
+        className={`inline-block font-semibold px-3 py-0.5 rounded-full ${
+          isGtm ? "text-xs text-[#00FF88] bg-[rgba(0,255,136,0.1)] mb-2" : "text-xs text-[var(--gold)] bg-[var(--gold-soft)] mb-4"
         }`}
       >
         {question.sectionTitle}
@@ -135,20 +136,20 @@ export default function QuestionRecordCard({
 
       {/* Title */}
       <h2
-        className={`text-xl sm:text-2xl font-bold mb-3 ${
-          isGtm ? "text-[#F0F6FF]" : "text-gray-900 dark:text-gray-100"
+        className={`font-bold ${
+          isGtm ? "text-base sm:text-lg text-[#F0F6FF] mb-1" : "text-xl sm:text-2xl text-gray-900 dark:text-gray-100 mb-3"
         }`}
       >
         {question.title}
       </h2>
 
       {/* Question text */}
-      <p className={`mb-6 leading-relaxed ${isGtm ? "text-[#B0BEC5]" : "text-gray-600 dark:text-gray-400"}`}>
+      <p className={`leading-relaxed ${isGtm ? "text-sm text-[#B0BEC5] mb-2" : "text-base text-gray-600 dark:text-gray-400 mb-6"}`}>
         {question.text}
       </p>
 
       {/* Record controls */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className={`flex items-center gap-3 ${isGtm ? "mb-2" : "mb-4"}`}>
         {recStatus === "idle" && (
           <button
             type="button"
@@ -235,23 +236,24 @@ export default function QuestionRecordCard({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="התמלול יופיע כאן... ניתן גם להקליד ידנית"
-        rows={5}
-        className={`w-full rounded-xl border px-4 py-3 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 transition-colors ${
+        rows={isGtm ? 3 : 5}
+        className={`questionnaire-textarea w-full rounded-xl border px-4 py-2 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 transition-colors ${
           isGtm
-            ? error
+            ? `flex-1 text-sm ${error
               ? "border-red-400 focus:ring-red-400 bg-[#161D2B] text-[#F0F6FF]"
-              : "border-[#1E2D45] bg-[#161D2B] text-[#F0F6FF] focus:ring-[#00FF88] focus:border-[#00FF88] placeholder:text-[#3D4F6F]"
+              : "border-[#1E2D45] bg-[#161D2B] text-[#F0F6FF] focus:ring-[#00FF88] focus:border-[#00FF88] placeholder:text-[#3D4F6F]"}`
             : error
               ? "border-red-400 focus:ring-red-400 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800"
               : "border-gray-300 dark:border-gray-700 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800"
         }`}
+        style={isGtm ? { minHeight: 0, flex: 1 } : undefined}
       />
 
       {/* Error */}
-      {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
 
       {/* Character count */}
-      <p className={`mt-2 text-xs text-left ${isGtm ? "text-[#3D4F6F]" : "text-gray-400"}`} dir="ltr">
+      <p className={`mt-1 text-xs text-left ${isGtm ? "text-[#3D4F6F]" : "text-gray-400"}`} dir="ltr">
         {value.length} / 10 min
       </p>
     </div>

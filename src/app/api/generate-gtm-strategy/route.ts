@@ -2,10 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
 import { buildGTMStrategyPrompt } from "@/lib/prompts";
 import { logApiCall } from "@/lib/api-log";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   try {
+    // Auth check: prevent unauthenticated AI credit consumption
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { userName, answers, gtmOnboardingData, ganttMode } = await req.json();
 
     if (!answers || typeof answers !== "object") {
@@ -78,7 +90,7 @@ ICP: ${gtmOnboardingData.icp || ""}
     // Parse the JSON response
     const strategy = JSON.parse(raw);
 
-    logApiCall({
+    await logApiCall({
       endpoint: "/api/generate-gtm-strategy",
       status: "success",
       durationMs: Date.now() - startTime,
@@ -89,7 +101,7 @@ ICP: ${gtmOnboardingData.icp || ""}
     const message = error instanceof Error ? error.message : String(error);
     console.error("generate-gtm-strategy error:", message);
 
-    logApiCall({
+    await logApiCall({
       endpoint: "/api/generate-gtm-strategy",
       status: "error",
       errorMessage: error instanceof Error ? error.message : "Unknown error",

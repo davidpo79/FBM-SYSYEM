@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useProject } from "../layout";
 import { getUTMForPayload } from "@/lib/utm";
 import PaymentModal from "@/components/PaymentModal";
 import type { CustomerDetails } from "@/components/PaymentModal";
 import { supabase } from "@/lib/supabase";
-import { fbInitiateCheckout, fbPurchase, fbContact } from "@/lib/fbpixel";
+import { fbInitiateCheckout, fbPurchase, fbBootcampApplication, fbViewContent, fbSetUserData } from "@/lib/fbpixel";
+import { trackEvent } from "@/lib/track-event";
+import { validateEmail } from "@/lib/validation";
 
 interface GTMStrategy {
   icp: {
@@ -287,6 +290,16 @@ export default function GTMStrategyPage() {
   const stageNavRef = useRef<HTMLDivElement>(null);
   const paywallRef = useRef<HTMLDivElement>(null);
 
+  // Track page view + Facebook Pixel ViewContent
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "gtm_strategy_page", stepName: "gtm-strategy", projectId: project?.id });
+    fbViewContent("GTM Strategy", "gtm_bootcamp");
+    // Advanced Matching for better Facebook attribution
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) fbSetUserData(user.email);
+    });
+  }, [project?.id]);
+
   const switchStage = (stage: StrategyStage) => {
     setCurrentStage(stage);
     // For locked marketing stage, scroll directly to paywall overlay
@@ -300,11 +313,13 @@ export default function GTMStrategyPage() {
     }, 50);
   };
 
-  // Check if already purchased
+  // Check if already purchased — localStorage first, then Supabase fallback
   useEffect(() => {
+    let unlocked = false;
     try {
-      const unlocked = localStorage.getItem("gtm-marketing-unlocked");
-      if (unlocked === "true") {
+      const ls = localStorage.getItem("gtm-marketing-unlocked");
+      if (ls === "true") {
+        unlocked = true;
         setIsUnlocked(true);
         const tier = localStorage.getItem("gtm-purchased-tier") as "diy" | "pro" | null;
         if (tier) setPurchasedTier(tier);
@@ -314,6 +329,29 @@ export default function GTMStrategyPage() {
       const savedGantt = localStorage.getItem(`gtm-gantt-${project?.id}`);
       if (savedGantt) setGanttTimeline(JSON.parse(savedGantt));
     } catch { /* ignore */ }
+
+    // Supabase fallback: if localStorage says not unlocked, check user_profiles.plan
+    if (!unlocked) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return;
+        supabase
+          .from("user_profiles")
+          .select("plan")
+          .eq("user_id", user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile?.plan === "gtm_diy" || profile?.plan === "gtm_pro") {
+              setIsUnlocked(true);
+              const tier = profile.plan === "gtm_pro" ? "pro" : "diy";
+              setPurchasedTier(tier);
+              try {
+                localStorage.setItem("gtm-marketing-unlocked", "true");
+                localStorage.setItem("gtm-purchased-tier", tier);
+              } catch { /* ignore */ }
+            }
+          });
+      });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -334,10 +372,12 @@ export default function GTMStrategyPage() {
     setPaymentUrl(null);
     setShowPayment(true);
     fbInitiateCheckout(`GTM ${tier.toUpperCase()}`);
+    trackEvent({ eventType: "button_click", eventName: "gtm_tier_selected", stepName: "gtm-strategy", projectId: project?.id, metadata: { tier } });
   };
 
   const handlePaymentSubmit = async (details: CustomerDetails) => {
     setPaymentLoading(true);
+    setError("");
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
@@ -359,8 +399,9 @@ export default function GTMStrategyPage() {
         throw new Error(json.error || "שגיאה ביצירת קישור תשלום");
       }
       setPaymentUrl(json.paymentUrl);
-    } catch {
+    } catch (e) {
       setShowPayment(false);
+      setError(e instanceof Error ? e.message : "שגיאה ביצירת קישור תשלום. נסה שוב.");
     } finally {
       setPaymentLoading(false);
     }
@@ -379,8 +420,10 @@ export default function GTMStrategyPage() {
     } catch { /* ignore */ }
     // Track purchase
     const price = selectedTier === "diy" ? 290 : 99;
-    fbPurchase(price, "ILS");
-  }, [selectedTier]);
+    const isSubscription = selectedTier !== "diy";
+    fbPurchase(price, "ILS", `GTM ${tier.toUpperCase()} Plan`, isSubscription);
+    trackEvent({ eventType: "step_complete", eventName: "gtm_payment_complete", stepName: "gtm-strategy", projectId: project?.id, metadata: { tier, price } });
+  }, [selectedTier, project?.id]);
 
   const handlePaymentClose = useCallback(() => {
     setShowPayment(false);
@@ -409,9 +452,13 @@ export default function GTMStrategyPage() {
     if (!project || !strategy) return;
     setGanttGenerating(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/generate-gtm-strategy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           userName: project.user_name,
           answers: project.answers_map,
@@ -487,12 +534,17 @@ export default function GTMStrategyPage() {
 
   const generateStrategy = async () => {
     if (!project) return;
+    trackEvent({ eventType: "generation_start", eventName: "gtm_strategy_generate", stepName: "gtm-strategy", projectId: project.id });
     setIsGenerating(true);
     setError("");
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/generate-gtm-strategy", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           userName: project.user_name,
           answers: project.answers_map,
@@ -502,11 +554,13 @@ export default function GTMStrategyPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setStrategy(json.strategy);
+      trackEvent({ eventType: "generation_complete", eventName: "gtm_strategy_generated", stepName: "gtm-strategy", projectId: project.id });
       try {
         localStorage.setItem(`gtm-strategy-${project.id}`, JSON.stringify(json.strategy));
       } catch { /* ignore */ }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "נכשל ביצירת האסטרטגיה");
+      trackEvent({ eventType: "error", eventName: "gtm_strategy_generation_error", stepName: "gtm-strategy", projectId: project.id });
     } finally {
       setIsGenerating(false);
     }
@@ -552,7 +606,7 @@ export default function GTMStrategyPage() {
   return (
     <div className="gtm-page-container" style={{ marginTop: 24, direction: "rtl", paddingBottom: (isUnlocked && purchasedTier) ? 80 : 0 }}>
       {/* ── Post-Payment Success Modal ── */}
-      {showPostPayment && (
+      {showPostPayment && createPortal(
         <div
           className="gtm-modal-overlay"
           onClick={(e) => { if (e.target === e.currentTarget) setShowPostPayment(false); }}
@@ -598,7 +652,8 @@ export default function GTMStrategyPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Summary Banner */}
@@ -658,7 +713,7 @@ export default function GTMStrategyPage() {
       <div style={{ position: "relative" }} ref={paywallRef}>
         {/* Paywall overlay for locked stage */}
         {isLocked && (
-          <div className="gtm-paywall-overlay" style={{ position: "absolute", inset: 0, borderRadius: 24, zIndex: 10, display: "flex", alignItems: "flex-start", justifyContent: "center", background: "rgba(8,10,15,0.45)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", paddingTop: 40, overflowY: "auto" }}>
+          <div className="gtm-paywall-overlay" style={{ position: "absolute", inset: 0, borderRadius: 24, zIndex: 10, display: "flex", alignItems: "flex-start", justifyContent: "center", background: "rgba(8,10,15,0.7)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", paddingTop: 40, overflowY: "auto" }}>
             <div style={{ textAlign: "center", padding: 32, maxWidth: 700, width: "100%" }}>
 
               {/* FOMO Section — What you're missing */}
@@ -754,7 +809,7 @@ export default function GTMStrategyPage() {
                   <p>למפתחים ויזמים שרוצים לייצר תוכנית שיווקית</p>
                   <p>חדירה לשוק ולקוחות משלמים</p>
                 </div>
-                <button onClick={() => setShowBootcampModal(true)} className="gtm-btn-orange">
+                <button onClick={() => { setShowBootcampModal(true); trackEvent({ eventType: "button_click", eventName: "gtm_bootcamp_apply_click", stepName: "gtm-strategy", projectId: project?.id }); }} className="gtm-btn-orange">
                   תיאום שיחת אבחון אסטרטגית של 15 דקות עם דוד פופוביץ (ללא עלות)
                 </button>
               </div>
@@ -843,7 +898,7 @@ export default function GTMStrategyPage() {
         <div
           className={`gtm-stage-content ${isLocked ? "gtm-stage-locked" : ""}`}
           style={{
-            filter: isLocked ? "blur(3px)" : "none",
+            filter: isLocked ? "blur(8px)" : "none",
             pointerEvents: isLocked ? "none" : "auto",
           }}
         >
@@ -1002,6 +1057,7 @@ export default function GTMStrategyPage() {
         <BootcampModal
           userName={project?.user_name || ""}
           paymentLevel={purchasedTier}
+          ideaContext={strategy ? `${strategy.positioning?.oneliner || ""} | ICP: ${strategy.icp?.persona_name || ""}` : ""}
           onClose={() => setShowBootcampModal(false)}
         />
       )}
@@ -1100,7 +1156,7 @@ function GanttChart({ timeline }: { timeline: GanttTimeline }) {
 
 /* ──── Bootcamp Application Modal ──── */
 
-function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; paymentLevel?: "diy" | "pro" | null; onClose: () => void }) {
+function BootcampModal({ userName, paymentLevel, ideaContext, onClose }: { userName: string; paymentLevel?: "diy" | "pro" | null; ideaContext?: string; onClose: () => void }) {
   const [name, setName] = useState(userName);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -1118,6 +1174,13 @@ function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; 
   }, []);
 
   const handleSubmit = async () => {
+    if (email.trim()) {
+      const emailCheck = validateEmail(email);
+      if (!emailCheck.valid) {
+        setError(emailCheck.error!);
+        return;
+      }
+    }
     if (!phone.trim() || phone.trim().length < 9) {
       setError("נא להזין מספר טלפון תקין");
       return;
@@ -1125,7 +1188,7 @@ function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; 
     setSubmitting(true);
     setError("");
     try {
-      await fetch("/api/webhooks/bootcamp-apply", {
+      const res = await fetch("/api/webhooks/bootcamp-apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1133,12 +1196,18 @@ function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; 
           email: email.trim(),
           phone: phone.trim(),
           source: "gtm-strategy-page",
+          idea_context: ideaContext || "",
           payment_level: paymentLevel || "free",
           ...getUTMForPayload(),
         }),
       });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "שגיאה בשליחת הבקשה");
+      }
       setSubmitted(true);
-      fbContact("Bootcamp Application");
+      fbBootcampApplication("Bootcamp Application");
+      trackEvent({ eventType: "step_complete", eventName: "gtm_bootcamp_applied", stepName: "gtm-strategy", metadata: { paymentLevel: paymentLevel || "free" } });
     } catch {
       setError("שגיאה בשליחת המועמדות. נסה שוב.");
     } finally {
@@ -1146,7 +1215,7 @@ function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; 
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="gtm-modal-overlay"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -1218,7 +1287,8 @@ function BootcampModal({ userName, paymentLevel, onClose }: { userName: string; 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

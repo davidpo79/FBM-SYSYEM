@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Downloads Hebrew fonts for video subtitle rendering.
  * Runs during `npm run build` (postinstall) so fonts are

@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
       .map((u) => u.userId)
       .filter((id) => id !== "anonymous");
 
-    let userEmails: Record<string, string> = {};
+    const userEmails: Record<string, string> = {};
     if (userIds.length > 0) {
       const { data: usersData } =
         await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });

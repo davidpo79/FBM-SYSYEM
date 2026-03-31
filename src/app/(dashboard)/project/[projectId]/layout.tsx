@@ -103,6 +103,7 @@ export default function ProjectLayout({
   const pathname = usePathname();
 
   const [project, setProject] = useState<ProjectRow | null>(null);
+  const [userTrack, setUserTrack] = useState<"fbm" | "gtm">("fbm");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -157,6 +158,21 @@ export default function ProjectLayout({
   const [saveTrigger, setSaveTrigger] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fetch user's track from profile (user-level, not project-level)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from("user_profiles")
+        .select("track")
+        .eq("user_id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.track === "gtm") setUserTrack("gtm");
+        });
+    });
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -241,11 +257,12 @@ export default function ProjectLayout({
         selectedNiche,
         painAnalysis,
         scripts,
-        // Save URLs; keep base64 only when URL is missing (upload failed fallback)
+        // Save both URL and base64 to localStorage for reliable persistence
+        // base64 ensures images survive URL expiration
         generatedImages: generatedImages.map(({ url, base64, scriptIdx }) => ({
           url,
           scriptIdx,
-          ...((!url && base64) ? { base64 } : {}),
+          ...(base64 ? { base64 } : {}),
         })),
         adCopy,
         versionHistory,
@@ -307,7 +324,8 @@ export default function ProjectLayout({
     }
   }, [strategy, painAnalysis, scripts, generatedImages, selectedNiche, project]);
 
-  const isGtmProject = project?.track === "gtm";
+  // Use user-level track as the source of truth for which system to show
+  const isGtmProject = userTrack === "gtm";
 
   // Determine pipeline steps
   const steps = isGtmProject

@@ -21,9 +21,9 @@ export default function StepIndicator({ current, total, label, track, ideaName }
     const activePhase = 2; // Strategy phase (0-indexed)
 
     return (
-      <div className="w-full mb-8">
-        {/* RTL Animated Stepper */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, padding: "12px 0 20px", direction: "rtl" }}>
+      <div className="w-full mb-3">
+        {/* RTL Animated Stepper — compact */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, padding: "6px 0 10px", direction: "rtl" }}>
           {gtmSteps.map((step, i) => {
             const isCompleted = i < activePhase;
             const isActive = i === activePhase;
@@ -33,13 +33,13 @@ export default function StepIndicator({ current, total, label, track, ideaName }
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                   <div
                     style={{
-                      width: 40,
-                      height: 40,
+                      width: 30,
+                      height: 30,
                       borderRadius: "50%",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 16,
+                      fontSize: 13,
                       fontWeight: 700,
                       transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
                       ...(isCompleted
@@ -66,9 +66,9 @@ export default function StepIndicator({ current, total, label, track, ideaName }
                   </div>
                   <span
                     style={{
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: 600,
-                      marginTop: 4,
+                      marginTop: 2,
                       fontFamily: "monospace",
                       color: isCompleted || isActive ? "#00FF88" : "#6B7FA3",
                     }}
@@ -80,10 +80,10 @@ export default function StepIndicator({ current, total, label, track, ideaName }
                 {i < gtmSteps.length - 1 && (
                   <div
                     style={{
-                      width: 48,
+                      width: 36,
                       height: 2,
-                      margin: "0 6px",
-                      marginBottom: 20,
+                      margin: "0 4px",
+                      marginBottom: 16,
                       borderRadius: 1,
                       background: isCompleted
                         ? "linear-gradient(90deg, #00FF88, #00CC6A)"
@@ -97,28 +97,28 @@ export default function StepIndicator({ current, total, label, track, ideaName }
           })}
         </div>
 
-        {/* GTM Logo + Title */}
-        <div className="flex flex-col items-center gap-3 mb-6">
+        {/* GTM Logo + Title — compact */}
+        <div className="flex flex-col items-center gap-1 mb-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/gtm-logo.svg" alt="GTM BootCamp" style={{ height: 32, width: "auto" }} />
+          <img src="/gtm-logo.svg" alt="GTM BootCamp" style={{ height: 24, width: "auto" }} />
           {ideaName && (
-            <h1 className="text-lg font-bold text-center text-[#F0F6FF]" style={{ fontFamily: "monospace" }}>
-              בוא נבנה את אסטרטגיית ה-GTM עבור{" "}
+            <h1 className="text-sm font-bold text-center text-[#F0F6FF]" style={{ fontFamily: "monospace" }}>
+              אסטרטגיית GTM עבור{" "}
               <span className="text-[#00D4FF]" dir="ltr">{ideaName}</span>
             </h1>
           )}
         </div>
 
-        {/* Neon green progress bar */}
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[#6B7FA3]">
+        {/* Neon green progress bar — compact */}
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium text-[#6B7FA3]">
             {label || `שאלה ${current} מתוך ${total}`}
           </span>
-          <span className="text-sm font-medium text-[#00FF88]">
+          <span className="text-xs font-medium text-[#00FF88]">
             {Math.round(progress)}%
           </span>
         </div>
-        <div className="w-full h-3 rounded-full overflow-hidden" style={{ backgroundColor: "#1E2D45" }}>
+        <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#1E2D45" }}>
           <div
             className="h-full rounded-full transition-all duration-500 ease-out"
             style={{ width: `${progress}%`, background: "linear-gradient(90deg, #00FF88, #00CC6A)" }}

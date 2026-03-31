@@ -11,11 +11,11 @@ interface StepProgressProps {
 
 export default function StepProgress({ steps, estimatedSeconds = 20 }: StepProgressProps) {
   const [activeStep, setActiveStep] = useState(0);
-  const startRef = useRef(Date.now());
+  const startRef = useRef(0);
 
   useEffect(() => {
     startRef.current = Date.now();
-    setActiveStep(0);
+    setActiveStep(0); // eslint-disable-line react-hooks/set-state-in-effect
 
     const stepDuration = (estimatedSeconds * 1000) / steps.length;
     const interval = setInterval(() => {

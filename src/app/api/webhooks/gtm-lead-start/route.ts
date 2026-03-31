@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendGhlWebhook } from "@/lib/ghl-webhook";
 
 /**
  * EVENT_LEAD_START — Abandonment recovery webhook
@@ -7,12 +8,10 @@ import { NextRequest, NextResponse } from "next/server";
  * Includes UTM attribution parameters.
  */
 
-const GHL_WEBHOOK_URL = process.env.NEXT_PUBLIC_GHL_WEBHOOK_URL || process.env.NEXT_PUBLIC_GHL_SMART_WEBHOOK_URL || process.env.GHL_WEBHOOK_LEAD_START || "";
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, ideaName, category, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_placement, utm_adset, utm_ad } = body;
+    const { email, name, phone, ideaName, category, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, utm_placement, utm_adset, utm_ad } = body;
 
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Missing email" }, { status: 400 });
@@ -28,6 +27,10 @@ export async function POST(req: NextRequest) {
       timestamp: new Date().toISOString(),
     };
 
+    // Attach name and phone if present
+    if (name) payload.name = name;
+    if (phone) payload.phone = phone;
+
     // Attach UTM params if present
     if (utm_source) payload.utm_source = utm_source;
     if (utm_medium) payload.utm_medium = utm_medium;
@@ -38,18 +41,12 @@ export async function POST(req: NextRequest) {
     if (utm_adset) payload.utm_adset = utm_adset;
     if (utm_ad) payload.utm_ad = utm_ad;
 
-    // Fire and forget to GHL webhook
-    if (GHL_WEBHOOK_URL) {
-      fetch(GHL_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }).catch((err) => console.error("GHL EVENT_LEAD_START webhook failed:", err));
-    }
+    // Await GHL webhook delivery (critical for serverless)
+    const ghl = await sendGhlWebhook("EVENT_LEAD_START", payload);
 
-    console.log("EVENT_LEAD_START:", payload);
+    console.log("EVENT_LEAD_START:", { email: payload.email, ghl_sent: ghl.sent, ghl_status: ghl.status });
 
-    return NextResponse.json({ success: true, event: "EVENT_LEAD_START" });
+    return NextResponse.json({ success: true, event: "EVENT_LEAD_START", ghl_delivered: ghl.sent });
   } catch (error: unknown) {
     console.error("gtm-lead-start error:", error);
     return NextResponse.json(

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.74.0",
+    "@fal-ai/client": "^1.9.4",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@fontsource/rubik": "^5.2.8",
     "@google/genai": "^1.41.0",

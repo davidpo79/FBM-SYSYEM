@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendResetPasswordEmail } from "@/lib/email";
+import { validateEmail } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json();
 
-    if (!email) {
+    const emailCheck = validateEmail(email || "");
+    if (!emailCheck.valid) {
       return NextResponse.json(
-        { error: "נא להזין כתובת אימייל" },
+        { error: emailCheck.error },
         { status: 400 }
       );
     }

@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendGhlWebhook } from "@/lib/ghl-webhook";
 
 /**
  * EVENT_USER_REGISTERED — Triggered upon successful Supabase Auth signup.
  * Sends data to GoHighLevel CRM for onboarding sequences.
  * Includes UTM attribution parameters.
  */
-
-const GHL_WEBHOOK_URL = process.env.NEXT_PUBLIC_GHL_WEBHOOK_URL || process.env.NEXT_PUBLIC_GHL_SMART_WEBHOOK_URL || process.env.GHL_WEBHOOK_USER_REGISTERED || "";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,15 +21,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing email" }, { status: 400 });
     }
 
+    if (!name || typeof name !== "string" || name.trim().length < 2) {
+      return NextResponse.json({ error: "Missing or invalid name" }, { status: 400 });
+    }
+
     const payload: Record<string, string> = {
       event_type: "user_registered",
       event: "EVENT_USER_REGISTERED",
       email: email.trim(),
-      full_name: (name || "").trim(),
+      full_name: name.trim(),
       user_id: user_id || "",
       registration_date: registration_date || new Date().toISOString(),
       project_id: projectId || "",
-      track: track || "gtm",
+      track: track || "fbm",
       idea_name: ideaName || "",
       timestamp: new Date().toISOString(),
     };
@@ -45,18 +48,12 @@ export async function POST(req: NextRequest) {
     if (utm_adset) payload.utm_adset = utm_adset;
     if (utm_ad) payload.utm_ad = utm_ad;
 
-    // Fire and forget to GHL webhook
-    if (GHL_WEBHOOK_URL) {
-      fetch(GHL_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }).catch((err) => console.error("GHL EVENT_USER_REGISTERED webhook failed:", err));
-    }
+    // Await GHL webhook delivery (critical for serverless)
+    const ghl = await sendGhlWebhook("EVENT_USER_REGISTERED", payload);
 
-    console.log("EVENT_USER_REGISTERED:", payload);
+    console.log("EVENT_USER_REGISTERED:", { email: payload.email, ghl_sent: ghl.sent, ghl_status: ghl.status });
 
-    return NextResponse.json({ success: true, event: "EVENT_USER_REGISTERED" });
+    return NextResponse.json({ success: true, event: "EVENT_USER_REGISTERED", ghl_delivered: ghl.sent });
   } catch (error: unknown) {
     console.error("gtm-user-registered error:", error);
     return NextResponse.json(

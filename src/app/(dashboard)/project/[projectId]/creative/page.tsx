@@ -9,15 +9,16 @@ import type { TextStyleProps } from "@/components/creatives/TemplatePreview";
 import { TEMPLATES, suggestTemplate } from "@/components/creatives/templates";
 
 import type { CreativeSuggestion, FormatType } from "@/types";
+import { trackEvent } from "@/lib/track-event";
 
 /* ── Countdown Timer ── */
 function CountdownTimer({ seconds }: { seconds: number }) {
   const [remaining, setRemaining] = useState(seconds);
-  const startRef = useRef(Date.now());
+  const startRef = useRef(0);
 
   useEffect(() => {
     startRef.current = Date.now();
-    setRemaining(seconds);
+    setRemaining(seconds); // eslint-disable-line react-hooks/set-state-in-effect
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
       setRemaining(Math.max(0, seconds - elapsed));
@@ -371,7 +372,7 @@ function CreativeChatModal({
                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
                   msg.role === "user"
                     ? "bg-[var(--gold)] text-white rounded-br-none"
-                    : "bg-gray-100 dark:bg-gray-800 text-[var(--text-primary)] rounded-bl-none"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-none"
                 }`}
                 style={{ userSelect: "text" }}
               >
@@ -446,7 +447,7 @@ function CreativeChatModal({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="שאל את המומחה..."
-            className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-transparent text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
+            className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gold)]"
           />
           <button
             onClick={handleSend}
@@ -474,6 +475,7 @@ interface ScriptCreative {
   format: FormatType;
   customBackground?: string;
   designVision?: string;
+  referenceImageUrl?: string; // Product/website image URL for FLUX image-to-image
   showHeadline: boolean;
   showSubtitle: boolean;
   showCta: boolean;
@@ -500,13 +502,35 @@ export default function CreativePage() {
   } = useProject();
 
   const [creativeError, setCreativeError] = useState("");
-  const [scriptCreatives, setScriptCreatives] = useState<Record<number, ScriptCreative>>({});
+  const creativesStorageKey = `creatives_${projectId}`;
+  const [scriptCreatives, setScriptCreatives] = useState<Record<number, ScriptCreative>>(() => {
+    try {
+      const saved = localStorage.getItem(creativesStorageKey);
+      return saved ? (JSON.parse(saved) as Record<number, ScriptCreative>) : {};
+    } catch { return {}; }
+  });
   const [isGeneratingBg, setIsGeneratingBg] = useState<Record<number, boolean>>({});
   const [chatOpen, setChatOpen] = useState<number | null>(null);
   const [chatMessages, setChatMessages] = useState<Record<number, ChatMessage[]>>({});
   const [advancedOpen, setAdvancedOpen] = useState<Record<number, boolean>>({});
   const autoCreatedRef = useRef(false);
   const toast = useToast();
+
+  // Persist scriptCreatives to localStorage
+  useEffect(() => {
+    // Only save when there are actual creatives (avoid overwriting with empty on mount race)
+    if (Object.keys(scriptCreatives).length === 0) return;
+    try {
+      localStorage.setItem(creativesStorageKey, JSON.stringify(scriptCreatives));
+    } catch (e) {
+      console.error("Failed to save creatives to localStorage:", e);
+    }
+  }, [scriptCreatives, creativesStorageKey]);
+
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "creative_page", stepName: "creative", projectId });
+  }, [projectId]);
 
   /* ── Get or init chat messages for a script ── */
   const getChatMessages = useCallback((idx: number): ChatMessage[] => {
@@ -683,12 +707,17 @@ export default function CreativePage() {
   useEffect(() => {
     if (!scripts || autoCreatedRef.current) return;
     const parts = splitScripts(scripts);
-    if (parts.length > 0 && !scriptCreatives[0]) {
+    // Only auto-create if there's NO saved creative data at all (avoid overwriting user's work)
+    const hasSavedCreatives = Object.keys(scriptCreatives).length > 0;
+    if (parts.length > 0 && !hasSavedCreatives) {
       autoCreatedRef.current = true;
       // Silently handle failure — don't show error banner on auto-create
       handleCreateCreative(0, true).catch(() => {
         setCreativeError("");
       });
+    } else {
+      // Mark as already created so we don't re-check
+      autoCreatedRef.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scripts]);
@@ -732,7 +761,7 @@ export default function CreativePage() {
 
   /* ── Generate AI background ── */
   const handleGenerateBackground = useCallback(
-    async (config: { background: string; format?: string; designVision?: string; imagePrompt?: string }, scriptIdx: number) => {
+    async (config: { background: string; format?: string; designVision?: string; imagePrompt?: string; referenceImageUrl?: string }, scriptIdx: number) => {
       setCreativeError("");
       try {
         const creative = getCreative(scriptIdx);
@@ -742,6 +771,8 @@ export default function CreativePage() {
           body: JSON.stringify({
             ...config,
             imagePrompt: config.imagePrompt || creative.suggestion?.image_prompt,
+            referenceImageUrl: config.referenceImageUrl || creative.referenceImageUrl,
+            useFlux: !!(config.referenceImageUrl || creative.referenceImageUrl),
           }),
         });
         const text = await res.text();
@@ -1222,6 +1253,38 @@ export default function CreativePage() {
                         </p>
                       </div>
 
+                      {/* Reference Image URL — FLUX image-to-image */}
+                      <div>
+                        <label className="block text-sm font-bold text-[var(--text-primary)] mb-1.5">
+                          תמונת מוצר מהאתר (FLUX)
+                        </label>
+                        <input
+                          type="url"
+                          value={creative.referenceImageUrl || ""}
+                          onChange={(e) => updateField(idx, "referenceImageUrl", e.target.value)}
+                          placeholder="הדבק URL של תמונת מוצר מהאתר שלך..."
+                          className="w-full px-3 py-2 rounded-[10px] border border-[var(--card-border)] bg-[var(--content-bg)] text-[var(--text-primary)] text-right placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:border-transparent transition-all text-sm"
+                          dir="ltr"
+                        />
+                        {creative.referenceImageUrl && (
+                          <div className="mt-2 flex items-center gap-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={creative.referenceImageUrl}
+                              alt="תמונת מוצר"
+                              className="w-12 h-12 rounded-lg object-cover border border-[var(--card-border)]"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            />
+                            <p className="text-[10px] text-[var(--gold)]">
+                              FLUX ייצור רקע מבוסס על תמונת המוצר הזו
+                            </p>
+                          </div>
+                        )}
+                        <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                          הדבק קישור לתמונת מוצר — FLUX ייצור תמונה על בסיס המוצר שלך (במקום תמונה אקראית)
+                        </p>
+                      </div>
+
                       {/* Generate AI Background */}
                       <button
                         onClick={async () => {
@@ -1234,6 +1297,7 @@ export default function CreativePage() {
                               imagePrompt: creative.designVision
                                 ? creative.designVision
                                 : (creative.suggestion?.image_prompt || ""),
+                              referenceImageUrl: creative.referenceImageUrl,
                             }, idx);
                           } finally {
                             setIsGeneratingBg(prev => ({ ...prev, [idx]: false }));
@@ -1246,15 +1310,21 @@ export default function CreativePage() {
                             ? '#6B7084'
                             : creative.customBackground
                               ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                              : 'linear-gradient(135deg, #22C55E 0%, #16a34a 100%)',
-                          boxShadow: isGeneratingBg[idx] ? 'none' : '0 4px 16px rgba(34,197,94,0.3)',
+                              : creative.referenceImageUrl
+                                ? 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)'
+                                : 'linear-gradient(135deg, #22C55E 0%, #16a34a 100%)',
+                          boxShadow: isGeneratingBg[idx] ? 'none' : creative.referenceImageUrl
+                            ? '0 4px 16px rgba(139,92,246,0.3)'
+                            : '0 4px 16px rgba(34,197,94,0.3)',
                         }}
                       >
                         {isGeneratingBg[idx]
                           ? '⏳ יוצר רקע AI... (~15 שניות)'
-                          : creative.customBackground
-                            ? '🔄 צור רקע מחדש (1 credit)'
-                            : '✨ צור רקע AI (1 credit)'}
+                          : creative.referenceImageUrl
+                            ? (creative.customBackground ? '🔄 צור מחדש עם FLUX (תמונת מוצר)' : '🎨 צור רקע FLUX (תמונת מוצר)')
+                            : creative.customBackground
+                              ? '🔄 צור רקע מחדש (1 credit)'
+                              : '✨ צור רקע AI (1 credit)'}
                       </button>
 
                       {/* Upload custom background + Remove background */}

@@ -42,6 +42,7 @@ export default function AudioRecorder({
     return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
+  const updateLevelsRef = useRef<(() => void) | null>(null);
   const updateLevels = useCallback(() => {
     if (!analyserRef.current) return;
     const data = new Uint8Array(analyserRef.current.frequencyBinCount);
@@ -52,8 +53,9 @@ export default function AudioRecorder({
       return Math.max(4, Math.floor((val / 255) * 48));
     });
     setLevels(bars);
-    animFrameRef.current = requestAnimationFrame(updateLevels);
+    animFrameRef.current = requestAnimationFrame(() => updateLevelsRef.current?.());
   }, []);
+  useEffect(() => { updateLevelsRef.current = updateLevels; }, [updateLevels]);
 
   const startRecording = async () => {
     setError("");

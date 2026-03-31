@@ -52,7 +52,7 @@ export default function DraggableText({
 
   // Sync external position changes
   useEffect(() => {
-    if (!isDragging) setPos({ x, y });
+    if (!isDragging) setPos({ x, y }); // eslint-disable-line react-hooks/set-state-in-effect
   }, [x, y, isDragging]);
 
   const getPercent = useCallback(
@@ -65,7 +65,7 @@ export default function DraggableText({
         0,
         Math.min(100, ((rect.right - clientX - offsetRef.current.ox) / rect.width) * 100),
       );
-      let py = Math.max(
+      const py = Math.max(
         0,
         Math.min(100, ((clientY - rect.top - offsetRef.current.oy) / rect.height) * 100),
       );

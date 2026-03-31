@@ -1,6 +1,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { callAI } from "@/lib/ai";
 import { logApiCall } from "@/lib/api-log";
 
@@ -40,14 +41,23 @@ export async function POST(req: Request) {
     // Admin bypass: skip rate limiting if correct key is provided
     const isAdmin = admin_key === "fbm-admin-2024";
 
+    // Per-device rate limiting via cookie
+    const cookieStore = await cookies();
+    let deviceId = cookieStore.get("_fbm_did")?.value;
+    const isNewDevice = !deviceId;
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+    }
+
     if (ratelimit && !isAdmin) {
-      const ip = req.headers.get("x-forwarded-for") ?? "127.0.0.1";
-      const { success } = await ratelimit.limit(ip);
+      const { success } = await ratelimit.limit(deviceId);
       if (!success) {
-        return NextResponse.json(
+        const res = NextResponse.json(
           { error: "הגעת למגבלת הרעיונות היומית. נסה שוב מחר או הירשם לבוטקאמפ!" },
           { status: 429 }
         );
+        res.cookies.set("_fbm_did", deviceId, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+        return res;
       }
     }
 
@@ -215,7 +225,11 @@ CRITICAL RULES:
       durationMs: Date.now() - startTime,
     });
 
-    return Response.json(parsed);
+    const res = NextResponse.json(parsed);
+    if (isNewDevice) {
+      res.cookies.set("_fbm_did", deviceId, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+    }
+    return res;
   } catch (error: unknown) {
     console.error("Ideator API error:", error);
 

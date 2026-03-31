@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
 import { captureUTM, getUTMForPayload } from "@/lib/utm";
 import { fbLead, fbViewContent } from "@/lib/fbpixel";
+import { trackEvent } from "@/lib/track-event";
+import { validateEmail } from "@/lib/validation";
+
+/* ── Brainstorm particles config ── */
+const BINARY_SNIPPETS = ["01", "10", "001", "110", "0101", "1010", "{ }", "< >", "=>", "AI", "//", "&&", "$$", "**"];
+const PARTICLE_COUNT = 28;
 
 /* ── Category tiles with emojis — user picks a niche ── */
 const CATEGORIES = [
@@ -55,19 +61,40 @@ export default function IdeatorPage() {
   const [adminKey, setAdminKey] = useState("");
   const [stage, setStage] = useState<Stage>("select");
 
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "ideator_page", stepName: "ideator" });
+  }, []);
+
   useEffect(() => {
     captureUTM();
     const params = new URLSearchParams(window.location.search);
     const key = params.get("admin");
-    if (key) setAdminKey(key);
+    if (key) setAdminKey(key); // eslint-disable-line react-hooks/set-state-in-effect
   }, []);
 
   const [ideas, setIdeas] = useState<IdeaResult[]>([]);
   const [error, setError] = useState("");
+  const [showRateLimitModal, setShowRateLimitModal] = useState(false);
+  const [rateLimitName, setRateLimitName] = useState("");
+  const [rateLimitPhone, setRateLimitPhone] = useState("");
+  const [rateLimitEmail, setRateLimitEmail] = useState("");
+  const [rateLimitSubmitted, setRateLimitSubmitted] = useState(false);
   const [visibleLines, setVisibleLines] = useState(0);
   const [cursorVisible, setCursorVisible] = useState(true);
   const [buildProgress, setBuildProgress] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Generate brainstorm particles (stable across renders)
+  const [particles] = useState(() =>
+    Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+      id: i,
+      x: Math.round((i / PARTICLE_COUNT) * 90 + (((i * 7 + 3) % 10))),
+      text: BINARY_SNIPPETS[i % BINARY_SNIPPETS.length],
+      duration: 6 + ((i * 3 + 5) % 8),
+      delay: (i * 7) % 10,
+    })),
+  );
 
   // Inline form state per card
   const [openFormIdx, setOpenFormIdx] = useState<number | null>(null);
@@ -110,6 +137,7 @@ export default function IdeatorPage() {
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
+    trackEvent({ eventType: "button_click", eventName: "ideator_generate_click", stepName: "ideator", metadata: { category: selectedCategory, market } });
     setStage("building");
     setError("");
     setVisibleLines(0);
@@ -142,14 +170,21 @@ export default function IdeatorPage() {
       clearInterval(progressInterval);
 
       if (data.error) {
-        setError(data.error);
-        setStage("select");
+        if (res.status === 429) {
+          setShowRateLimitModal(true);
+          setStage("select");
+          trackEvent({ eventType: "interaction", eventName: "ideator_rate_limit_hit", stepName: "ideator", metadata: { category: selectedCategory, market } });
+        } else {
+          setError(data.error);
+          setStage("select");
+        }
         return;
       }
 
       setIdeas(data.ideas || []);
       setStage("results");
       fbViewContent("Ideator Results");
+      trackEvent({ eventType: "generation_complete", eventName: "ideator_ideas_generated", stepName: "ideator", metadata: { category: selectedCategory, market, ideaCount: data.ideas?.length, ideaNames: data.ideas?.map((i: IdeaResult) => i.name) } });
     } catch {
       timers.forEach(clearTimeout);
       clearInterval(cursorInterval);
@@ -159,9 +194,47 @@ export default function IdeatorPage() {
     }
   };
 
+  const handleRateLimitSubmit = () => {
+    if (!rateLimitName.trim() || !rateLimitPhone.trim()) return;
+    fbLead("Ideator Rate Limit Call");
+    trackEvent({ eventType: "step_complete", eventName: "ideator_rate_limit_lead", stepName: "ideator", metadata: { name: rateLimitName, phone: rateLimitPhone, email: rateLimitEmail, category: selectedCategory, market } });
+
+    // Send lead to GHL webhook (EVENT_BOOTCAMP_APPLICATION)
+    // Use keepalive so the request survives page navigation
+    fetch("/api/webhooks/bootcamp-apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: rateLimitEmail.trim() || `${rateLimitPhone.trim()}@phone.lead`,
+        name: rateLimitName.trim(),
+        phone: rateLimitPhone.trim(),
+        idea_context: getCategoryLabel(),
+        source: "ideator_rate_limit",
+        ...getUTMForPayload(),
+      }),
+      keepalive: true,
+    }).catch(() => { /* best-effort */ });
+
+    setRateLimitSubmitted(true);
+
+    // Redirect to GHL booking page after a short delay
+    setTimeout(() => {
+      window.location.href = "https://fbm-studio.com/gtm-bootcamp";
+    }, 2000);
+  };
+
+  const [formEmailError, setFormEmailError] = useState("");
+
   const handleInlineSubmit = (idea: IdeaResult) => {
     if (!formEmail.trim()) return;
+    const emailCheck = validateEmail(formEmail);
+    if (!emailCheck.valid) {
+      setFormEmailError(emailCheck.error!);
+      return;
+    }
+    setFormEmailError("");
     fbLead("Ideator Entry");
+    trackEvent({ eventType: "step_complete", eventName: "ideator_lead_submitted", stepName: "ideator", metadata: { ideaName: idea.name, category: selectedCategory } });
     try {
       localStorage.setItem("gtm-ideator-selected", JSON.stringify({
         name: idea.name,
@@ -172,6 +245,7 @@ export default function IdeatorPage() {
     } catch { /* ignore */ }
 
     // EVENT_LEAD_START: fire abandonment recovery webhook with UTM
+    // Use keepalive so the request survives page navigation
     fetch("/api/webhooks/gtm-lead-start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -182,14 +256,15 @@ export default function IdeatorPage() {
         source: "gtm_ideator",
         ...getUTMForPayload(),
       }),
-    }).catch(() => { /* fire and forget */ });
+      keepalive: true,
+    }).catch(() => { /* best-effort */ });
 
     const encodedEmail = encodeURIComponent(formEmail.trim());
     const encodedIdea = encodeURIComponent(idea.name);
     // Carry UTM params forward to signup
     const utmParams = getUTMForPayload();
     const utmQuery = Object.entries(utmParams).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
-    window.location.href = `/signup?track=gtm&email=${encodedEmail}&idea=${encodedIdea}${utmQuery ? "&" + utmQuery : ""}`;
+    window.location.assign(`/signup?track=gtm&email=${encodedEmail}&idea=${encodedIdea}${utmQuery ? "&" + utmQuery : ""}`);
   };
 
   // Helpers for backwards-compatible field access
@@ -214,36 +289,54 @@ export default function IdeatorPage() {
         overflow: "hidden",
       }}
     >
-      {/* ── Ambient background orbs ── */}
-      <div style={{
-        position: "absolute",
-        top: "-10%",
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "80vw",
-        maxWidth: 900,
-        height: 600,
-        background: "radial-gradient(ellipse at center, rgba(0,255,136,0.07) 0%, rgba(0,255,136,0.02) 40%, transparent 70%)",
-        pointerEvents: "none",
-        zIndex: 0,
-      }} />
+      {/* ── Brainstorm: Floating binary particles ── */}
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="ideator-particle"
+          style={{
+            left: `${p.x}%`,
+            top: `-30px`,
+            animationDuration: `${p.duration}s`,
+            animationDelay: `${p.delay}s`,
+          }}
+        >
+          {p.text}
+        </div>
+      ))}
+
+      {/* ── Glowing orbs ── */}
       <div className="ideator-orb ideator-orb-1" />
       <div className="ideator-orb ideator-orb-2" />
       <div className="ideator-orb ideator-orb-3" />
+
+      {/* ── Neural network SVG lines ── */}
+      <svg
+        viewBox="0 0 1000 1000"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }}
+        preserveAspectRatio="none"
+      >
+        <path className="ideator-neural-line" d="M 100,50 Q 300,250 500,500 T 500,950" />
+        <path className="ideator-neural-line" d="M 900,50 Q 700,250 500,500 T 500,950" />
+        <path className="ideator-neural-line" d="M 500,0 Q 500,300 500,500 T 500,950" />
+        <path className="ideator-neural-line" d="M 250,80 Q 400,350 500,550 T 500,950" />
+        <path className="ideator-neural-line" d="M 750,80 Q 600,350 500,550 T 500,950" />
+      </svg>
+
 
       {/* ── Subtle grid overlay ── */}
       <div style={{
         position: "absolute",
         inset: 0,
         backgroundImage: `
-          linear-gradient(rgba(0,255,136,0.015) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0,255,136,0.015) 1px, transparent 1px)
+          linear-gradient(rgba(0,255,136,0.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,255,136,0.02) 1px, transparent 1px)
         `,
-        backgroundSize: "80px 80px",
+        backgroundSize: "60px 60px",
         pointerEvents: "none",
         zIndex: 0,
-        maskImage: "radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%)",
-        WebkitMaskImage: "radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%)",
+        maskImage: "radial-gradient(ellipse at 50% 40%, black 30%, transparent 70%)",
+        WebkitMaskImage: "radial-gradient(ellipse at 50% 40%, black 30%, transparent 70%)",
       }} />
 
       {/* Header */}
@@ -282,8 +375,37 @@ export default function IdeatorPage() {
                 מנוע רעיונות{" "}
                 <span style={{ color: "#00FF88" }}>Micro-SaaS</span>
                 <br />
-                <span style={{ fontSize: "clamp(16px, 2.5vw, 22px)", fontWeight: 500, color: "#CBD5E1" }}>
-                  בעזרת כלי AI
+                {/* AI icon + subtitle row */}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 10, justifyContent: "center", marginTop: 8 }}>
+                  <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    border: "1.5px solid rgba(0,255,136,0.4)",
+                    background: "rgba(0,255,136,0.08)",
+                    fontSize: 16,
+                  }}>
+                    🧠
+                  </span>
+                  <span style={{ fontSize: "clamp(16px, 2.5vw, 22px)", fontWeight: 500, color: "#CBD5E1" }}>
+                    בעזרת כלי AI
+                  </span>
+                  <span className="ideator-badge" style={{
+                    fontSize: 11,
+                    fontFamily: "monospace",
+                    fontWeight: 700,
+                    color: "#00FF88",
+                    padding: "4px 12px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(0,255,136,0.4)",
+                    background: "rgba(0,255,136,0.1)",
+                    letterSpacing: "0.05em",
+                  }}>
+                    IDEAS UNLOCKED
+                  </span>
                 </span>
               </h1>
               <p style={{ fontSize: 18, color: "#CBD5E1", maxWidth: 600, margin: "0 auto 8px" }}>
@@ -423,27 +545,35 @@ export default function IdeatorPage() {
               <p style={{ color: "#EF4444", textAlign: "center", marginBottom: 16 }}>{error}</p>
             )}
 
-            <div style={{ textAlign: "center" }}>
-              <button
-                onClick={handleGenerate}
-                disabled={!canGenerate}
-                style={{
-                  padding: "14px 48px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: canGenerate
-                    ? "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)"
-                    : "#1E2D45",
-                  color: canGenerate ? "#080A0F" : "#94A3B8",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  cursor: canGenerate ? "pointer" : "not-allowed",
-                  transition: "all 0.3s",
-                  boxShadow: canGenerate ? "0 4px 16px rgba(0,255,136,0.3)" : "none",
-                }}
-              >
-                ייצר לי רעיונות
-              </button>
+            {/* Converging glow above button */}
+            <div style={{ position: "relative" }}>
+              <div className="ideator-converge-glow" style={{ bottom: 0 }} />
+              <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
+                <button
+                  onClick={handleGenerate}
+                  disabled={!canGenerate}
+                  className={canGenerate ? "ideator-btn-glow" : ""}
+                  style={{
+                    padding: "16px 56px",
+                    borderRadius: 14,
+                    border: canGenerate ? "1.5px solid rgba(0,255,136,0.5)" : "1.5px solid transparent",
+                    background: canGenerate
+                      ? "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)"
+                      : "#1E2D45",
+                    color: canGenerate ? "#080A0F" : "#94A3B8",
+                    fontSize: 18,
+                    fontWeight: 800,
+                    cursor: canGenerate ? "pointer" : "not-allowed",
+                    transition: "all 0.3s",
+                    boxShadow: canGenerate
+                      ? "0 4px 24px rgba(0,255,136,0.35), 0 0 60px rgba(0,255,136,0.15)"
+                      : "none",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  ⚡ ייצר לי רעיונות
+                </button>
+              </div>
             </div>
           </>
         )}
@@ -863,7 +993,7 @@ export default function IdeatorPage() {
                               <input
                                 type="email"
                                 value={formEmail}
-                                onChange={(e) => setFormEmail(e.target.value)}
+                                onChange={(e) => { setFormEmail(e.target.value); if (formEmailError) setFormEmailError(""); }}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" && formEmail.trim()) handleInlineSubmit(idea);
                                 }}
@@ -902,6 +1032,9 @@ export default function IdeatorPage() {
                                 צור לי תוכנית עסקית ושיווקית
                               </button>
                             </div>
+                            {formEmailError && (
+                              <p style={{ color: "#FF6B6B", fontSize: 13, marginTop: 6, textAlign: "right" }}>{formEmailError}</p>
+                            )}
                             {/* Animated Stepper */}
                             <div className="flex items-center justify-center gap-0 mt-4" dir="rtl">
                               {/* Step 1 - Completed */}
@@ -954,6 +1087,184 @@ export default function IdeatorPage() {
           </>
         )}
       </main>
+
+      {/* ── Rate Limit Modal ── */}
+      {showRateLimitModal && (
+        <div
+          onClick={() => { setShowRateLimitModal(false); setRateLimitSubmitted(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(6px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "linear-gradient(135deg, #0F1729 0%, #131B2E 100%)",
+              border: "1.5px solid rgba(0,255,136,0.3)",
+              borderRadius: 20,
+              padding: "36px 28px",
+              maxWidth: 420,
+              width: "100%",
+              textAlign: "center",
+              position: "relative",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(0,255,136,0.1)",
+              animation: "fadeInUp 0.3s ease-out",
+            }}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => { setShowRateLimitModal(false); setRateLimitSubmitted(false); }}
+              style={{
+                position: "absolute",
+                top: 12,
+                left: 12,
+                background: "none",
+                border: "none",
+                color: "#94A3B8",
+                fontSize: 22,
+                cursor: "pointer",
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+
+            {!rateLimitSubmitted ? (
+              <>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>🚀</div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: "#F0F6FF", marginBottom: 4 }}>
+                  הגעת למגבלת הרעיונות היומית
+                </h2>
+                <p style={{ color: "#64748B", fontSize: 13, marginBottom: 12 }}>
+                  (המגבלה היומית היא 3)
+                </p>
+                <p style={{ color: "#94A3B8", fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
+                  השאר פרטים לשיחה עם דוד — 15 דקות ללא עלות
+                  <br />
+                  על הרעיונות שמצאת ואיך להפוך אותם לעסק
+                </p>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+                  <input
+                    type="text"
+                    placeholder="שם מלא *"
+                    value={rateLimitName}
+                    onChange={(e) => setRateLimitName(e.target.value)}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      border: "1.5px solid #1E2D45",
+                      background: "#0A0E17",
+                      color: "#F0F6FF",
+                      fontSize: 15,
+                      outline: "none",
+                      direction: "rtl",
+                    }}
+                  />
+                  <input
+                    type="tel"
+                    placeholder="טלפון *"
+                    value={rateLimitPhone}
+                    onChange={(e) => setRateLimitPhone(e.target.value)}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      border: "1.5px solid #1E2D45",
+                      background: "#0A0E17",
+                      color: "#F0F6FF",
+                      fontSize: 15,
+                      outline: "none",
+                      direction: "ltr",
+                      textAlign: "right",
+                    }}
+                  />
+                  <input
+                    type="email"
+                    placeholder="אימייל (אופציונלי)"
+                    value={rateLimitEmail}
+                    onChange={(e) => setRateLimitEmail(e.target.value)}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      border: "1.5px solid #1E2D45",
+                      background: "#0A0E17",
+                      color: "#F0F6FF",
+                      fontSize: 15,
+                      outline: "none",
+                      direction: "ltr",
+                      textAlign: "right",
+                    }}
+                  />
+                </div>
+
+                <button
+                  onClick={handleRateLimitSubmit}
+                  disabled={!rateLimitName.trim() || !rateLimitPhone.trim()}
+                  style={{
+                    width: "100%",
+                    padding: "14px 24px",
+                    borderRadius: 12,
+                    border: "none",
+                    background: rateLimitName.trim() && rateLimitPhone.trim()
+                      ? "linear-gradient(135deg, #00FF88 0%, #00CC6A 100%)"
+                      : "#1E2D45",
+                    color: rateLimitName.trim() && rateLimitPhone.trim() ? "#080A0F" : "#94A3B8",
+                    fontSize: 17,
+                    fontWeight: 800,
+                    cursor: rateLimitName.trim() && rateLimitPhone.trim() ? "pointer" : "not-allowed",
+                    transition: "all 0.2s",
+                    boxShadow: rateLimitName.trim() && rateLimitPhone.trim()
+                      ? "0 4px 20px rgba(0,255,136,0.3)"
+                      : "none",
+                  }}
+                >
+                  קבע שיחה עם דוד 📞
+                </button>
+
+                <p style={{ color: "#475569", fontSize: 12, marginTop: 12 }}>
+                  15 דקות ללא עלות • ללא התחייבות
+                </p>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: "#00FF88", marginBottom: 8 }}>
+                  הפרטים נשלחו בהצלחה!
+                </h2>
+                <p style={{ color: "#94A3B8", fontSize: 15, lineHeight: 1.6 }}>
+                  דוד יחזור אליך בהקדם לתיאום שיחה קצרה
+                  <br />
+                  על הרעיונות שמצאת 🚀
+                </p>
+                <button
+                  onClick={() => { setShowRateLimitModal(false); setRateLimitSubmitted(false); }}
+                  style={{
+                    marginTop: 20,
+                    padding: "12px 32px",
+                    borderRadius: 10,
+                    border: "1.5px solid #00FF88",
+                    background: "transparent",
+                    color: "#00FF88",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  סגור
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Keyframes */}
       <style>{`

@@ -7,6 +7,7 @@ import ChatMessage from "@/components/chat/ChatMessage";
 import TypingIndicator from "@/components/chat/TypingIndicator";
 import StepProgress from "@/components/ui/StepProgress";
 import Button from "@/components/ui/Button";
+import { trackEvent } from "@/lib/track-event";
 
 /* ─── Brainstorm message type ─── */
 interface BrainstormMessage {
@@ -386,6 +387,11 @@ export default function NichesPage() {
   const [showBrainstorm, setShowBrainstorm] = useState(false);
   const generationAttempted = useRef(false);
 
+  // Track page view
+  useEffect(() => {
+    trackEvent({ eventType: "page_view", eventName: "niches_page", stepName: "niches", projectId });
+  }, [projectId]);
+
   /** Clear all downstream pipeline data when niche changes */
   const clearDownstream = () => {
     setPainAnalysis("");
@@ -405,6 +411,7 @@ export default function NichesPage() {
     if (!strategy || !strategyApproved || niches.length > 0 || generationAttempted.current) return;
     generationAttempted.current = true;
     setIsGenerating(true);
+    trackEvent({ eventType: "generation_start", eventName: "generate_niches", stepName: "niches", projectId });
 
     (async () => {
       try {
@@ -416,13 +423,15 @@ export default function NichesPage() {
         const json = await res.json();
         if (!res.ok) throw new Error(json.error);
         setNiches(json.niches ?? []);
+        trackEvent({ eventType: "generation_complete", eventName: "niches_generated", stepName: "niches", projectId, metadata: { count: json.niches?.length, nicheNames: json.niches?.map((n: Niche) => n.name) } });
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "שגיאה בזיהוי נישות");
+        trackEvent({ eventType: "error", eventName: "niches_generation_error", stepName: "niches", projectId });
       } finally {
         setIsGenerating(false);
       }
     })();
-  }, [strategy, strategyApproved, niches.length, setNiches]);
+  }, [strategy, strategyApproved, niches.length, setNiches, projectId]);
 
   const handleRetry = () => {
     setError("");
@@ -452,6 +461,7 @@ export default function NichesPage() {
   });
 
   const handleToggleNiche = (niche: Niche) => {
+    trackEvent({ eventType: "button_click", eventName: "niche_toggled", stepName: "niches", projectId, metadata: { nicheName: niche.name, fitScore: niche.fit_score } });
     setPickedNiches((prev) => {
       const exists = prev.some((n) => n.name === niche.name);
       if (exists) return prev.filter((n) => n.name !== niche.name);
@@ -462,6 +472,7 @@ export default function NichesPage() {
 
   const handleContinue = () => {
     if (pickedNiches.length === 0) return;
+    trackEvent({ eventType: "step_complete", eventName: "niche_selected", stepName: "niches", projectId, metadata: { selectedNiches: pickedNiches.map(n => n.name), count: pickedNiches.length } });
     clearDownstream();
 
     if (pickedNiches.length === 1) {
@@ -592,7 +603,7 @@ export default function NichesPage() {
       {/* Action buttons */}
       <div className="mt-6 flex flex-wrap gap-3">
         <button
-          onClick={() => setShowBrainstorm((v) => !v)}
+          onClick={() => { setShowBrainstorm((v) => { if (!v) trackEvent({ eventType: "button_click", eventName: "brainstorm_opened", stepName: "niches", projectId }); return !v; }); }}
           className="flex items-center gap-2 px-5 py-2.5 rounded-[10px] border transition-all cursor-pointer text-sm font-semibold"
           style={{
             borderColor: showBrainstorm

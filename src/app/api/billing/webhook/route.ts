@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { PLAN_PRICES } from "@/lib/plan-limits";
 import { setupRecurringCharge } from "@/lib/sumit";
+import { sendPurchaseEvent } from "@/lib/fb-capi";
 
 /**
  * Sumit webhook handler.
@@ -182,6 +183,20 @@ export async function POST(req: NextRequest) {
         console.error("Sumit webhook: upsert also failed:", upsertError.message);
         return NextResponse.json({ received: true, processed: false, error: "db_failed" });
       }
+    }
+
+    // Send server-side Purchase event to Facebook Conversions API
+    const purchaseEmail = customerEmail || await getUserEmail(userId);
+    if (purchaseEmail) {
+      const contentIds = isGtmDiy ? ["gtm_diy"] : isGtmPro ? ["gtm_pro"] : [plan];
+      sendPurchaseEvent({
+        email: purchaseEmail,
+        value: amount || planPrice,
+        currency: "ILS",
+        contentName: `${planLabel} Plan`,
+        contentIds,
+        userId,
+      }).catch((err) => console.error("fb-capi: Purchase event failed:", err));
     }
 
     console.log(`Sumit webhook: SUCCESS - userId=${userId} plan=${plan} recurring=${recurringId || "none"}`);

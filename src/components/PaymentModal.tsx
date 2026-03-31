@@ -32,6 +32,8 @@ export default function PaymentModal({
 
   const handleMessage = useCallback(
     (event: MessageEvent) => {
+      // Validate origin: only accept messages from our own domain
+      if (event.origin !== window.location.origin) return;
       if (event.data === "payment-complete") {
         onComplete();
       }

@@ -53,19 +53,13 @@ export default function DashboardLayout({
   const [billingPlan, setBillingPlan] = useState<string>("trial");
   const [billingDaysLeft, setBillingDaysLeft] = useState<number | null>(null);
   const [billingLoading, setBillingLoading] = useState(true);
-  const [projectTrack, setProjectTrack] = useState<"fbm" | "gtm">("fbm");
+  const [userTrack, setUserTrack] = useState<"fbm" | "gtm">("fbm");
   const [isGtmQuestionnaire, setIsGtmQuestionnaire] = useState(false);
 
   // Detect GTM questionnaire mode (hide sidebar/nav for dedicated GTM workspace)
   useEffect(() => {
-    if (pathname === "/questionnaire") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("track") === "gtm") {
-        setIsGtmQuestionnaire(true);
-        return;
-      }
-    }
-    setIsGtmQuestionnaire(false);
+    const isGtm = pathname === "/questionnaire" && new URLSearchParams(window.location.search).get("track") === "gtm";
+    setIsGtmQuestionnaire(isGtm); // eslint-disable-line react-hooks/set-state-in-effect
   }, [pathname]);
 
   // Extract projectId from URL if on a project page
@@ -91,14 +85,15 @@ export default function DashboardLayout({
             setProjectCount(count ?? 0);
           });
 
-        // Fetch user profile name
+        // Fetch user profile name and track
         supabase
           .from("user_profiles")
-          .select("full_name")
+          .select("full_name, track")
           .eq("user_id", user.id)
           .single()
           .then(({ data }) => {
             if (data?.full_name) setUserName(data.full_name);
+            if (data?.track === "gtm") setUserTrack("gtm");
           });
 
         // Check admin status
@@ -136,29 +131,27 @@ export default function DashboardLayout({
     });
   }, [router]);
 
-  // Fetch project name and track when activeProjectId changes
+  // Fetch project name when activeProjectId changes
   useEffect(() => {
     if (!activeProjectId) {
-      setProjectName("");
-      setProjectTrack("fbm");
+      setProjectName(""); // eslint-disable-line react-hooks/set-state-in-effect
       return;
     }
     supabase
       .from("projects")
-      .select("name, user_name, track")
+      .select("name, user_name")
       .eq("id", activeProjectId)
       .single()
       .then(({ data }) => {
         if (data) {
           setProjectName(data.user_name || data.name || "");
-          setProjectTrack((data.track as "fbm" | "gtm") || "fbm");
         }
       });
   }, [activeProjectId]);
 
   // Read album count from localStorage
   useEffect(() => {
-    if (!activeProjectId) { setAlbumCount(0); return; }
+    if (!activeProjectId) { setAlbumCount(0); return; } // eslint-disable-line react-hooks/set-state-in-effect
     const readCount = () => {
       try {
         const saved = localStorage.getItem(`album_${activeProjectId}`);
@@ -179,7 +172,7 @@ export default function DashboardLayout({
 
   // Close mobile sidebar on route change
   useEffect(() => {
-    setSidebarOpen(false);
+    setSidebarOpen(false); // eslint-disable-line react-hooks/set-state-in-effect
   }, [pathname]);
 
   // Listen for FBM Expert toggle events from TopBar/Sidebar
@@ -252,7 +245,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className={`min-h-screen ${projectTrack === "gtm" || isGtmQuestionnaire ? "theme-gtm" : ""}`} style={{ backgroundColor: isGtmQuestionnaire ? "#0B111B" : projectTrack === "gtm" ? "#080A0F" : "#F5F6FA", overflowX: "hidden", maxWidth: "100vw" }} dir="rtl">
+    <div className={`min-h-screen ${userTrack === "gtm" || isGtmQuestionnaire ? "theme-gtm" : ""}`} style={{ backgroundColor: isGtmQuestionnaire ? "#0B111B" : userTrack === "gtm" ? "#080A0F" : "#F5F6FA", overflowX: "hidden", maxWidth: "100vw" }} dir="rtl">
       {/* Desktop sidebar — hidden for GTM questionnaire */}
       {!isGtmQuestionnaire && (
         <Sidebar
@@ -265,7 +258,7 @@ export default function DashboardLayout({
           isAdmin={isAdmin}
           newSuggestionsCount={newSuggestionsCount}
           currentPlan={billingPlan}
-          track={projectTrack}
+          track={userTrack}
           onLogout={handleLogout}
         />
       )}
@@ -301,6 +294,7 @@ export default function DashboardLayout({
               projectCount={projectCount}
               albumCount={albumCount}
               currentPlan={billingPlan}
+              track={userTrack}
               onLogout={handleLogout}
             />
           </aside>
@@ -316,7 +310,7 @@ export default function DashboardLayout({
             {billingPlan !== "trial" && billingPlan !== "expired" && <NotificationBell />}
           </div>
         )}
-        <main className={isGtmQuestionnaire ? "p-4 lg:p-8 min-h-screen" : "p-4 lg:p-8 min-h-screen pb-24 lg:pb-8"}>
+        <main className={isGtmQuestionnaire ? "px-2 py-1 h-[100dvh]" : "p-4 lg:p-8 min-h-screen pb-24 lg:pb-8"}>
           {/* Trial warning banner (3 days or less remaining) — not shown for GTM questionnaire */}
           {!isGtmQuestionnaire && shouldShowTrialBanner(billingPlan, billingDaysLeft) && (
             <TrialBanner
@@ -334,8 +328,8 @@ export default function DashboardLayout({
         </main>
       </div>
 
-      {/* Mobile bottom navigation bar — hidden for GTM questionnaire and GTM projects */}
-      {!isGtmQuestionnaire && projectTrack !== "gtm" && (
+      {/* Mobile bottom navigation bar — hidden for GTM questionnaire and GTM users */}
+      {!isGtmQuestionnaire && userTrack !== "gtm" && (
         <nav
           className="fixed bottom-0 left-0 right-0 lg:hidden z-30 mobile-bottom-nav"
           style={{
@@ -420,6 +414,7 @@ function MobileSidebarContent({
   projectCount = 0,
   albumCount = 0,
   currentPlan = "trial",
+  track = "fbm",
   onLogout,
 }: {
   userEmail: string;
@@ -428,19 +423,23 @@ function MobileSidebarContent({
   projectCount?: number;
   albumCount?: number;
   currentPlan?: string;
+  track?: "fbm" | "gtm";
   onLogout: () => void;
 }) {
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href;
   const displayName = userEmail?.split("@")[0] || "";
   const planLabel = PLAN_LABELS[currentPlan] || currentPlan;
+  const isGTM = track === "gtm";
 
-  const mainNav = [
-    { href: "/dashboard", label: "דשבורד", icon: LayoutDashboard },
-    { href: "/projects", label: "הפרויקטים שלי", icon: FolderOpen, badge: projectCount > 0 ? projectCount : undefined },
-  ];
+  const mainNav = isGTM
+    ? [] // GTM users don't see main nav until registered
+    : [
+        { href: "/dashboard", label: "דשבורד", icon: LayoutDashboard },
+        { href: "/projects", label: "הפרויקטים שלי", icon: FolderOpen, badge: projectCount > 0 ? projectCount : undefined },
+      ];
 
-  const fbmNav = projectId
+  const fbmNav = projectId && !isGTM
     ? [
         { href: `/project/${projectId}/strategy`, label: "אסטרטגיית FBM", icon: Target },
         { href: `/project/${projectId}/niches`, label: "מחקר נישות", icon: Search },
@@ -453,26 +452,36 @@ function MobileSidebarContent({
       ]
     : [];
 
-  const toolsNav = [
-    { href: "#expert", label: "מומחה FBM", icon: BotMessageSquare, badge: "●", isExpert: true },
-    { href: "/guides/facebook-campaign", label: "מדריך קמפיין", icon: BookOpen },
-    { href: "/settings", label: "הגדרות", icon: Settings },
-  ];
+  const toolsNav = isGTM
+    ? [] // GTM users don't see FBM tools
+    : [
+        { href: "#expert", label: "מומחה FBM", icon: BotMessageSquare, badge: "●", isExpert: true },
+        { href: "/guides/facebook-campaign", label: "מדריך קמפיין", icon: BookOpen },
+        { href: "/settings", label: "הגדרות", icon: Settings },
+      ];
 
   return (
     <>
       {/* Logo */}
       <div className="px-5 pt-5 pb-4 flex flex-col items-center gap-2" style={{ borderBottom: "1px solid #2A2D3A" }}>
-        <Image src="/logo-fbm.png" alt="FBM" width={64} height={64} className="rounded" />
-        <div className="flex items-center gap-2">
-          <span className="text-white font-bold text-lg">FBM Studio</span>
-          <span
-            className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-            style={{ backgroundColor: "rgba(212, 168, 67, 0.12)", color: "#D4A843" }}
-          >
-            Beta
-          </span>
-        </div>
+        {isGTM ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/gtm-logo.svg" alt="GTM BootCamp" style={{ height: 28, width: "auto" }} />
+            <p className="text-[11px] tracking-wide" style={{ color: "#6B7FA3", fontFamily: "monospace" }}>
+              <span className="font-bold" style={{ color: "#00FF88" }}>G</span>o-
+              <span className="font-bold" style={{ color: "#00FF88" }}>T</span>o-
+              <span className="font-bold" style={{ color: "#00FF88" }}>M</span>arket
+            </p>
+          </>
+        ) : (
+          <>
+            <Image src="/logo-fbm.png" alt="FBM" width={64} height={64} className="rounded" />
+            <div className="flex items-center gap-2">
+              <span className="text-white font-bold text-lg">FBM Studio</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Project indicator */}

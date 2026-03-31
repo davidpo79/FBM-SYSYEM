@@ -70,9 +70,9 @@ export default function StepCelebration({
           {Array.from({ length: 20 }).map((_, i) => (
             <ConfettiPiece
               key={i}
-              delay={Math.random() * 0.5}
+              delay={(i * 0.025)}
               color={CONFETTI_COLORS[i % CONFETTI_COLORS.length]}
-              left={Math.random() * 100}
+              left={(i * 5) % 100}
             />
           ))}
         </div>

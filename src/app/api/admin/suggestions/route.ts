@@ -28,7 +28,7 @@ export async function GET() {
       ),
     ];
 
-    let userMap: Record<string, { email: string; fullName: string }> = {};
+    const userMap: Record<string, { email: string; fullName: string }> = {};
     if (userIds.length > 0) {
       const { data: usersData } =
         await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });

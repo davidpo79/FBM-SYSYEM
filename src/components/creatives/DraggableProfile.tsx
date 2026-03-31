@@ -29,7 +29,7 @@ export default function DraggableProfile({
   const offsetRef = useRef({ ox: 0, oy: 0 });
 
   useEffect(() => {
-    if (!isDragging) setPos({ x, y });
+    if (!isDragging) setPos({ x, y }); // eslint-disable-line react-hooks/set-state-in-effect
   }, [x, y, isDragging]);
 
   const getPercent = useCallback(

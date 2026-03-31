@@ -1,0 +1,41 @@
+# FBM Studio
+
+> FBM Studio is an AI-powered Go-To-Market platform for AI startup founders. It helps founders generate startup ideas, build GTM strategies, create marketing content, and launch with paying customers.
+
+## Core Tools
+
+- [AI Startup Idea Generator (Ideator)](https://fbm-studio.com/ideator): Free tool that generates validated AI startup ideas. Users pick a niche and market, and receive complete business concepts with target audience, API integrations, revenue model, and go-to-market strategy.
+- [GTM Bootcamp](https://fbm-studio.com/gtm-bootcamp): A structured go-to-market program for AI founders. Includes ICP analysis, competitive positioning, marketing channel selection, ad creative generation, and a 90-day launch plan. Starts with a free 15-minute diagnostic call.
+
+## What FBM Studio Does
+
+FBM Studio solves the #1 problem AI founders face: building a great product but failing to find paying customers. The platform provides:
+
+1. **Idea Validation** — AI-generated startup concepts with built-in market validation
+2. **ICP Analysis** — Detailed Ideal Customer Profile with demographics, psychographics, and jobs-to-be-done
+3. **GTM Strategy** — Personalized go-to-market plan with channel recommendations and positioning
+4. **Ad Creatives** — AI-generated scripts, hooks, and visual concepts for Facebook/Meta ads
+5. **Marketing Automation** — Frequency-based marketing (FBM) framework for consistent customer acquisition
+
+## Target Audience
+
+- AI startup founders looking to launch their first product
+- Technical builders who need marketing guidance
+- Solo founders building AI SaaS products
+- Teams pivoting to AI-powered products
+- Anyone exploring AI business ideas
+
+## Key Topics
+
+- Go-to-market strategy for AI startups
+- AI startup idea generation and validation
+- Ideal Customer Profile (ICP) for AI products
+- Facebook/Meta ads for AI SaaS
+- AI founder marketing playbook
+- Frequency-based marketing methodology
+
+## Contact
+
+- Website: https://fbm-studio.com
+- Idea Generator: https://fbm-studio.com/ideator
+- Book a Call: https://fbm-studio.com/gtm-bootcamp

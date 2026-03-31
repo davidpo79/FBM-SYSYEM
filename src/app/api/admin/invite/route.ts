@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { randomUUID } from "crypto";
+import { validateEmail } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,6 +10,14 @@ export async function POST(req: NextRequest) {
     if (!studentName || !studentEmail) {
       return NextResponse.json(
         { error: "שם ואימייל הם שדות חובה" },
+        { status: 400 },
+      );
+    }
+
+    const emailCheck = validateEmail(studentEmail);
+    if (!emailCheck.valid) {
+      return NextResponse.json(
+        { error: emailCheck.error },
         { status: 400 },
       );
     }

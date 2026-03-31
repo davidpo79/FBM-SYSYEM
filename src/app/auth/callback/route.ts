@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendGhlWebhook } from "@/lib/ghl-webhook";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -20,21 +21,42 @@ export async function GET(request: Request) {
         data.user.user_metadata?.name ||
         "";
 
-      if (displayName) {
+      const track = searchParams.get("track");
+      const profileData: Record<string, string> = {
+        user_id: data.user.id,
+        full_name: displayName || "",
+      };
+      if (track === "gtm") {
+        profileData.track = "gtm";
+      }
+      if (displayName || track === "gtm") {
         await supabase.from("user_profiles").upsert(
-          {
-            user_id: data.user.id,
-            full_name: displayName,
-          },
+          profileData,
           { onConflict: "user_id" },
         );
       }
 
-      const track = searchParams.get("track");
       if (track === "gtm") {
         const idea = searchParams.get("idea");
         const ideaParam = idea ? "&idea=" + encodeURIComponent(idea) : "";
-        return NextResponse.redirect(`${origin}/questionnaire?track=gtm${ideaParam}`);
+
+        // Fire EVENT_USER_REGISTERED webhook for Google OAuth GTM signups
+        await sendGhlWebhook("EVENT_USER_REGISTERED", {
+          event_type: "user_registered",
+          event: "EVENT_USER_REGISTERED",
+          email: data.user.email || "",
+          full_name: displayName,
+          user_id: data.user.id,
+          registration_date: new Date().toISOString(),
+          track: "gtm",
+          idea_name: idea ? decodeURIComponent(idea) : "",
+          source: "google_oauth",
+          timestamp: new Date().toISOString(),
+        });
+
+        // Pass name and oauth flag to questionnaire for pixel tracking
+        const nameParam = displayName ? `&name=${encodeURIComponent(displayName)}` : "";
+        return NextResponse.redirect(`${origin}/questionnaire?track=gtm${ideaParam}${nameParam}&registered=google`);
       }
       return NextResponse.redirect(`${origin}/dashboard`);
     }
