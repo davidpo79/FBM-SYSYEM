@@ -8,6 +8,11 @@
 
 ALTER TABLE IF EXISTS public.fbm_expert_conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.admin_users ENABLE ROW LEVEL SECURITY;
+
+-- admin_users: allow users to check their own admin status
+DROP POLICY IF EXISTS "Users can check own admin status" ON admin_users;
+CREATE POLICY "Users can check own admin status" ON admin_users
+  FOR SELECT USING (auth.uid() = user_id);
 ALTER TABLE IF EXISTS public.welcome_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.api_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.admin_notifications ENABLE ROW LEVEL SECURITY;
