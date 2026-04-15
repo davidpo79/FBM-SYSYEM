@@ -27,7 +27,7 @@ export async function callAI(
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       const response = await getClient().models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-2.5-flash",
         contents: userMessage,
         config: {
           temperature: 0.7,

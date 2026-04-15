@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       const base64 = Buffer.from(buffer).toString("base64");
 
       const pdfResult = await getAI().models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-2.5-flash",
         contents: [
           {
             role: "user",
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
         : "application/msword";
 
       const docResult = await getAI().models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-2.5-flash",
         contents: [
           {
             role: "user",
@@ -124,7 +124,7 @@ ${fileContent.slice(0, 15000)}
 }`;
 
     const result = await getAI().models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
 
