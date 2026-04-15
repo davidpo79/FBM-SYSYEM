@@ -177,3 +177,47 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ userId: string }> },
+) {
+  try {
+    const { userId } = await params;
+
+    if (!userId) {
+      return NextResponse.json({ error: "חסר מזהה משתמש" }, { status: 400 });
+    }
+
+    // Get email before deleting (needed for welcome_tokens cleanup)
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const userEmail = userData?.user?.email;
+
+    // Delete user data from all related tables
+    const cleanupPromises: Promise<unknown>[] = [
+      supabaseAdmin.from("user_profiles").delete().eq("user_id", userId),
+      supabaseAdmin.from("projects").delete().eq("user_id", userId),
+      supabaseAdmin.from("api_logs").delete().eq("user_id", userId),
+      supabaseAdmin.from("user_events").delete().eq("user_id", userId),
+    ];
+    if (userEmail) {
+      cleanupPromises.push(
+        supabaseAdmin.from("welcome_tokens").delete().eq("student_email", userEmail)
+      );
+    }
+    await Promise.all(cleanupPromises);
+
+    // Delete from Supabase Auth (cascades remaining FK references)
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+    if (deleteError) {
+      console.error("admin/students DELETE - deleteUser error:", deleteError);
+      return NextResponse.json({ error: "שגיאה במחיקת המשתמש" }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    console.error("admin/students DELETE exception:", e);
+    return NextResponse.json({ error: "שגיאה במחיקת המשתמש" }, { status: 500 });
+  }
+}

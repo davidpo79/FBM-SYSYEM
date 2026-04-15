@@ -105,6 +105,7 @@ export default function StudentsPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [extendOpen, setExtendOpen] = useState<string | null>(null);
   const [extendLoading, setExtendLoading] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -183,6 +184,21 @@ export default function StudentsPage() {
       alert(err instanceof Error ? err.message : "שגיאה בשליחת מייל");
     } finally {
       setSendingEmail(false);
+    }
+  }
+
+  async function handleDeleteStudent(userId: string, studentName: string, email: string) {
+    if (!confirm(`האם אתה בטוח שברצונך למחוק את ${studentName} (${email})?\n\nפעולה זו בלתי הפיכה ותמחק את כל הנתונים של המשתמש.`)) return;
+    setDeleteLoading(userId);
+    try {
+      const res = await fetch(`/api/admin/students/${userId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "שגיאה במחיקה");
+      setStudents((prev) => prev.filter((s) => s.id !== userId));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "שגיאה במחיקת המשתמש");
+    } finally {
+      setDeleteLoading(null);
     }
   }
 
@@ -517,6 +533,23 @@ export default function StudentsPage() {
                             ) : (
                               <span role="img" aria-label="reset password">
                                 {"\uD83D\uDD11"}
+                              </span>
+                            )}
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDeleteStudent(student.id, student.fullName, student.email)
+                            }
+                            disabled={deleteLoading === student.id}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="מחק משתמש"
+                            style={{ color: "#EF4444" }}
+                          >
+                            {deleteLoading === student.id ? (
+                              <span className="w-4 h-4 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin inline-block" />
+                            ) : (
+                              <span role="img" aria-label="delete">
+                                {"\uD83D\uDDD1"}
                               </span>
                             )}
                           </button>
