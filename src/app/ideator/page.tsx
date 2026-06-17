@@ -216,11 +216,6 @@ export default function IdeatorPage() {
     }).catch(() => { /* best-effort */ });
 
     setRateLimitSubmitted(true);
-
-    // Redirect to GHL booking page after a short delay
-    setTimeout(() => {
-      window.location.href = "https://fbm-studio.com/gtm-bootcamp";
-    }, 2000);
   };
 
   const [formEmailError, setFormEmailError] = useState("");
@@ -1147,7 +1142,7 @@ export default function IdeatorPage() {
                   (המגבלה היומית היא 3)
                 </p>
                 <p style={{ color: "#94A3B8", fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
-                  השאר פרטים לשיחה עם דוד — 15 דקות ללא עלות
+                  השאר פרטים ונחזור אליך
                   <br />
                   על הרעיונות שמצאת ואיך להפוך אותם לעסק
                 </p>
@@ -1226,11 +1221,11 @@ export default function IdeatorPage() {
                       : "none",
                   }}
                 >
-                  קבע שיחה עם דוד 📞
+                  שלח פרטים ←
                 </button>
 
                 <p style={{ color: "#475569", fontSize: 12, marginTop: 12 }}>
-                  15 דקות ללא עלות • ללא התחייבות
+                  ללא עלות • ללא התחייבות
                 </p>
               </>
             ) : (
