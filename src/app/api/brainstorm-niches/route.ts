@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     ];
 
     const stream = await getAI().models.generateContentStream({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       contents,
       config: {
         systemInstruction: contextPrompt,

@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       .join("\n\n");
 
     const response = await getAI().models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       contents: conversationText,
       config: {
         temperature: 0.7,

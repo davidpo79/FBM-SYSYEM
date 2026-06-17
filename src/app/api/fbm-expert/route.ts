@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     ];
 
     const stream = await getAI().models.generateContentStream({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       contents,
       config: {
         systemInstruction: systemPrompt,
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
           let suggestions: string[] = [];
           try {
             const followUp = await getAI().models.generateContent({
-              model: "gemini-2.0-flash",
+              model: "gemini-2.5-flash",
               contents: `בהתבסס על השיחה הבאה, הצע 3 שאלות המשך קצרות וממוקדות שהמשתמש יכול לשאול. החזר JSON בלבד: ["שאלה 1", "שאלה 2", "שאלה 3"]\n\nשיחה:\nמשתמש: ${message}\nמומחה: ${fullText.slice(0, 500)}`,
             });
             const sugText = (
